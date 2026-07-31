@@ -57,6 +57,21 @@ param logRetentionDays int = 30
 @description('Tags applied to every resource.')
 param tags object = {}
 
+@description('Deploy the Azure AI Foundry account and model used to phrase assistant answers. When false the app uses the deterministic local adapter, which supplies all legal substance in either case.')
+param enableFoundryAssistant bool = true
+
+@description('Model deployed to Foundry for the assistant.')
+param foundryModelName string = 'gpt-5.6-sol'
+
+@description('Version of the Foundry model.')
+param foundryModelVersion string = '2026-07-09'
+
+@description('Thousands of tokens per minute provisioned for the model deployment.')
+param foundryModelCapacity int = 50
+
+@description('Azure OpenAI data-plane API version. Newer models reject older versions, so this is a parameter rather than a constant.')
+param foundryApiVersion string = '2025-04-01-preview'
+
 var uniqueSuffix = uniqueString(resourceGroup().id, namePrefix, environmentName)
 
 // Resource names are computed once, here, from parameters/variables only
@@ -67,6 +82,11 @@ var uniqueSuffix = uniqueString(resourceGroup().id, namePrefix, environmentName)
 var storageAccountName = toLower(take('stg${replace(namePrefix, '-', '')}${environmentName}${uniqueSuffix}', 24))
 var keyVaultName = toLower(take('kv-${replace(namePrefix, '-', '')}${environmentName}${uniqueSuffix}', 24))
 var webAppName = '${namePrefix}-${environmentName}-app'
+// Foundry account names form a public DNS label, so they must be globally
+// unique and lower-case. Computed here with the other names, from parameters
+// only, so it can be referenced as a `scope` below.
+var foundryAccountName = toLower(take('ai-${replace(namePrefix, '-', '')}-${environmentName}-${uniqueSuffix}', 24))
+var foundryDeploymentName = foundryModelName
 
 // Built here (not by a role-assignment GUID literal) so the same role
 // definition ID always maps to a stable, idempotent assignment name.
@@ -134,6 +154,26 @@ module keyVault 'modules/keyvault.bicep' = {
     keyVaultName: keyVaultName
     databaseUrl: databaseUrl
     sessionSigningSecret: sessionSigningSecret
+  }
+}
+
+// Azure AI Foundry. Optional by design: the assistant's legal substance comes
+// from the statutory corpus in this repository either way, and every failure
+// path in the Foundry adapter falls back to the deterministic local one. This
+// exists to improve phrasing, not to supply facts.
+module foundry 'modules/foundry.bicep' = if (enableFoundryAssistant) {
+  name: 'foundry'
+  params: {
+    location: location
+    tags: tags
+    accountName: foundryAccountName
+    deploymentName: foundryDeploymentName
+    modelName: foundryModelName
+    modelVersion: foundryModelVersion
+    capacity: foundryModelCapacity
+    privateLinkSubnetId: network.outputs.privateEndpointSubnetId
+    virtualNetworkId: network.outputs.vnetId
+    principalId: appService.outputs.webAppPrincipalId
   }
 }
 
@@ -270,7 +310,7 @@ resource blobPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
 resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
   parent: webApp
   name: 'appsettings'
-  properties: {
+  properties: union({
     WEBSITE_NODE_DEFAULT_VERSION: '~24'
     // Required for regional VNet integration to resolve the private DNS zones
     // above (and the Postgres one); without it lookups go to public DNS and
@@ -288,7 +328,14 @@ resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     ApplicationInsightsAgent_EXTENSION_VERSION: '~3'
     DATABASE_URL: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.databaseUrlSecretUri})'
     SESSION_SIGNING_SECRET: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.sessionSigningSecretUri})'
-  }
+  }, enableFoundryAssistant ? {
+    ASSISTANT_PROVIDER: 'foundry'
+    AZURE_FOUNDRY_ENDPOINT: foundry!.outputs.endpoint
+    AZURE_FOUNDRY_DEPLOYMENT: foundry!.outputs.deploymentName
+    AZURE_FOUNDRY_API_VERSION: foundryApiVersion
+  } : {
+    ASSISTANT_PROVIDER: 'local'
+  })
   dependsOn: [
     roleAssignments
     keyVaultPrivateDnsZoneGroup
