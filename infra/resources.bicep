@@ -221,7 +221,7 @@ resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
   ]
 }
 
-resource appServiceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01' = {
+resource appServiceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'appservice-to-log-analytics'
   scope: webApp
   properties: {
