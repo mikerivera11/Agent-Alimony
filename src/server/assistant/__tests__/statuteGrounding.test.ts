@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { INTAKE_ASSISTANT_TOPICS, INTAKE_ASSISTANT_TOPIC_IDS } from "@/domain/intake";
 
-import { gatherGrounding, isUngrounded } from "../grounding";
+import { gatherGrounding, groundingCitations, isUngrounded } from "../grounding";
 import { scanForCalculatedFigures } from "../guardrails";
 import { LocalAssistantAdapter } from "../local-adapter";
 import { STATUTE_CHUNKS, STATUTE_CORPUS } from "../statuteCorpus";
@@ -234,5 +234,67 @@ describe("LocalAssistantAdapter statutory fallback", () => {
       const answer = await adapter.answer({ question, history: [] });
       expect(scanForCalculatedFigures(answer.content).containsCurrency, question).toBe(false);
     }
+  });
+});
+
+/**
+ * A citation is a promise that the cited text supports the answer. Grounding
+ * is broader than that: statutory chunks are retrieved alongside a curated
+ * entry so a model has exact wording to stay faithful to, and those chunks
+ * may be only loosely related.
+ *
+ * This mattered in production. Asked "would I also include children from other
+ * marriages?", the deployed assistant answered correctly from the curated
+ * entry and then cited s. 61.14(1) (enforcement and modification) — a section
+ * the answer never used and that would send a reader somewhere irrelevant.
+ * The local adapter had the right rule; the Foundry adapter had been written
+ * before it and kept the old behaviour, so the two silently disagreed about
+ * what the user was told supported their answer.
+ *
+ * These pin the rule at its single definition so an adapter cannot drift from
+ * it again.
+ */
+describe("groundingCitations", () => {
+  it("cites only curated entries when a curated entry answered", () => {
+    const question = "would I also include children from other marriages";
+    const grounding = gatherGrounding(question, "children");
+
+    expect(grounding.entries.length).toBeGreaterThan(0);
+    expect(grounding.statutes.length).toBeGreaterThan(0);
+
+    const cited = groundingCitations(grounding).map((citation) => citation.citation);
+    const fromEntries = grounding.entries.flatMap((hit) =>
+      hit.entry.citations.map((citation) => citation.citation),
+    );
+
+    expect(cited).toEqual([...new Set(fromEntries)]);
+
+    // Specifically: no chunk that was retrieved purely as model grounding.
+    for (const hit of grounding.statutes) {
+      if (fromEntries.includes(hit.chunk.citation)) continue;
+      expect(cited).not.toContain(hit.chunk.citation);
+    }
+  });
+
+  it("cites statute chunks when they are the only grounding", () => {
+    const grounding = { entries: [], statutes: gatherGrounding("what is a supportive relationship", undefined).statutes };
+
+    expect(grounding.statutes.length).toBeGreaterThan(0);
+
+    const cited = groundingCitations(grounding).map((citation) => citation.citation);
+    expect(cited).toEqual(grounding.statutes.map((hit) => hit.chunk.citation));
+  });
+
+  it("cites nothing when nothing was retrieved", () => {
+    expect(groundingCitations({ entries: [], statutes: [] })).toEqual([]);
+  });
+
+  it("both adapters agree on the citations for the same question", async () => {
+    const question = "would I also include children from other marriages";
+    const expected = groundingCitations(gatherGrounding(question, "children")).map((c) => c.citation);
+
+    const local = await new LocalAssistantAdapter().answer({ question, history: [], topic: "children" });
+
+    expect(local.citations.map((c) => c.citation)).toEqual(expected);
   });
 });

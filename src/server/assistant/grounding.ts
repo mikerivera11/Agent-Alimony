@@ -21,8 +21,10 @@
  */
 
 import { INTAKE_ASSISTANT_TOPICS, type IntakeStepId } from "@/domain/intake";
+import type { StatutoryCitation } from "@/domain/rules/types";
 
 import { retrieveKnowledge, topicRetrievalOptions, type RetrievalHit } from "./retrieval";
+import { statuteChunkCitation } from "./statuteCorpus";
 import { retrieveStatutes, type StatuteHit } from "./statuteRetrieval";
 
 export interface Grounding {
@@ -58,4 +60,37 @@ export function gatherGrounding(question: string, topic: IntakeStepId | undefine
 /** True when neither tier found anything the assistant may rely on. */
 export function isUngrounded(grounding: Grounding): boolean {
   return grounding.entries.length === 0 && grounding.statutes.length === 0;
+}
+
+/**
+ * The citations an answer built on this grounding may show.
+ *
+ * A citation is a promise that the cited text supports the answer, so this is
+ * narrower than "everything retrieval touched". When curated entries answered,
+ * only their own citations are listed: statutory chunks retrieved alongside
+ * them are grounding a model read, not authority the answer relied on. Citing
+ * them sent readers to, for example, s. 61.14 (modification) for a question
+ * about which children appear on the worksheet.
+ *
+ * Statute chunks are cited only when they are the sole grounding, because then
+ * they are exactly what the answer was built from.
+ *
+ * This lives here, rather than in each adapter, because it previously did not:
+ * the local adapter was fixed and the Foundry adapter was not, and the two
+ * silently disagreed about what the user was told supported their answer.
+ */
+export function groundingCitations(grounding: Grounding): readonly StatutoryCitation[] {
+  const groups =
+    grounding.entries.length > 0
+      ? grounding.entries.map((hit) => hit.entry.citations)
+      : [grounding.statutes.map((hit) => statuteChunkCitation(hit.chunk))];
+
+  const seen = new Set<string>();
+  const merged: StatutoryCitation[] = [];
+  for (const citation of groups.flat()) {
+    if (seen.has(citation.citation)) continue;
+    seen.add(citation.citation);
+    merged.push(citation);
+  }
+  return merged;
 }

@@ -1,16 +1,15 @@
 /**
  * Azure AI Foundry assistant adapter (Azure OpenAI GPT).
  *
- * Calls the Azure OpenAI chat-completions API exposed by a Foundry resource at
- * `https://<resource>.services.ai.azure.com/openai`. Implemented with `fetch`
- * and `@azure/identity` rather than a provider SDK: the wire format is stable
- * and documented, `@azure/identity` is already a dependency for Blob and Key
- * Vault, and this avoids taking a hard dependency on an SDK for a path that
- * cannot be exercised without a live Azure subscription.
+ * Calls the Azure OpenAI chat-completions API exposed by a Foundry resource.
+ * Implemented with `fetch` and `@azure/identity` rather than a provider SDK:
+ * the wire format is stable and documented, `@azure/identity` is already a
+ * dependency for Blob and Key Vault, and this avoids taking a hard dependency
+ * on an SDK for a single POST.
  *
- * NOTE: this transport has not been run against a live Foundry resource. That
- * is survivable by construction — every failure path below falls back to the
- * deterministic local adapter, so a wrong route or api-version degrades to the
+ * The resource is provisioned by `infra/modules/foundry.bicep`. Every failure
+ * path below falls back to the deterministic local adapter, so a wrong route,
+ * a rejected api-version, or a missing role assignment degrades to the
  * built-in statute reference instead of breaking the assistant.
  *
  * The model NEVER supplies legal substance. It receives only passages
@@ -19,7 +18,7 @@
  * back to the deterministic local adapter rather than degrading silently.
  */
 
-import { DefaultAzureCredential, type TokenCredential } from "@azure/identity";
+import { DefaultAzureCredential, ManagedIdentityCredential, type TokenCredential } from "@azure/identity";
 
 import { getServerEnv } from "@/lib/env";
 
@@ -31,8 +30,7 @@ import {
 } from "./adapter";
 import { detectEscalationSignals, encloseUntrustedText, scanForCalculatedFigures, scanForPromptInjection } from "./guardrails";
 import { LocalAssistantAdapter } from "./local-adapter";
-import { gatherGrounding, isUngrounded } from "./grounding";
-import { statuteChunkCitation } from "./statuteCorpus";
+import { gatherGrounding, groundingCitations, isUngrounded } from "./grounding";
 import { ASSISTANT_SYSTEM_PROMPT, buildGroundingBlock } from "./systemPrompt";
 
 /** Entra scope for the Azure OpenAI data plane on an AI Services resource. */
@@ -105,10 +103,9 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
 
     return {
       content: text.trim(),
-      citations: [
-        ...grounding.entries.flatMap((hit) => hit.entry.citations),
-        ...grounding.statutes.map((hit) => statuteChunkCitation(hit.chunk)),
-      ],
+      // When curated entries grounded the answer, only their citations are
+      // listed. See groundingCitations() for why.
+      citations: groundingCitations(grounding),
       escalations,
       groundedIn: [
         ...grounding.entries.map((hit) => hit.entry.id),
@@ -120,11 +117,20 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
   }
 
   private getCredential(): TokenCredential {
-    this.credential ??= new DefaultAzureCredential();
+    // DefaultAzureCredential probes a chain of credential sources in order.
+    // On App Service every source ahead of managed identity is guaranteed to
+    // miss, and each miss costs a retry: the first request after a restart
+    // spent over a minute here, far past this adapter's timeout, which is
+    // exactly the stall the timeout exists to prevent. When the App Service
+    // identity endpoint is present, go straight to it. Elsewhere (local dev,
+    // CI) keep the chain so an Azure CLI login still works.
+    this.credential ??= process.env.IDENTITY_ENDPOINT
+      ? new ManagedIdentityCredential()
+      : new DefaultAzureCredential();
     return this.credential;
   }
 
-  private async authorizationHeader(): Promise<Record<string, string>> {
+  private async authorizationHeader(abortSignal: AbortSignal): Promise<Record<string, string>> {
     const env = getServerEnv();
 
     // API key is supported but managed identity is preferred in Azure.
@@ -132,7 +138,11 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
       return { "api-key": env.AZURE_FOUNDRY_API_KEY };
     }
 
-    const token = await this.getCredential().getToken(FOUNDRY_TOKEN_SCOPE);
+    // The signal is passed through so token acquisition shares the request's
+    // timeout budget. Without it the budget covered only `fetch`, and a slow
+    // or hanging credential blocked the user past any bound while the fallback
+    // to the local adapter sat unreachable behind it.
+    const token = await this.getCredential().getToken(FOUNDRY_TOKEN_SCOPE, { abortSignal });
     if (!token) {
       throw new AssistantProviderUnavailableError(
         "Could not acquire an Entra ID token for Azure AI Foundry. Ensure the app's identity holds the " +
@@ -173,7 +183,7 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          ...(await this.authorizationHeader()),
+          ...(await this.authorizationHeader(controller.signal)),
         },
         body: JSON.stringify({
           messages,

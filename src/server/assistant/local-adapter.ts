@@ -8,10 +8,9 @@
  * plainly instead of improvising.
  */
 
-import type { StatutoryCitation } from "@/domain/rules/types";
 
 import type { AssistantAdapter, AssistantAnswer, AssistantRequest } from "./adapter";
-import { gatherGrounding, isUngrounded } from "./grounding";
+import { gatherGrounding, groundingCitations, isUngrounded } from "./grounding";
 import {
   containsCurrency,
   detectEscalationSignals,
@@ -20,18 +19,6 @@ import {
 } from "./guardrails";
 import { statuteChunkCitation, type StatuteChunk } from "./statuteCorpus";
 
-/** Deduplicates citations by citation string, preserving first-seen order. */
-function mergeCitations(groups: readonly (readonly StatutoryCitation[])[]): readonly StatutoryCitation[] {
-  const seen = new Map<string, StatutoryCitation>();
-  for (const group of groups) {
-    for (const citation of group) {
-      if (!seen.has(citation.citation)) {
-        seen.set(citation.citation, citation);
-      }
-    }
-  }
-  return [...seen.values()];
-}
 
 const NO_MATCH_RESPONSE =
   "I don't have verified Florida material on that, so I'm not going to guess.\n\n" +
@@ -161,11 +148,9 @@ export class LocalAssistantAdapter implements AssistantAdapter {
 
     return {
       content: sections.join("\n\n---\n\n"),
-      // Only the curated entries' own citations are listed. Statutory chunks
-      // retrieved alongside them are grounding for a model, not text this
-      // answer showed — citing them would point the reader at a section the
-      // answer never relied on.
-      citations: mergeCitations(hits.map((hit) => hit.entry.citations)),
+      // Only the curated entries' own citations are listed. See
+      // groundingCitations() for why, and for why it lives there.
+      citations: groundingCitations({ entries: hits, statutes: [] }),
       escalations,
       groundedIn: hits.map((hit) => hit.entry.id),
       source: this.label,
