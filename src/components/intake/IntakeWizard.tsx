@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
   assessEscalation,
@@ -8,18 +8,25 @@ import {
   createEmptyDraft,
   getApplicableStepIds,
   getMissingDataSummary,
+  getIntakeModeServerSnapshot,
+  getIntakeModeSnapshot,
   isDraftReadyForReview,
+  setIntakeMode,
   structuredCloneDraftData,
+  subscribeIntakeMode,
   type IntakeDraft,
   type IntakeDraftStorage,
+  type IntakeMode,
   type IntakeStepId,
   type ReviewedIntakeDraft,
 } from "@/domain/intake";
 import { INTAKE_STEPS } from "@/domain/intake";
 
+import { AllAtOnceForm } from "./AllAtOnceForm";
 import { AttorneyEscalationNotice } from "./AttorneyEscalationNotice";
 import { DemoBanner } from "./DemoBanner";
 import { primaryButtonClasses, secondaryButtonClasses } from "./fields/inputStyles";
+import { IntakeModeToggle } from "./IntakeModeToggle";
 import { MissingDataSummary } from "./MissingDataSummary";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { QuickExitLink } from "./QuickExitLink";
@@ -46,6 +53,11 @@ interface IntakeWizardProps {
 export function IntakeWizard({ storage, initialDraft, onReviewComplete }: IntakeWizardProps) {
   const [draft, setDraft] = useState<IntakeDraft | null>(null);
   const [screen, setScreen] = useState<WizardScreen>("caseBasics");
+  const mode = useSyncExternalStore(
+    subscribeIntakeMode,
+    getIntakeModeSnapshot,
+    getIntakeModeServerSnapshot,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
 
@@ -147,15 +159,81 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
     setScreen("done");
   }
 
+  function handleModeChange(nextMode: IntakeMode) {
+    setIntakeMode(nextMode);
+    if (nextMode !== "guided" || screen === "review" || screen === "done") return;
+    // Answers given on the one-page layout can retire the topic the guided
+    // flow was sitting on — saying "no children" removes parenting time — so
+    // returning to a step that no longer applies has to be corrected here.
+    if (!applicableStepIds.includes(screen)) {
+      setScreen(applicableStepIds[0] ?? "caseBasics");
+    }
+  }
+
+  /**
+   * Saves whatever is typed on the all-at-once page without validating it.
+   * Every topic is stored as a Partial, so incomplete answers are safe to
+   * keep — and a long page is exactly where losing work would hurt most.
+   */
+  function handleSaveAllProgress(values: Partial<Record<IntakeStepId, Record<string, unknown>>>) {
+    if (!draft) return;
+    const nextData = structuredCloneDraftData(draft.data);
+    for (const [stepId, stepValues] of Object.entries(values)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- values are already scoped to their own topic
+      (nextData as any)[stepId] = stepValues;
+    }
+    persist({ ...draft, data: nextData, updatedAt: new Date().toISOString() });
+  }
+
+  /**
+   * Every applicable section passed its own schema. Mark those topics complete
+   * and go to the same review screen the guided flow uses — the one-page form
+   * changes the layout, not what has to be true before calculating.
+   */
+  function handleAllAtOnceComplete(values: Record<IntakeStepId, Record<string, unknown>>) {
+    if (!draft) return;
+    const nextData = structuredCloneDraftData(draft.data);
+    const completed = new Set(draft.completedStepIds);
+    for (const [stepId, stepValues] of Object.entries(values)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- values are already scoped to their own topic
+      (nextData as any)[stepId] = stepValues;
+      completed.add(stepId as IntakeStepId);
+    }
+    persist({
+      ...draft,
+      data: nextData,
+      completedStepIds: [...completed],
+      updatedAt: new Date().toISOString(),
+    });
+    setScreen("review");
+  }
+
   const missingDataSummary = getMissingDataSummary(draft);
 
   return (
     <div className="flex flex-col gap-6">
-      <Card padding="sm" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-        <ProgressIndicator steps={displaySteps} currentStepId={currentDisplayStepId} completedStepIds={draft.completedStepIds} />
-        <div className="flex flex-none items-center gap-2">
-          <QuickExitLink />
+      <Card padding="sm" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          {mode === "guided" ? (
+            <ProgressIndicator
+              steps={displaySteps}
+              currentStepId={currentDisplayStepId}
+              completedStepIds={draft.completedStepIds}
+            />
+          ) : (
+            <p className="text-sm font-medium text-ink-muted">
+              {screen === "review" || screen === "done"
+                ? "Review"
+                : `${applicableStepIds.length} sections on one page`}
+            </p>
+          )}
+          <div className="flex flex-none items-center gap-2">
+            <QuickExitLink />
+          </div>
         </div>
+        {screen !== "review" && screen !== "done" ? (
+          <IntakeModeToggle mode={mode} onChange={handleModeChange} />
+        ) : null}
       </Card>
 
       {draft.isDemo ? <DemoBanner onExitDemo={handleStartOver} /> : null}
@@ -209,6 +287,12 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
             </button>
           </div>
         </div>
+      ) : mode === "allAtOnce" ? (
+        <AllAtOnceForm
+          data={draft.data}
+          onSaveProgress={handleSaveAllProgress}
+          onComplete={handleAllAtOnceComplete}
+        />
       ) : (
         <StepForm
           key={screen}

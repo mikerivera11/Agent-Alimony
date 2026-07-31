@@ -6,7 +6,8 @@ This application provides **legal information and financial estimates only**. It
 
 ## Current vertical slice
 
-- Thirteen-topic guided intake with explanations, autosave, review/edit, accessibility, responsive layouts, safety prompts, and a fictional demo
+- Thirteen-topic intake with explanations, autosave, review/edit, accessibility, responsive layouts, safety prompts, and a fictional demo
+- Two interchangeable layouts for that intake — step by step, or every section on one page — sharing one draft, one set of schemas, and one review screen
 - Deterministic Florida child-support calculations under Fla. Stat. § 61.30
 - Deterministic current-law alimony constraints and scenario range under Fla. Stat. § 61.08
 - Deterministic equitable distribution under Fla. Stat. § 61.075, including per-item exclusion gated on a written agreement

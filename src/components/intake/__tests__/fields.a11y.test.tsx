@@ -6,6 +6,7 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 
 import { TextField } from "../fields/TextField";
 import { YesNoField } from "../fields/YesNoField";
+import { IntakeModeToggle } from "../IntakeModeToggle";
 import { ProgressIndicator } from "../ProgressIndicator";
 
 afterEach(() => {
@@ -151,5 +152,35 @@ describe("ProgressIndicator accessibility", () => {
 
     const earlierItem = screen.getByText(/1\. Case basics/).closest("li");
     expect(earlierItem).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("IntakeModeToggle accessibility", () => {
+  it("exposes the two layouts as a labelled radio group with exactly one selected", () => {
+    render(<IntakeModeToggle mode="guided" onChange={() => undefined} />);
+
+    const group = screen.getByRole("radiogroup", { name: /How would you like to fill this in/ });
+    expect(group).toBeInTheDocument();
+
+    const radios = screen.getAllByRole("radio");
+    expect(radios).toHaveLength(2);
+    expect(radios.filter((radio) => radio.getAttribute("aria-checked") === "true")).toHaveLength(1);
+    expect(screen.getByRole("radio", { name: /Step by step/ })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("reports the selected layout so the choice is not conveyed by colour alone", () => {
+    render(<IntakeModeToggle mode="allAtOnce" onChange={() => undefined} />);
+
+    expect(screen.getByRole("radio", { name: /All on one page/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /Step by step/ })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("reports the layout the person picked", () => {
+    const changes: string[] = [];
+    render(<IntakeModeToggle mode="guided" onChange={(mode) => changes.push(mode)} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /All on one page/ }));
+
+    expect(changes).toEqual(["allAtOnce"]);
   });
 });

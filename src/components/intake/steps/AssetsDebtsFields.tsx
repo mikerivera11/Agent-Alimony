@@ -166,7 +166,7 @@ function AssetDebtItemFields({
           <CheckboxField
             id={`items.${index}.excludedByWrittenAgreement`}
             label="Leave this item out of the shared (marital) estate by written agreement"
-            hint="Only check this if both spouses have agreed — in writing — to keep this item out of the split. You confirm that agreement exists in the box at the bottom of this page."
+            hint="Only check this if both spouses have agreed — in writing — to keep this item out of the split. You confirm that agreement exists in the box at the end of this section."
             registration={register(`items.${index}.excludedByWrittenAgreement`)}
             error={itemErrors?.excludedByWrittenAgreement?.message}
           />
