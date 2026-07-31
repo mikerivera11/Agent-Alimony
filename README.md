@@ -6,13 +6,15 @@ This application provides **legal information and financial estimates only**. It
 
 ## Current vertical slice
 
-- Thirteen-topic intake with explanations, autosave, review/edit, accessibility, responsive layouts, safety prompts, and a fictional demo
+- Thirteen-topic intake with explanations, autosave, review/edit, accessibility, responsive layouts, and safety prompts
 - Two interchangeable layouts for that intake — step by step, or every section on one page — sharing one draft, one set of schemas, and one review screen
+- Resume where you left off, deep-link to any topic with `?step=`, and come back to change answers after finishing
+- A staleness guard that warns and blocks PDF export when answers change after an estimate was generated
 - Deterministic Florida child-support calculations under Fla. Stat. § 61.30
 - Deterministic current-law alimony constraints and scenario range under Fla. Stat. § 61.08
 - Deterministic equitable distribution under Fla. Stat. § 61.075, including per-item exclusion gated on a written agreement
 - Lump-sum settlement modelling, kept outside the rules engine because no statute supplies a rate or a present-value formula
-- A Florida family-law information assistant answering from curated, citation-backed statutory material
+- A Florida family-law information assistant answering from curated, citation-backed statutory material, available both standalone and inline on every intake topic
 - Full formula traces, assumptions, warnings, statutory citations, ruleset versions, and source-verification dates
 - PDF settlement-information package containing confirmed facts, missing items, calculation details, factors, scenarios, sources, and disclaimers
 - PDF/JPEG/PNG upload validation with magic-byte checks and a clearly labeled mock extraction workflow
@@ -148,6 +150,12 @@ Guardrails are enforced in code, not merely requested in the prompt:
 
 The endpoint is stateless and persists nothing; neither the question nor the answer is logged.
 
+### Asking from inside a section
+
+Every intake topic carries the same assistant inline, so a question can be asked where it arises instead of by abandoning the form. `src/domain/intake/assistantTopics.ts` maps each of the thirteen topics to the knowledge-base entries relevant to it and to three suggested starter questions. A test asserts that all thirty-nine of those starters actually retrieve grounded material, so no suggestion can be offered that the assistant would then decline.
+
+The topic is a **closed enum of step ids** at the API boundary, never free text, so it opens no injection path. More importantly, a topic can only ever *re-rank* — the preference boost is applied after the minimum-score filter, so an entry must first match the question on its own merits. This matters: an earlier design appended the topic's keywords to the scored text, which let the section itself manufacture a match, and a question about pizza asked from the alimony section came back with three confident alimony passages. The cost of the stricter rule is that a genuinely vague question ("what counts here?") is declined rather than guessed at, which is the correct trade in this domain; the suggested starters exist to solve discovery instead.
+
 ### Providers
 
 | `ASSISTANT_PROVIDER` | Behaviour |
@@ -160,6 +168,14 @@ The Foundry adapter calls the Azure OpenAI chat-completions API at `https://<res
 This transport has **not** been exercised against a live Foundry resource. That is safe by construction: every failure path falls back to the local adapter, so a wrong route or api-version degrades to the built-in statute reference rather than breaking the assistant.
 
 Not yet implemented, deliberately: the Foundry Bicep module. The current `Microsoft.CognitiveServices/accounts` API version could not be verified from this environment, and this project does not guess at unverified values. Provision the Foundry resource and model deployment out of band, then set the environment variables above.
+
+## Saving, editing, and coming back
+
+Answers autosave to the browser as they are typed (debounced, flushed on navigation), and a visible indicator reports when the draft was last saved. The wizard remembers the topic you were last on and reopens there; `?step=<topicId>` deep-links to any topic directly.
+
+Finishing does not freeze you out. The reviewed snapshot used for calculation is stored separately from the working draft, so answers stay editable afterwards — and because a snapshot's figures can then contradict the answers on file, `isReviewedSnapshotStale()` compares the draft's `updatedAt` against the snapshot's `reviewedAt`. When they diverge the results screen says so, offers to recalculate, and **disables PDF export** until it is recalculated. Exporting a packet for an attorney whose numbers no longer match the user's own answers is the failure this prevents.
+
+That comparison is why navigation must never touch `updatedAt`: `updatedAt` means *an answer changed*, and moving between screens persists position without bumping it. If it did, a freshly confirmed estimate would immediately declare itself stale. Timestamps that cannot be parsed are treated as stale, since the figures cannot be proven current.
 
 ## Privacy and security defaults
 
@@ -177,7 +193,7 @@ Not yet implemented, deliberately: the Foundry Bicep module. The current `Micros
 
 ## Azure target
 
-The planned Azure deployment uses **East US 2** in whichever Azure AD tenant/subscription you point the tooling at:
+The Azure deployment targets **Central US** in whichever Azure AD tenant/subscription you point the tooling at:
 
 - Azure App Service (Linux, Node 24) for the Next.js server, with a system-assigned managed identity, `httpsOnly`, TLS 1.2 minimum, FTPS disabled, and a health check on `/api/health`
 - Azure Database for PostgreSQL Flexible Server, private by default (VNet-delegated subnet + private DNS zone; no public endpoint) with a documented public-access fallback
@@ -208,16 +224,18 @@ scripts/azure/lib.sh                Shared helpers (logging, env checks, reading
 
 ### Prerequisites
 
-- Access to the target Azure AD tenant and an Azure subscription in it, in East US 2
+- Access to the target Azure AD tenant and an Azure subscription in it, with App Service quota in the chosen region
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (this project was validated against CLI 2.88 and Bicep CLI 0.45; run `az bicep install`/`az bicep upgrade` if you don't already have the Bicep CLI)
 - `git`, `curl`, `openssl`, and `python3` (used only by `scripts/azure/*.sh` to parse deployment-output JSON — no extra npm/pip packages required)
 - The local vertical slice already passing (`npm run typecheck && npm run lint && npm test && npm run build`)
 
 None of this requires GitHub Actions, a service principal, or CI secrets: every command below is run interactively, from an operator's machine, using their own Azure AD sign-in.
 
+**App Service quota is per-region, and worth checking first.** On the subscription this was deployed to, East US and East US 2 both reported `InternalSubscriptionIsOverQuotaForSku` with "Current Limit (Total VMs): 0" — for every SKU, including B1 — while Central US and West US 2 worked fine. Note that `az deployment sub validate` does **not** surface quota; only `create` does, and it fails late, after most resources have already provisioned. If a deploy fails this way, try another region before requesting a quota increase: create a throwaway resource group and `az appservice plan create --sku B1 --is-linux` in a few candidates to find one that works.
+
 ### Tenant/subscription parameter flow
 
-1. Copy `infra/main.parameters.example.json` to `infra/main.parameters.json` (gitignored) and fill in the **non-secret** values: `namePrefix`, `environmentName`, `location` (`eastus2`), `postgresAdminLogin`, SKUs, `enablePrivateNetworking`, `tags`.
+1. Copy `infra/main.parameters.example.json` to `infra/main.parameters.json` (gitignored) and fill in the **non-secret** values: `namePrefix`, `environmentName`, `location` (`centralus`), `postgresAdminLogin`, SKUs, `enablePrivateNetworking`, `tags`.
 2. Export the two tenant-scoping variables for the session — these are never written to a file and never appear in Bicep parameters:
    ```bash
    export AZURE_TENANT_ID=<your-tenant-guid>
@@ -237,7 +255,7 @@ export AZURE_SUBSCRIPTION=<your-subscription-id-or-name>
 ./scripts/azure/deploy-infra.sh
 ```
 
-This logs in (`az login --tenant`), sets the subscription context (`az account set --subscription`), runs `az bicep build` and `az deployment sub validate`, asks for confirmation, then runs `az deployment sub create` against `infra/main.bicep` at **subscription scope** — the template itself creates the `<namePrefix>-<environmentName>-rg` resource group in East US 2 and deploys every resource into it. Non-secret outputs (resource group, web app name/URL, Key Vault/storage names) are saved to `infra/.deployment-outputs.<environmentName>.json` (gitignored) for the other two scripts to read.
+This logs in (`az login --tenant`), sets the subscription context (`az account set --subscription`), runs `az bicep build` and `az deployment sub validate`, asks for confirmation, then runs `az deployment sub create` against `infra/main.bicep` at **subscription scope** — the template itself creates the `<namePrefix>-<environmentName>-rg` resource group in the chosen region and deploys every resource into it. Non-secret outputs (resource group, web app name/URL, Key Vault/storage names) are saved to `infra/.deployment-outputs.<environmentName>.json` (gitignored) for the other two scripts to read.
 
 ### Releasing the application (Local Git)
 

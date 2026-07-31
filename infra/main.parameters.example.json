@@ -9,7 +9,7 @@
       "value": "prod"
     },
     "location": {
-      "value": "eastus2"
+      "value": "centralus"
     },
     "postgresAdminLogin": {
       "value": "REPLACE_WITH_ADMIN_LOGIN"
