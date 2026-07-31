@@ -3,6 +3,7 @@ export * from "./FieldWrapper";
 export * from "./TextField";
 export * from "./TextareaField";
 export * from "./MoneyField";
+export * from "./PercentField";
 export * from "./CountField";
 export * from "./DateField";
 export * from "./RadioGroupField";

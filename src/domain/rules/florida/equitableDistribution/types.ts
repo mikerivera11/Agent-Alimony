@@ -106,8 +106,29 @@ export const equitableDistributionItemSchema = z
      * input's `writtenAgreementConfirmed` flag is also true.
      */
     excludedByWrittenAgreement: z.boolean().default(false),
+    /**
+     * The item was mixed with marital money or marital effort — premarital
+     * savings moved into a joint account, a separate account the couple both
+     * paid into, an inheritance spent on the marital home.
+     *
+     * Only meaningful on a nonmarital item. Commingling is the usual way a
+     * premarital claim fails in practice: separate funds keep their character
+     * only so far as they can still be TRACED, and marital funds or effort
+     * that enhance a nonmarital asset make the enhancement marital under
+     * §61.075(6)(a)1.b. Tracing is an evidentiary exercise over account
+     * history, so this ruleset refuses to guess and escalates instead.
+     */
+    commingledWithMaritalFunds: z.boolean().default(false),
   })
   .superRefine((item, ctx) => {
+    if (item.commingledWithMaritalFunds && item.classification !== "nonmarital") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["commingledWithMaritalFunds"],
+        message:
+          "Only a nonmarital item can be flagged as commingled; a marital item is already in the estate.",
+      });
+    }
     if (item.classification === "nonmarital" && item.nonmaritalBasis === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

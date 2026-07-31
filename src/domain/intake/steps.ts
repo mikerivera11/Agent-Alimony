@@ -232,6 +232,7 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
     schema: assetsDebtsSchema,
     defaultValues: {
       items: [],
+      homeEquity: { enabled: false, growthBasis: "propertyValue", projectionYears: 5 },
       writtenAgreementConfirmed: false,
       unequalDistributionRequested: false,
       dissipationClaimPresent: false,

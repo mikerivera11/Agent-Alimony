@@ -297,8 +297,22 @@ export const assetDebtItemSchema = z
      * the step-level `writtenAgreementConfirmed` flag is also true.
      */
     excludedByWrittenAgreement: z.boolean().default(false),
+    /**
+     * Separate property that was mixed with marital money or effort — e.g.
+     * premarital savings moved into a joint account. Only meaningful when
+     * `classification === "nonmarital"`; downstream this escalates to
+     * professional review because the split depends on tracing.
+     */
+    commingledWithMaritalFunds: z.boolean().default(false),
   })
   .superRefine((item, ctx) => {
+    if (item.commingledWithMaritalFunds && item.classification !== "nonmarital") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["commingledWithMaritalFunds"],
+        message: "Only separate property can be marked as mixed with marital money",
+      });
+    }
     if (item.classification === "nonmarital" && !item.nonmaritalBasis) {
       ctx.addIssue({
         code: "custom",
@@ -319,10 +333,60 @@ export const assetDebtItemSchema = z
 
 export type AssetDebtItem = z.infer<typeof assetDebtItemSchema>;
 
+/**
+ * Optional home-equity worksheet. Purely a helper for working out what to enter
+ * as the home's value and the mortgage balance, plus an optional forward
+ * projection. The projection NEVER feeds the marital estate — Florida values
+ * the estate at the §61.075(7) cut-off date — so it is stored separately from
+ * `items` and surfaced as a planning scenario.
+ */
+export const homeEquityWorksheetSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    /** Present-day fair market value. */
+    marketValue: moneySchema.optional(),
+    /** Present-day mortgage payoff balance, entered positive. */
+    mortgageBalance: moneySchema.optional(),
+    /** Estimated selling costs as a percent of the sale price. */
+    costOfSalePercent: z.coerce.number().min(0).max(100).optional(),
+    /** Principal the scheduled payments retire each year. */
+    annualPrincipalPaydown: moneySchema.optional(),
+    /** The user's own growth estimate, percent per year. No default: none is authoritative. */
+    annualGrowthPercent: z.coerce.number().min(-20).max(20).optional(),
+    growthBasis: z.enum(["propertyValue", "equity"]).default("propertyValue"),
+    projectionYears: z.coerce.number().int().min(0).max(30).default(5),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.enabled) return;
+    if (value.marketValue === undefined) {
+      ctx.addIssue({ code: "custom", path: ["marketValue"], message: "Enter what the home is worth today" });
+    }
+    if (value.mortgageBalance === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mortgageBalance"],
+        message: "Enter the mortgage payoff balance (enter 0 if it is paid off)",
+      });
+    }
+    // A projection with no rate would silently become a 0% forecast that looks
+    // like a considered answer, so require the number rather than assuming one.
+    if (value.projectionYears > 0 && value.annualGrowthPercent === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["annualGrowthPercent"],
+        message: "Enter your estimated yearly growth, or set the projection to 0 years",
+      });
+    }
+  });
+
+export type HomeEquityWorksheet = z.infer<typeof homeEquityWorksheetSchema>;
+
 export const assetsDebtsSchema = z
   .object({
     /** Itemized assets and liabilities used for the §61.075 equitable-distribution estimate. */
     items: z.array(assetDebtItemSchema).default([]),
+    /** Optional helper for working out home equity. Never feeds the estate directly. */
+    homeEquity: homeEquityWorksheetSchema.default({ enabled: false, growthBasis: "propertyValue", projectionYears: 5 }),
     /**
      * Whether a valid written agreement of the parties actually exists to
      * support any items flagged `excludedByWrittenAgreement`. Without it, the

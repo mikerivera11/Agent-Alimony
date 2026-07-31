@@ -143,6 +143,7 @@ export function createSampleDraft(): IntakeDraft {
           classification: "marital",
           owner: "joint",
           excludedByWrittenAgreement: false,
+      commingledWithMaritalFunds: false,
         },
         {
           id: "demo-asset-retirement",
@@ -155,6 +156,7 @@ export function createSampleDraft(): IntakeDraft {
           // Demonstrates a §61.075(6)(b)4 exclusion honored by a confirmed
           // written agreement — and the resulting QDRO warning.
           excludedByWrittenAgreement: true,
+      commingledWithMaritalFunds: false,
         },
         {
           id: "demo-liability-carloan",
@@ -165,6 +167,7 @@ export function createSampleDraft(): IntakeDraft {
           classification: "marital",
           owner: "joint",
           excludedByWrittenAgreement: false,
+      commingledWithMaritalFunds: false,
         },
         {
           id: "demo-asset-inheritance",
@@ -176,6 +179,7 @@ export function createSampleDraft(): IntakeDraft {
           nonmaritalBasis: "separateGiftOrInheritance",
           owner: "b",
           excludedByWrittenAgreement: false,
+      commingledWithMaritalFunds: false,
         },
       ],
       writtenAgreementConfirmed: true,

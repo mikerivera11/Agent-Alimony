@@ -18,6 +18,7 @@ function item(overrides: Partial<EquitableDistributionItem> & { id: string }): E
     classification: "marital",
     owner: "a",
     excludedByWrittenAgreement: false,
+    commingledWithMaritalFunds: false,
     ...overrides,
   } as EquitableDistributionItem;
 }
@@ -343,5 +344,88 @@ describe("calculateFloridaEquitableDistribution — statutory factors & metadata
     expect(outcome.citations[0].citation).toBe("Fla. Stat. §61.075");
     expect(outcome.formulaTrace.some((s) => s.stepId === "distribution-with-exclusions")).toBe(true);
     expect(outcome.formulaTrace.some((s) => s.stepId === "baseline-without-exclusions")).toBe(true);
+  });
+});
+
+describe("premarital and other separate property that was commingled", () => {
+  const premaritalSavings = {
+    id: "savings",
+    label: "Savings from before the marriage",
+    category: "bankAccount" as const,
+    valueCents: 80_000_00,
+    classification: "nonmarital" as const,
+    nonmaritalBasis: "acquiredBeforeMarriage" as const,
+    owner: "a" as const,
+  };
+
+  it("sets premarital savings aside when it was kept separate", () => {
+    const outcome = calc({
+      items: [
+        item(premaritalSavings),
+        item({ id: "joint", valueCents: 100_000_00, owner: "joint" }),
+      ],
+    });
+
+    expect(outcome.kind).toBe("calculated");
+    if (outcome.kind !== "calculated") throw new Error("unreachable");
+
+    // The $80k stays out of the estate entirely, so only the $100k is split.
+    expect(outcome.result.distributionWithExclusions.netMaritalEstateCents).toBe(100_000_00);
+  });
+
+  it("escalates rather than guessing when premarital savings were commingled", () => {
+    // Tracing commingled funds is an evidentiary exercise over statements this
+    // tool has never seen. Both possible guesses — setting the whole amount
+    // aside, or none of it — would be materially wrong.
+    const outcome = calc({
+      items: [
+        item({ ...premaritalSavings, commingledWithMaritalFunds: true }),
+        item({ id: "joint", valueCents: 100_000_00, owner: "joint" }),
+      ],
+    });
+
+    expect(outcome.kind).toBe("requiresProfessionalReview");
+    if (outcome.kind !== "requiresProfessionalReview") throw new Error("unreachable");
+
+    expect(outcome.flags.map((flag) => flag.flagId)).toContain("tracingRequired.savings");
+    expect(outcome.flags[0].citation).toBe("Fla. Stat. §61.075(6)(a)1.b");
+    expect(outcome.reason).toContain("traced");
+  });
+
+  it("names each commingled item so the user knows which ones need tracing", () => {
+    const outcome = calc({
+      items: [
+        item({ ...premaritalSavings, commingledWithMaritalFunds: true }),
+        item({
+          id: "inheritance",
+          label: "Inheritance from my father",
+          valueCents: 50_000_00,
+          classification: "nonmarital",
+          nonmaritalBasis: "separateGiftOrInheritance",
+          commingledWithMaritalFunds: true,
+        }),
+      ],
+    });
+
+    expect(outcome.kind).toBe("requiresProfessionalReview");
+    if (outcome.kind !== "requiresProfessionalReview") throw new Error("unreachable");
+
+    expect(outcome.flags.map((flag) => flag.flagId).sort()).toEqual([
+      "tracingRequired.inheritance",
+      "tracingRequired.savings",
+    ]);
+    expect(outcome.flags.map((flag) => flag.description).join(" ")).toContain(
+      "Inheritance from my father",
+    );
+  });
+
+  it("ignores the commingling flag on an item that is already marital", () => {
+    // A marital item is in the estate regardless, so mixing is irrelevant and
+    // must not escalate the whole case.
+    const outcome = calc({
+      items: [item({ id: "joint", valueCents: 100_000_00, classification: "marital" })],
+    });
+
+    expect(outcome.kind).toBe("calculated");
   });
 });

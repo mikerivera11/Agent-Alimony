@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui";
 
 import { CheckboxField, MoneyField, SelectField, TextField, TextareaField, YesNoField } from "../fields";
 import { secondaryButtonClasses, dangerLinkClasses } from "../fields/inputStyles";
+import { HomeEquityWorksheet } from "./HomeEquityWorksheet";
 import type { StepFieldsProps } from "./StepFieldsProps";
 
 const CATEGORY_OPTIONS = [
@@ -82,6 +83,7 @@ function AssetDebtItemFields({
 }: ItemFieldsProps) {
   const classification = useWatch({ control, name: `items.${index}.classification` });
   const excluded = useWatch({ control, name: `items.${index}.excludedByWrittenAgreement` });
+  const commingled = useWatch({ control, name: `items.${index}.commingledWithMaritalFunds` });
   const isNonmarital = classification === "nonmarital";
   const itemErrors = errors.items?.[index];
 
@@ -95,6 +97,9 @@ function AssetDebtItemFields({
     }
     if (!isNonmarital) {
       setValue(`items.${index}.nonmaritalBasis`, undefined);
+      // Only separate property can be commingled; a marital item is already in
+      // the estate. A stale flag here would wrongly escalate the whole case.
+      setValue(`items.${index}.commingledWithMaritalFunds`, false);
     }
   }, [isNonmarital, excluded, index, setValue]);
 
@@ -153,14 +158,37 @@ function AssetDebtItemFields({
       />
 
       {isNonmarital ? (
-        <SelectField
-          id={`items.${index}.nonmaritalBasis`}
-          label="Why is it separate property?"
-          hint="Florida only sets property aside for specific reasons (Fla. Stat. §61.075(6)(b))."
-          options={[{ value: "", label: "Choose a reason…" }, ...NONMARITAL_BASIS_OPTIONS]}
-          registration={register(`items.${index}.nonmaritalBasis`)}
-          error={itemErrors?.nonmaritalBasis?.message}
-        />
+        <div className="flex flex-col gap-4">
+          <SelectField
+            id={`items.${index}.nonmaritalBasis`}
+            label="Why is it separate property?"
+            hint="Florida only sets property aside for specific reasons (Fla. Stat. §61.075(6)(b))."
+            options={[{ value: "", label: "Choose a reason…" }, ...NONMARITAL_BASIS_OPTIONS]}
+            registration={register(`items.${index}.nonmaritalBasis`)}
+            error={itemErrors?.nonmaritalBasis?.message}
+          />
+          <div className="flex flex-col gap-2">
+            <CheckboxField
+              id={`items.${index}.commingledWithMaritalFunds`}
+              label="This was mixed with shared (marital) money or paid into during the marriage"
+              hint="For example: savings you had before the marriage that later went into a joint account, or that you both added to or paid bills from. This matters a lot — separate money usually stays separate only while it can still be traced."
+              registration={register(`items.${index}.commingledWithMaritalFunds`)}
+              error={itemErrors?.commingledWithMaritalFunds?.message}
+            />
+            {commingled ? (
+              <Alert variant="warning" role="status" className="text-sm">
+                <p>
+                  Thanks for saying so — this is the most common reason a &ldquo;this was mine before we
+                  married&rdquo; claim doesn&apos;t hold up in full. How much stays separate depends on
+                  <strong> tracing</strong> it through the account history, and any growth caused by
+                  shared money or either spouse&apos;s work during the marriage is shared under Fla.
+                  Stat. §61.075(6)(a)1.b. We won&apos;t guess at the split — the estimate will tell you
+                  this needs a Florida family-law attorney or forensic accountant.
+                </p>
+              </Alert>
+            ) : null}
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           <CheckboxField
@@ -229,6 +257,7 @@ export function AssetsDebtsFields({ register, errors, control, setValue }: StepF
               classification: "marital",
               owner: "joint",
               excludedByWrittenAgreement: false,
+      commingledWithMaritalFunds: false,
             })
           }
           className={`${secondaryButtonClasses} self-start`}
@@ -236,6 +265,8 @@ export function AssetsDebtsFields({ register, errors, control, setValue }: StepF
           + Add an asset or debt
         </button>
       </div>
+
+      <HomeEquityWorksheet register={register} errors={errors} control={control} />
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
         <legend className="px-1 text-base font-semibold text-ink">Written agreement to exclude items</legend>

@@ -45,6 +45,8 @@ function toDomainItem(item: AssetDebtItem): EquitableDistributionItem {
     // rejects that combination outright.
     excludedByWrittenAgreement:
       item.classification === "nonmarital" ? false : item.excludedByWrittenAgreement === true,
+    commingledWithMaritalFunds:
+      item.classification === "nonmarital" ? item.commingledWithMaritalFunds === true : false,
   };
 }
 

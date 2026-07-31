@@ -279,6 +279,24 @@ export function calculateFloridaEquitableDistribution(
     });
   }
 
+  const commingledItems = value.items.filter(
+    (item) => item.classification === "nonmarital" && item.commingledWithMaritalFunds,
+  );
+  if (commingledItems.length > 0) {
+    return requiresProfessionalReviewOutcome({
+      rulesetId: FLORIDA_EQUITABLE_DISTRIBUTION_RULESET_ID,
+      reason:
+        "Separate (nonmarital) property was mixed with marital money or marital effort. Separate property keeps its character only so far as it can still be traced through the account history, and any enhancement in its value resulting from marital funds or either party's efforts during the marriage is itself marital under Fla. Stat. §61.075(6)(a)1.b. Tracing is an evidentiary exercise over statements this tool has not seen, so setting the whole amount aside — or refusing to — would both risk a materially wrong estate.",
+      flags: commingledItems.map((item) => ({
+        flagId: `tracingRequired.${item.id}`,
+        description: `"${item.label}" is claimed as separate property but was mixed with marital funds or effort. How much remains separate depends on tracing, which a Florida family-law attorney or forensic accountant should do.`,
+        severity: "blocking" as const,
+        citation: "Fla. Stat. §61.075(6)(a)1.b",
+      })),
+      citations: [citation],
+    });
+  }
+
   const maritalBusinessItems = value.items.filter(
     (item) => item.category === "business" && isMaritalEstateItem(item) && !isExclusionCandidate(item),
   );
