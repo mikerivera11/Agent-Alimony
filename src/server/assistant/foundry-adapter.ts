@@ -31,7 +31,7 @@ import {
 } from "./adapter";
 import { detectEscalationSignals, encloseUntrustedText, scanForCalculatedFigures, scanForPromptInjection } from "./guardrails";
 import { LocalAssistantAdapter } from "./local-adapter";
-import { retrieveKnowledge } from "./retrieval";
+import { retrieveKnowledge, topicRetrievalOptions } from "./retrieval";
 import { ASSISTANT_SYSTEM_PROMPT, buildGroundingBlock } from "./systemPrompt";
 
 /** Entra scope for the Azure OpenAI data plane on an AI Services resource. */
@@ -68,7 +68,7 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
       return this.fallback.answer(request);
     }
 
-    const hits = retrieveKnowledge(request.question);
+    const hits = retrieveKnowledge(request.question, topicRetrievalOptions(request.topic));
 
     // No verified grounding means nothing for the model to rephrase. Saying
     // "I don't know" is the correct answer and needs no model call.

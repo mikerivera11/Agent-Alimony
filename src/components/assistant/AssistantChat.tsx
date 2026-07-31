@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Alert, Badge, Button, Card } from "@/components/ui";
 import { MAX_QUESTION_LENGTH } from "@/lib/assistantLimits";
 
+import { AnswerBody } from "./AnswerBody";
+
 /**
  * Chat panel for the Florida family-law information assistant.
  *
@@ -55,50 +57,6 @@ const MAX_HISTORY_MESSAGES = 10;
 
 /** Only warn near the ceiling; a running count on every question is just noise. */
 const COUNTER_VISIBLE_FROM = MAX_QUESTION_LENGTH - 2_000;
-
-function renderInline(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={index}>{part.slice(2, -2)}</strong>
-    ) : (
-      <span key={index}>{part}</span>
-    ),
-  );
-}
-
-/**
- * Renders the small subset of Markdown the knowledge base uses: paragraphs,
- * bullet lists, bold spans, and dividers. A full Markdown renderer is not
- * worth the dependency or the extra injection surface for this.
- */
-function AnswerBody({ content }: { content: string }) {
-  const blocks = content.split(/\n\n+/);
-
-  return (
-    <div className="space-y-3">
-      {blocks.map((block, blockIndex) => {
-        const key = `${blockIndex}-${block.slice(0, 16)}`;
-
-        if (block.trim() === "---") {
-          return <hr key={key} className="border-border" />;
-        }
-
-        const lines = block.split("\n");
-        if (lines.every((line) => line.trimStart().startsWith("- "))) {
-          return (
-            <ul key={key} className="list-disc space-y-1 pl-5">
-              {lines.map((line, lineIndex) => (
-                <li key={`${key}-${lineIndex}`}>{renderInline(line.trimStart().slice(2))}</li>
-              ))}
-            </ul>
-          );
-        }
-
-        return <p key={key}>{renderInline(block)}</p>;
-      })}
-    </div>
-  );
-}
 
 export function AssistantChat() {
   const [turns, setTurns] = useState<Turn[]>([]);

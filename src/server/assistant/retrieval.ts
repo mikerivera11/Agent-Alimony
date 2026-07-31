@@ -9,6 +9,7 @@
  */
 
 import { KNOWLEDGE_BASE, type KnowledgeEntry } from "./knowledgeBase";
+import { INTAKE_ASSISTANT_TOPICS, type IntakeStepId } from "@/domain/intake";
 
 export interface RetrievalHit {
   readonly entry: KnowledgeEntry;
@@ -78,6 +79,30 @@ export interface RetrievalOptions {
   readonly limit?: number;
   /** Minimum score required to be considered relevant. Defaults to 2. */
   readonly minimumScore?: number;
+  /**
+   * Entry ids known to cover the intake section the question was asked from.
+   *
+   * These only *re-rank* entries the question already matched on its own. They
+   * deliberately cannot lift an entry from zero, because the topic is supplied
+   * by the app rather than typed by the person: letting it create a match would
+   * mean a question the knowledge base does not actually cover comes back
+   * confidently answered with whatever the current section happens to be about.
+   * "I don't have verified material on that" has to stay reachable.
+   */
+  readonly preferredEntryIds?: readonly string[];
+}
+
+/** Enough to re-rank near-ties, never enough to invent relevance. */
+const PREFERRED_ENTRY_BOOST = 1;
+
+/**
+ * Retrieval options for a question asked from a specific intake section.
+ * Kept here so every adapter grounds the same way — an adapter that retrieved
+ * differently would be a second, untested source of legal grounding.
+ */
+export function topicRetrievalOptions(topic: IntakeStepId | undefined): RetrievalOptions {
+  if (!topic) return {};
+  return { preferredEntryIds: INTAKE_ASSISTANT_TOPICS[topic].knowledgeEntryIds };
 }
 
 /**
@@ -86,10 +111,14 @@ export interface RetrievalOptions {
  * and must say so rather than improvising.
  */
 export function retrieveKnowledge(question: string, options: RetrievalOptions = {}): readonly RetrievalHit[] {
-  const { limit = 3, minimumScore = 2 } = options;
+  const { limit = 3, minimumScore = 2, preferredEntryIds = [] } = options;
+  const preferred = new Set(preferredEntryIds);
 
   return KNOWLEDGE_BASE.map((entry) => scoreEntry(entry, question))
+    // The boost is applied after this filter, so a preferred entry still has to
+    // earn its place on the question's own merits before being promoted.
     .filter((hit) => hit.score >= minimumScore)
+    .map((hit) => (preferred.has(hit.entry.id) ? { ...hit, score: hit.score + PREFERRED_ENTRY_BOOST } : hit))
     .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
     .slice(0, limit);
 }

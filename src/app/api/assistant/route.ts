@@ -8,6 +8,7 @@ import {
   MAX_QUESTION_LENGTH,
   getAssistantAdapter,
 } from "@/server/assistant";
+import { INTAKE_ASSISTANT_TOPIC_IDS, type IntakeStepId } from "@/domain/intake";
 
 /**
  * Q&A endpoint for the Florida family-law information assistant.
@@ -33,6 +34,11 @@ const requestSchema = z.object({
     )
     .max(MAX_HISTORY_TURNS)
     .default([]),
+  // Constrained to known intake step ids rather than accepting free text. The
+  // topic only biases which curated passages are retrieved, so an arbitrary
+  // string could never inject instructions — but keeping it a closed set means
+  // there is no ambiguity about that at the boundary.
+  topic: z.enum(INTAKE_ASSISTANT_TOPIC_IDS as [IntakeStepId, ...IntakeStepId[]]).optional(),
 });
 
 function errorResponse(status: number, code: string, message: string): NextResponse {
@@ -79,6 +85,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const answer = await adapter.answer({
       question: parsed.data.question,
       history: parsed.data.history,
+      topic: parsed.data.topic,
     });
 
     return NextResponse.json(

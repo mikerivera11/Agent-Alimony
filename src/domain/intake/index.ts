@@ -7,3 +7,4 @@ export * from "./escalation";
 export * from "./storage";
 export * from "./reviewed";
 export * from "./mode";
+export * from "./assistantTopics";

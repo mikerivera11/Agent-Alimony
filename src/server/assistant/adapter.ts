@@ -10,6 +10,7 @@
  */
 
 import type { StatutoryCitation } from "@/domain/rules/types";
+import type { IntakeStepId } from "@/domain/intake";
 
 import type { EscalationSignal } from "./guardrails";
 
@@ -23,6 +24,14 @@ export interface AssistantRequest {
   readonly question: string;
   /** Prior turns, oldest first. Untrusted data. */
   readonly history: readonly AssistantMessage[];
+  /**
+   * The intake section the question was asked from, when it was asked inline
+   * rather than on the standalone assistant page. Trusted only because it is
+   * validated against a fixed list of step ids server-side — it biases which
+   * knowledge base entries are retrieved and nothing else. It never reaches a
+   * model as an instruction and cannot introduce legal content.
+   */
+  readonly topic?: IntakeStepId;
 }
 
 export interface AssistantAnswer {

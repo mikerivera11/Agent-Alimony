@@ -12,7 +12,7 @@ import type { StatutoryCitation } from "@/domain/rules/types";
 
 import type { AssistantAdapter, AssistantAnswer, AssistantRequest } from "./adapter";
 import { detectEscalationSignals, scanForPromptInjection } from "./guardrails";
-import { retrieveKnowledge } from "./retrieval";
+import { retrieveKnowledge, topicRetrievalOptions } from "./retrieval";
 
 /** Deduplicates citations by citation string, preserving first-seen order. */
 function mergeCitations(groups: readonly (readonly StatutoryCitation[])[]): readonly StatutoryCitation[] {
@@ -72,7 +72,7 @@ export class LocalAssistantAdapter implements AssistantAdapter {
       };
     }
 
-    const hits = retrieveKnowledge(request.question);
+    const hits = retrieveKnowledge(request.question, topicRetrievalOptions(request.topic));
 
     if (hits.length === 0) {
       // Answering "I don't have material on that" to someone disclosing

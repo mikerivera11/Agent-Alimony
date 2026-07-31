@@ -44,7 +44,7 @@ test("keeps an excluded asset in the estate until a written agreement is confirm
   for (let step = 0; step < 9; step += 1) {
     await page.getByRole("button", { name: "Save and continue" }).click();
   }
-  await expect(page.getByRole("heading", { name: "Assets, debts, and support obligations" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Assets, debts, and support obligations" })).toBeVisible();
 
   // The demo ships the fictional 401(k) already marked to be left out, with the
   // written agreement confirmed. Withdrawing that confirmation must put the

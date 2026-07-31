@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { SectionAssistant } from "@/components/assistant";
+import type { IntakeStepId } from "@/domain/intake";
+
 interface StepLayoutProps {
+  stepId: IntakeStepId;
   title: string;
   summary: string;
   whyWeAsk: string;
@@ -12,11 +16,12 @@ interface StepLayoutProps {
 /**
  * Chrome shared by every wizard topic: an auto-focused heading (so keyboard
  * and screen-reader users land on the new topic immediately after
- * navigating), a one-line summary, and an always-visible "why we ask" box.
+ * navigating), a one-line summary, an always-visible "why we ask" box, and an
+ * inline assistant for questions about this specific topic.
  * Mount this with a `key` that changes per step so the heading re-focuses on
  * every topic change.
  */
-export function StepLayout({ title, summary, whyWeAsk, children }: StepLayoutProps) {
+export function StepLayout({ stepId, title, summary, whyWeAsk, children }: StepLayoutProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -35,6 +40,7 @@ export function StepLayout({ title, summary, whyWeAsk, children }: StepLayoutPro
         <span className="font-semibold">Why we ask: </span>
         {whyWeAsk}
       </p>
+      <SectionAssistant stepId={stepId} />
       {children}
     </div>
   );

@@ -38,13 +38,29 @@ export interface IntakeDraftData {
 
 export type IntakeStepId = keyof IntakeDraftData;
 
+/** Every screen the wizard can sit on, including the two non-topic screens. */
+export type IntakeScreenId = IntakeStepId | "review" | "done";
+
 export interface IntakeDraft {
   /** Random id generated on first save, used only as a local storage key/version anchor. */
   draftId: string;
   createdAt: string;
+  /**
+   * When an *answer* last changed. Navigation deliberately does not touch
+   * this: `/results` compares it against the reviewed snapshot's `reviewedAt`
+   * to decide whether the estimate on screen still matches the answers, and
+   * merely walking back through the wizard must not make results look stale.
+   */
   updatedAt: string;
   /** Topics the person has actively confirmed via "Save and continue". */
   completedStepIds: IntakeStepId[];
+  /**
+   * Where the person was last looking, so returning later (or coming back
+   * from `/results` to change something) resumes in place instead of
+   * restarting at the first topic. Optional so drafts saved before this
+   * existed still load.
+   */
+  lastScreenId?: IntakeScreenId;
   data: IntakeDraftData;
 }
 

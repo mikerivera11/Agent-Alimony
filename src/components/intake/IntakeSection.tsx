@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { INTAKE_STEPS, type IntakeStepId } from "@/domain/intake";
 
+import { SectionAssistant } from "@/components/assistant";
+
 import { STEP_FIELD_COMPONENTS } from "./stepFieldRegistry";
 
 export interface IntakeSectionHandle {
@@ -128,6 +130,7 @@ export function IntakeSection({
               : `${sectionErrorCount} answers in this section need attention.`}
           </p>
         ) : null}
+        <SectionAssistant stepId={stepId} />
       </div>
 
       {/*

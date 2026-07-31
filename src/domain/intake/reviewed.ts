@@ -54,6 +54,41 @@ export class DraftNotReadyError extends Error {
   }
 }
 
+/**
+ * True when answers have changed since the reviewed snapshot was confirmed,
+ * which means any estimate built from that snapshot no longer reflects what
+ * the person has entered.
+ *
+ * This is a correctness guard, not a nicety: the results screen and the PDF
+ * are both built from the frozen snapshot, so without this check a person
+ * could edit their income, return to `/results`, and download a package whose
+ * figures silently contradict their own answers.
+ *
+ * Only `updatedAt` (an answer changed) is compared — navigating between
+ * screens deliberately leaves it alone.
+ */
+export function isReviewedSnapshotStale(
+  reviewed: Pick<ReviewedIntakeDraft, "draftId" | "reviewedAt"> | null,
+  draft: Pick<IntakeDraft, "draftId" | "updatedAt"> | null,
+): boolean {
+  if (!reviewed || !draft) {
+    return false;
+  }
+  // A different draft entirely (e.g. "Start over" created a new one) means the
+  // snapshot describes answers that no longer exist.
+  if (reviewed.draftId !== draft.draftId) {
+    return true;
+  }
+  const reviewedAt = Date.parse(reviewed.reviewedAt);
+  const updatedAt = Date.parse(draft.updatedAt);
+  if (Number.isNaN(reviewedAt) || Number.isNaN(updatedAt)) {
+    // An unparseable timestamp means we cannot prove the estimate is current,
+    // so treat it as stale rather than showing figures we cannot vouch for.
+    return true;
+  }
+  return updatedAt > reviewedAt;
+}
+
 function parseStep<K extends IntakeStepId>(stepId: K, data: IntakeDraftData) {
   const result = INTAKE_STEPS[stepId].schema.safeParse(data[stepId]);
   if (!result.success) {

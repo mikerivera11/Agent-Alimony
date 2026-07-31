@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   assessEscalation,
@@ -17,6 +17,7 @@ import {
   type IntakeDraft,
   type IntakeDraftStorage,
   type IntakeMode,
+  type IntakeScreenId,
   type IntakeStepId,
   type ReviewedIntakeDraft,
 } from "@/domain/intake";
@@ -28,17 +29,23 @@ import { primaryButtonClasses, secondaryButtonClasses } from "./fields/inputStyl
 import { IntakeModeToggle } from "./IntakeModeToggle";
 import { MissingDataSummary } from "./MissingDataSummary";
 import { ProgressIndicator } from "./ProgressIndicator";
-import { QuickExitLink } from "./QuickExitLink";
 import { ReviewSummary } from "./ReviewSummary";
+import { SavedIndicator } from "./SavedIndicator";
 import { StepForm } from "./StepForm";
 import { Alert, Card } from "@/components/ui";
 
-type WizardScreen = IntakeStepId | "review" | "done";
+type WizardScreen = IntakeScreenId;
 
 interface IntakeWizardProps {
   storage: IntakeDraftStorage;
   /** When provided (e.g. the demo), used instead of whatever is in storage. */
   initialDraft?: IntakeDraft;
+  /**
+   * Screen to open on, overriding the draft's own remembered position. Used by
+   * `/intake?step=…` so `/results` can send someone straight to the topic they
+   * want to change.
+   */
+  initialScreenId?: WizardScreen;
   /** Called once the person confirms their reviewed answers. No calculation happens here. */
   onReviewComplete?: (draft: ReviewedIntakeDraft) => void;
 }
@@ -49,7 +56,7 @@ interface IntakeWizardProps {
  * summary and attorney/safety flags. All persistence goes through the
  * `storage` adapter — nothing here talks to a server.
  */
-export function IntakeWizard({ storage, initialDraft, onReviewComplete }: IntakeWizardProps) {
+export function IntakeWizard({ storage, initialDraft, initialScreenId, onReviewComplete }: IntakeWizardProps) {
   const [draft, setDraft] = useState<IntakeDraft | null>(null);
   const [screen, setScreen] = useState<WizardScreen>("caseBasics");
   const mode = useSyncExternalStore(
@@ -59,14 +66,42 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
   );
   const [isLoading, setIsLoading] = useState(true);
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  /**
+   * Always holds the most recently persisted draft.
+   *
+   * Autosave can fire from a step that is unmounting, whose callback closed
+   * over the draft as it was *before* the submit that caused the unmount.
+   * Writing that stale copy back would silently undo the submit — losing the
+   * completed-topic marker and the remembered position. Reading through a ref
+   * means every write builds on the latest state regardless of when it fires.
+   */
+  const draftRef = useRef<IntakeDraft | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
+    function openingScreen(loaded: IntakeDraft): WizardScreen {
+      // An explicit `?step=` wins — it is someone deliberately asking for a
+      // topic. Otherwise resume where they left off. "done" is never resumed
+      // into: it is a confirmation of a finished action, not a place to sit.
+      const requested = initialScreenId ?? loaded.lastScreenId;
+      if (!requested || requested === "done") {
+        return "caseBasics";
+      }
+      if (requested === "review") {
+        return "review";
+      }
+      // A remembered topic can stop applying (answering "no children" retires
+      // parenting time), so fall back rather than showing a dead screen.
+      return getApplicableStepIds(loaded.data).includes(requested) ? requested : "caseBasics";
+    }
+
     async function load() {
       if (initialDraft) {
         if (!cancelled) {
+          draftRef.current = initialDraft;
           setDraft(initialDraft);
+          setScreen(openingScreen(initialDraft));
           setIsLoading(false);
         }
         void storage.save(initialDraft);
@@ -74,7 +109,10 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
       }
       const loaded = await storage.load();
       if (cancelled) return;
-      setDraft(loaded ?? createEmptyDraft());
+      const next = loaded ?? createEmptyDraft();
+      draftRef.current = next;
+      setDraft(next);
+      setScreen(openingScreen(next));
       setIsLoading(false);
     }
 
@@ -82,7 +120,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
     return () => {
       cancelled = true;
     };
-  }, [storage, initialDraft]);
+  }, [storage, initialDraft, initialScreenId]);
 
   if (isLoading || !draft) {
     return (
@@ -99,8 +137,21 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
   const escalation = assessEscalation(draft.data);
 
   function persist(nextDraft: IntakeDraft) {
+    draftRef.current = nextDraft;
     setDraft(nextDraft);
     void storage.save(nextDraft);
+  }
+
+  /**
+   * Moves to a screen and remembers it, so closing the tab or coming back from
+   * `/results` resumes here. `updatedAt` is deliberately untouched: navigation
+   * is not an answer change, and bumping it would make a just-confirmed
+   * estimate look out of date.
+   */
+  function goToScreen(next: WizardScreen) {
+    setScreen(next);
+    if (!draft) return;
+    persist({ ...draft, lastScreenId: next });
   }
 
   function handleStepSubmit(stepId: IntakeStepId, values: Record<string, unknown>) {
@@ -112,29 +163,45 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
       ? draft.completedStepIds
       : [...draft.completedStepIds, stepId];
 
+    const applicableAfter = getApplicableStepIds(nextData);
+    const currentIndex = applicableAfter.indexOf(stepId);
+    const next = applicableAfter[currentIndex + 1] ?? "review";
+
     const nextDraft: IntakeDraft = {
       ...draft,
       data: nextData,
       completedStepIds: nextCompleted,
+      lastScreenId: next,
       updatedAt: new Date().toISOString(),
     };
     persist(nextDraft);
+    setScreen(next);
+  }
 
-    const applicableAfter = getApplicableStepIds(nextData);
-    const currentIndex = applicableAfter.indexOf(stepId);
-    const next = applicableAfter[currentIndex + 1];
-    setScreen(next ?? "review");
+  /**
+   * Keeps whatever is currently typed into a guided topic, without validating
+   * it. Leaving a half-finished topic used to discard it silently, which is
+   * the worst possible outcome for a long financial form — so partial answers
+   * are saved on the way out and restored on the way back.
+   */
+  function handleStepAutoSave(stepId: IntakeStepId, values: Record<string, unknown>) {
+    const current = draftRef.current;
+    if (!current) return;
+    const nextData = structuredCloneDraftData(current.data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- scoped to this topic only
+    (nextData as any)[stepId] = values;
+    persist({ ...current, data: nextData, updatedAt: new Date().toISOString() });
   }
 
   function goToStep(stepId: IntakeStepId) {
-    setScreen(stepId);
+    goToScreen(stepId);
   }
 
   function handleBack(stepId: IntakeStepId) {
     const index = applicableStepIds.indexOf(stepId);
     const previous = applicableStepIds[index - 1];
     if (previous) {
-      setScreen(previous);
+      goToScreen(previous);
     }
   }
 
@@ -145,6 +212,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
     }
     void storage.clear();
     const fresh = createEmptyDraft();
+    draftRef.current = fresh;
     setDraft(fresh);
     setScreen("caseBasics");
     setConfirmedAt(null);
@@ -155,6 +223,9 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
     const reviewed = buildReviewedDraft(draft);
     setConfirmedAt(reviewed.reviewedAt);
     onReviewComplete?.(reviewed);
+    // Remember "review", not "done": coming back should land somewhere they
+    // can actually change an answer.
+    persist({ ...draft, lastScreenId: "review" });
     setScreen("done");
   }
 
@@ -165,7 +236,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
     // flow was sitting on — saying "no children" removes parenting time — so
     // returning to a step that no longer applies has to be corrected here.
     if (!applicableStepIds.includes(screen)) {
-      setScreen(applicableStepIds[0] ?? "caseBasics");
+      goToScreen(applicableStepIds[0] ?? "caseBasics");
     }
   }
 
@@ -202,6 +273,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
       ...draft,
       data: nextData,
       completedStepIds: [...completed],
+      lastScreenId: "review",
       updatedAt: new Date().toISOString(),
     });
     setScreen("review");
@@ -226,9 +298,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
                 : `${applicableStepIds.length} sections on one page`}
             </p>
           )}
-          <div className="flex flex-none items-center gap-2">
-            <QuickExitLink />
-          </div>
+          <SavedIndicator updatedAt={draft.updatedAt} />
         </div>
         {screen !== "review" && screen !== "done" ? (
           <IntakeModeToggle mode={mode} onChange={handleModeChange} />
@@ -256,7 +326,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
             ). Your confirmed facts are being prepared for the transparent calculation results.
           </p>
           <AttorneyEscalationNotice assessment={escalation} />
-          <button type="button" onClick={() => setScreen("review")} className={secondaryButtonClasses}>
+          <button type="button" onClick={() => goToScreen("review")} className={secondaryButtonClasses}>
             Back to review
           </button>
         </div>
@@ -297,6 +367,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
           stepId={screen}
           defaultValues={{ ...INTAKE_STEPS[screen].defaultValues, ...draft.data[screen] }}
           onSubmit={handleStepSubmit}
+          onAutoSave={handleStepAutoSave}
           onBack={() => handleBack(screen)}
           showBack={applicableStepIds.indexOf(screen) > 0}
           isLastStep={applicableStepIds.indexOf(screen) === applicableStepIds.length - 1}

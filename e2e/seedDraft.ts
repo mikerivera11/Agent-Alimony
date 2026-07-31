@@ -19,7 +19,12 @@ export async function seedCompleteDraft(page: Page): Promise<void> {
   const draft = createSampleDraft();
   await page.addInitScript(
     ([key, value]) => {
-      window.localStorage.setItem(key, value);
+      // `addInitScript` runs on every navigation, so this must not clobber
+      // work the test has already done — a test that edits an answer and then
+      // navigates would otherwise silently get the pristine fixture back.
+      if (window.localStorage.getItem(key) === null) {
+        window.localStorage.setItem(key, value);
+      }
     },
     [DRAFT_STORAGE_KEY, JSON.stringify(draft)] as const,
   );
