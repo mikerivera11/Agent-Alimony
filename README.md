@@ -245,6 +245,16 @@ None of this requires GitHub Actions, a service principal, or CI secrets: every 
    ```
 3. The two secrets (`POSTGRES_ADMIN_PASSWORD`, `SESSION_SIGNING_SECRET`) are never put in a parameters file at all. Either export them as environment variables beforehand, or let `deploy-infra.sh` prompt for them with hidden input (leaving the session secret blank auto-generates one with `openssl rand -hex 32`, printed nowhere).
 
+### Testing against a deployed environment
+
+The Playwright suite can run against a deployed URL instead of a local dev server:
+
+```bash
+E2E_BASE_URL=https://<app>.azurewebsites.net npx playwright test --workers=1
+```
+
+Use `--workers=1` against a B1 plan. Five parallel workers saturate a single small instance and produce timeouts that look like application failures but are not. This is how two real deployment faults were found — the suite passed locally and failed against Azure.
+
 ### Deploying infrastructure
 
 ```bash
