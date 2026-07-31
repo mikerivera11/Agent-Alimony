@@ -14,7 +14,7 @@ This application provides **legal information and financial estimates only**. It
 - Deterministic current-law alimony constraints and scenario range under Fla. Stat. § 61.08
 - Deterministic equitable distribution under Fla. Stat. § 61.075, including per-item exclusion gated on a written agreement
 - Lump-sum settlement modelling, kept outside the rules engine because no statute supplies a rate or a present-value formula
-- A Florida family-law information assistant answering from curated, citation-backed statutory material, available both standalone and inline on every intake topic
+- A Florida family-law information assistant answering from curated, citation-backed statutory material, available standalone and as a side panel on every page that knows which section you are looking at
 - Full formula traces, assumptions, warnings, statutory citations, ruleset versions, and source-verification dates
 - PDF settlement-information package containing confirmed facts, missing items, calculation details, factors, scenarios, sources, and disclaimers
 - PDF/JPEG/PNG upload validation with magic-byte checks and a clearly labeled mock extraction workflow
@@ -152,7 +152,9 @@ The endpoint is stateless and persists nothing; neither the question nor the ans
 
 ### Asking from inside a section
 
-Every intake topic carries the same assistant inline, so a question can be asked where it arises instead of by abandoning the form. `src/domain/intake/assistantTopics.ts` maps each of the thirteen topics to the knowledge-base entries relevant to it and to three suggested starter questions. A test asserts that all thirty-nine of those starters actually retrieve grounded material, so no suggestion can be offered that the assistant would then decline.
+A side panel carries the same assistant on every page, so a question can be asked where it arises instead of by abandoning the form. It keeps one conversation as you move between sections, and scopes each question to whichever section is on screen — shown explicitly as "Answering about ...", with a control to widen back out to anything. Each intake topic also has its own "Have a question about ...?" button that opens the panel already scoped to it.
+
+While the panel is open it insets the page rather than covering it, so the sticky header's Quick exit stays one click away; on small screens, where the panel is a full-screen sheet, it carries its own Quick exit instead. `src/domain/intake/assistantTopics.ts` maps each of the thirteen topics to the knowledge-base entries relevant to it and to three suggested starter questions. A test asserts that all thirty-nine of those starters actually retrieve grounded material, so no suggestion can be offered that the assistant would then decline.
 
 The topic is a **closed enum of step ids** at the API boundary, never free text, so it opens no injection path. More importantly, a topic can only ever *re-rank* — the preference boost is applied after the minimum-score filter, so an entry must first match the question on its own merits. This matters: an earlier design appended the topic's keywords to the scored text, which let the section itself manufacture a match, and a question about pizza asked from the alimony section came back with three confident alimony passages. The cost of the stricter rule is that a genuinely vague question ("what counts here?") is declined rather than guessed at, which is the correct trade in this domain; the suggested starters exist to solve discovery instead.
 

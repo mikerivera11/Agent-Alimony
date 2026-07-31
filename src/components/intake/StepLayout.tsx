@@ -40,7 +40,7 @@ export function StepLayout({ stepId, title, summary, whyWeAsk, children }: StepL
         <span className="font-semibold">Why we ask: </span>
         {whyWeAsk}
       </p>
-      <SectionAssistant stepId={stepId} />
+      <SectionAssistant stepId={stepId} followsPage />
       {children}
     </div>
   );

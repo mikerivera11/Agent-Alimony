@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { AssistantDock, AssistantDockProvider } from "@/components/assistant";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -35,7 +37,10 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        {children}
+        <AssistantDockProvider>
+          {children}
+          <AssistantDock />
+        </AssistantDockProvider>
       </body>
     </html>
   );

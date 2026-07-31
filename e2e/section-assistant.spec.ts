@@ -1,44 +1,81 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * The per-section assistant: a question asked next to the fields it is about,
- * answered from the same curated Florida material the standalone page uses.
+ * The assistant dock: one conversation, reachable from anywhere, scoped to
+ * whichever section you asked from and answered from the same curated Florida
+ * material the standalone page uses.
  */
 
-test("answers a question inline, grounded in the section's statutes", async ({ page }) => {
+test("answers a question from the section it was opened on, grounded in that section's statutes", async ({
+  page,
+}) => {
   await page.goto("/intake?step=assetsDebts");
 
-  const panel = page.getByTestId("section-assistant-assetsDebts");
-  await expect(panel).toBeVisible();
+  await page.getByTestId("section-assistant-assetsDebts").getByRole("button").click();
 
-  await panel.getByRole("button", { name: /Have a question about/i }).click();
+  const dock = page.getByTestId("assistant-dock");
+  await expect(dock).toBeVisible();
+  // The dock says what it is answering about, so the scope is never a guess.
+  await expect(dock.getByText(/Answering about/i)).toContainText(/Assets, debts/i);
 
   // Suggested starters give people a way in before they know what to ask.
-  await panel.getByRole("button", { name: /What makes an asset marital versus nonmarital/i }).click();
+  await dock.getByRole("button", { name: /What makes an asset marital versus nonmarital/i }).click();
 
-  await expect(panel.getByText(/equitable distribution/i).first()).toBeVisible({ timeout: 15_000 });
+  await expect(dock.getByText(/equitable distribution/i).first()).toBeVisible({ timeout: 15_000 });
   // Grounded answers cite the statute they came from.
-  await expect(panel.getByText(/61\.075/).first()).toBeVisible();
+  await expect(dock.getByText(/61\.075/).first()).toBeVisible();
 });
 
 test("declines to guess when the knowledge base does not cover the question", async ({ page }) => {
   await page.goto("/intake?step=alimonyFactors");
 
-  const panel = page.getByTestId("section-assistant-alimonyFactors");
-  await panel.getByRole("button", { name: /Have a question about/i }).click();
+  await page.getByTestId("section-assistant-alimonyFactors").getByRole("button").click();
 
-  await panel.getByRole("textbox").fill("What is the best pizza topping in Naples?");
-  await panel.getByRole("button", { name: "Ask" }).click();
+  const dock = page.getByTestId("assistant-dock");
+  await dock.getByRole("textbox").fill("What is the best pizza topping in Naples?");
+  await dock.getByRole("button", { name: "Ask", exact: true }).click();
 
   // Being asked from the alimony section must not turn an unanswerable
   // question into a confident answer about alimony.
-  await expect(panel.getByText(/don't have verified Florida material/i)).toBeVisible({ timeout: 15_000 });
+  await expect(dock.getByText(/don't have verified Florida material/i)).toBeVisible({ timeout: 15_000 });
 });
 
-test("is available on every section of the one-page layout", async ({ page }) => {
+test("is reachable from every section of the one-page layout", async ({ page }) => {
   await page.goto("/intake");
   await page.getByRole("radio", { name: /All on one page/ }).click();
 
   await expect(page.getByTestId("section-assistant-income")).toBeVisible();
   await expect(page.getByTestId("section-assistant-alimonyFactors")).toBeVisible();
+});
+
+test("stays available across pages and keeps the thread while you move", async ({ page }) => {
+  await page.goto("/intake?step=income");
+
+  // Opening from the launcher picks up the section currently on screen.
+  await page.getByTestId("assistant-dock-launcher").click();
+  const dock = page.getByTestId("assistant-dock");
+  await expect(dock.getByText(/Answering about/i)).toContainText(/income/i);
+
+  await dock.getByRole("textbox").fill("How is child support calculated in Florida?");
+  await dock.getByRole("button", { name: "Ask", exact: true }).click();
+  await expect(dock.getByText(/61\.30/).first()).toBeVisible({ timeout: 15_000 });
+
+  // Escape closes it and the launcher brings the same conversation back.
+  await page.keyboard.press("Escape");
+  await expect(dock).toBeHidden();
+  await page.getByTestId("assistant-dock-launcher").click();
+  await expect(dock.getByText(/61\.30/).first()).toBeVisible();
+});
+
+test("can be widened from a section to anything", async ({ page }) => {
+  await page.goto("/intake?step=alimonyFactors");
+  await page.getByTestId("section-assistant-alimonyFactors").getByRole("button").click();
+
+  const dock = page.getByTestId("assistant-dock");
+  await expect(dock.getByText(/Answering about/i)).toBeVisible();
+
+  await dock.getByRole("button", { name: /Ask about anything instead/i }).click();
+  await expect(dock.getByText(/Answering about/i)).toHaveCount(0);
+  // Falls back to the general starters.
+  await expect(dock.getByRole("button", { name: /What financial documents do I have to provide/i })).toBeVisible();
 });

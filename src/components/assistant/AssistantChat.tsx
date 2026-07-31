@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Alert, Badge, Button, Card } from "@/components/ui";
 import { MAX_QUESTION_LENGTH } from "@/lib/assistantLimits";
+import { GENERAL_SUGGESTED_QUESTIONS } from "@/lib/suggestedQuestions";
 
 import { AnswerBody } from "./AnswerBody";
 
@@ -43,15 +44,6 @@ interface Turn {
   answer?: AssistantAnswerPayload;
   error?: string;
 }
-
-const SUGGESTED_QUESTIONS = [
-  "What kinds of alimony can a Florida court award?",
-  "How does the length of my marriage affect alimony?",
-  "How is child support calculated in Florida?",
-  "How is property divided in a Florida divorce?",
-  "Can I pay alimony as a lump sum instead of monthly?",
-  "What financial documents do I have to provide?",
-];
 
 const MAX_HISTORY_MESSAGES = 10;
 
@@ -138,7 +130,7 @@ export function AssistantChat() {
           <h2 className="text-base font-semibold text-ink">Not sure where to start?</h2>
           <p className="mt-1 text-sm text-ink-muted">Pick a question, or type your own below.</p>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {SUGGESTED_QUESTIONS.map((question) => (
+            {GENERAL_SUGGESTED_QUESTIONS.map((question) => (
               <li key={question}>
                 <button
                   type="button"

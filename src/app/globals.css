@@ -250,3 +250,16 @@
     transition: color 0.15s ease;
   }
 }
+
+/*
+ * While the assistant dock is open on a wide enough screen, inset the page
+ * rather than letting the panel sit on top of it. The sticky header carries
+ * the Quick exit control, and covering that would put a safety exit behind an
+ * extra step for someone who may need it in a hurry. Below this breakpoint the
+ * dock is a full-screen sheet and carries its own Quick exit instead.
+ */
+@media (min-width: 640px) {
+  body.assistant-dock-open {
+    padding-right: 28rem;
+  }
+}
