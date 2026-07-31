@@ -9,6 +9,7 @@ import type {
   HouseholdExpenses,
   Income,
   Marriage,
+  ParentingPlan,
   ParentingTime,
   SafetyComplexity,
   Spouses,
@@ -26,6 +27,7 @@ export interface IntakeDraftData {
   spouses: Partial<Spouses>;
   children: Partial<Children>;
   parentingTime: Partial<ParentingTime>;
+  parentingPlan: Partial<ParentingPlan>;
   income: Partial<Income>;
   deductions: Partial<Deductions>;
   childCosts: Partial<ChildCosts>;
@@ -70,6 +72,7 @@ export const EMPTY_INTAKE_DRAFT_DATA: IntakeDraftData = {
   spouses: {},
   children: { children: [] },
   parentingTime: {},
+  parentingPlan: {},
   income: {},
   deductions: {},
   childCosts: {},

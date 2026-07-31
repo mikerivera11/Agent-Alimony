@@ -344,6 +344,57 @@ export const KNOWLEDGE_BASE: readonly KnowledgeEntry[] = [
     ],
   },
   {
+    id: "parenting-plan",
+    title: "What has to be in a Florida parenting plan, and who decides what?",
+    keywords: [
+      "parenting plan",
+      "parental responsibility",
+      "shared parental responsibility",
+      "sole parental responsibility",
+      "decision making",
+      "decision-making",
+      "school designation",
+      "school boundary",
+      "time-sharing schedule",
+      "timesharing schedule",
+      "equal time-sharing",
+      "50/50",
+      "exchanges",
+      "holidays",
+      "best interests",
+    ],
+    answer:
+      "Florida requires a parenting plan in every case involving a minor child, and the court has to approve it. " +
+      "At a minimum it must describe how the parents will share the daily tasks of raising the child, set out a " +
+      "time-sharing schedule saying when the child is with each parent, say who is responsible for health care, " +
+      "for school-related matters (including the address used for school registration), and for other activities, " +
+      "describe how the parents will communicate with the child, and designate where exchanges happen.\n\n" +
+      "**Parental responsibility is separate from the schedule.** Parental responsibility is about who makes major " +
+      "decisions — education, health care, religious upbringing. Time-sharing is about where the child sleeps. " +
+      "A court orders *shared* parental responsibility, meaning both parents confer and decide together, unless it " +
+      "finds that shared responsibility would be detrimental to the child. In deciding detriment the court considers " +
+      "evidence of domestic violence, among other things.\n\n" +
+      "**On the schedule, there is a rebuttable presumption that equal time-sharing is in the child's best " +
+      "interests.** A parent who wants a different schedule has to prove by a preponderance of the evidence that " +
+      "equal time-sharing is not in the child's best interests. Unless the parents agree on a schedule and the " +
+      "court approves it, the court must weigh all of the statutory best-interest factors and make specific written " +
+      "findings.\n\n" +
+      "Changing a plan later is harder than setting one now: modifying a parenting plan or time-sharing schedule " +
+      "requires showing a substantial and material change of circumstances.",
+    citations: [
+      {
+        citation: "Fla. Stat. §61.13(2)(b)",
+        title: "What a parenting plan must contain",
+        url: `${FL_SENATE}/61.13`,
+      },
+      {
+        citation: "Fla. Stat. §61.13(2)(c)",
+        title: "Best interests, equal time-sharing presumption, and shared parental responsibility",
+        url: `${FL_SENATE}/61.13`,
+      },
+    ],
+  },
+  {
     id: "equitable-distribution",
     title: "How is property divided in a Florida divorce?",
     keywords: [

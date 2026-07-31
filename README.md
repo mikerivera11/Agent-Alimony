@@ -214,6 +214,48 @@ The agent itself is created by the app on first use and reused by name. Agents a
 >
 > The same error has a second, permanent cause worth distinguishing: **creating or updating the project returns the account to `Accepted`**, and any write touching the account while it is there fails. That one does not resolve on a re-run, because ARM starts the private endpoint in parallel with the project every time. It is fixed in the template with an explicit `dependsOn`, since the `parent` graph does not imply that ordering.
 
+## Court form worksheets
+
+The results screen exports two worksheets alongside the estimate packet:
+Child Support Guidelines (Form 12.902(e)) and Parenting Plan (Form 12.995(a)).
+
+They are **worksheets, not filled forms**, and that is a deliberate choice
+rather than a limitation of the PDF tooling:
+
+- The official PDFs *are* interactive AcroForms — 12.902(e) carries 93 fields
+  and 12.995(a) carries 317, so filling them is technically possible. The field
+  names are positional rather than semantic, though (`Odd Years 1` through
+  `Odd Years 7` give no clue which holiday each row is). Any mapping would be
+  an inference that silently re-points on the next revision, and a figure in
+  the wrong box on a sworn document is worse than no figure.
+- Forms carry a revision footer and a superseded form is refused at the
+  clerk's window, so an embedded copy goes stale. Referring to the form by
+  number while pointing at the court's own current copy cannot.
+- The line order is taken from the **statute** (§61.30, §61.13(2)(b)), not from
+  a form. The statute is the authority the form is derived from and the rules
+  engine already implements exactly that order, so the layout survives form
+  revisions.
+
+Every figure comes from the rule result the packet uses. Nothing on a worksheet
+is computed locally, so a worksheet cannot disagree with the packet in the same
+envelope. `/api/package/worksheet` re-validates and recalculates server-side
+exactly like `/api/package`; the client never sends a figure.
+
+### Verifying a form reference
+
+`OfficialFormReference.verified` means the number, title, and revision were read
+out of the court's own PDF. Do not set it any other way:
+
+- Metadata is stale. 12.995(a)'s PDF `Title` says `03/09`, and 12.902(e)'s
+  filename implies `11/20` while its footer reads `06/25`.
+- Download URLs carry opaque CMS content ids that **cannot be guessed**. A
+  plausible-looking invented URL for 12.995(a) served Florida's Dependency
+  Benchbook instead.
+
+Both references were verified on 2026-07-31 by reading the footer text out of
+the content streams of the linked PDFs. An unverified form exposes no URL and
+no revision, and a test enforces that.
+
 ## Saving, editing, and coming back
 
 Answers autosave to the browser as they are typed (debounced, flushed on navigation), and a visible indicator reports when the draft was last saved. The wizard remembers the topic you were last on and reopens there; `?step=<topicId>` deep-links to any topic directly.

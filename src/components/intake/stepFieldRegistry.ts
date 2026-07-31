@@ -13,6 +13,7 @@ import {
   HouseholdExpensesFields,
   IncomeFields,
   MarriageFields,
+  ParentingPlanFields,
   ParentingTimeFields,
   SafetyComplexityFields,
   SpousesFields,
@@ -40,6 +41,8 @@ export const STEP_FIELD_COMPONENTS: Record<
   children: ChildrenFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parentingTime: ParentingTimeFields as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parentingPlan: ParentingPlanFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   income: IncomeFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

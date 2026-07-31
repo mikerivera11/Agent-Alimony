@@ -12,6 +12,7 @@ import type {
   HouseholdExpenses,
   Income,
   Marriage,
+  ParentingPlan,
   ParentingTime,
   SafetyComplexity,
   Spouses,
@@ -35,6 +36,8 @@ export interface ReviewedIntakeDraft {
     children: Children;
     /** Undefined when the household has no shared minor children. */
     parentingTime: ParentingTime | undefined;
+    /** Undefined when the household has no shared minor children. */
+    parentingPlan: ParentingPlan | undefined;
     income: Income;
     deductions: Deductions;
     /** Undefined when the household has no shared minor children. */
@@ -119,6 +122,7 @@ export function buildReviewedDraft(draft: IntakeDraft): ReviewedIntakeDraft {
       spouses: parseStep("spouses", draft.data),
       children: parseStep("children", draft.data),
       parentingTime: applicable.has("parentingTime") ? parseStep("parentingTime", draft.data) : undefined,
+      parentingPlan: applicable.has("parentingPlan") ? parseStep("parentingPlan", draft.data) : undefined,
       income: parseStep("income", draft.data),
       deductions: parseStep("deductions", draft.data),
       childCosts: applicable.has("childCosts") ? parseStep("childCosts", draft.data) : undefined,

@@ -67,6 +67,20 @@ export function createSampleDraft(): IntakeDraft {
       overnightsWithOtherParentPerYear: 146,
       scheduleStatus: "agreed",
     },
+    parentingPlan: {
+      planStatus: "agreed",
+      schoolDesignationParent: "you",
+      decisionMakingEducation: "shared",
+      decisionMakingHealthcare: "shared",
+      decisionMakingReligion: "undecided",
+      weekdaySchedule: "Children with A.B. Monday through Thursday nights during the school year.",
+      weekendSchedule: "Alternating weekends, Friday after school to Monday morning.",
+      holidaySchedule: "Major holidays alternate by even and odd years.",
+      summerSchedule: "Four consecutive weeks with C.D. in July.",
+      exchangeArrangements: "Exchanges at the children's school; the receiving parent drives.",
+      communicationBetweenChildAndParent: "A video call each evening the children are not with that parent.",
+      relocationAnticipated: "no",
+    },
     income: {
       self: {
         wages: 5200,

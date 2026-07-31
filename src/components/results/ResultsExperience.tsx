@@ -33,6 +33,31 @@ type LoadState =
 
 type DownloadState = "idle" | "downloading" | "error";
 
+/** Which download is in flight, so one button's spinner never appears on another. */
+type DownloadTarget = "package" | "child-support-guidelines" | "parenting-plan";
+
+const WORKSHEET_DOWNLOADS: ReadonlyArray<{
+  readonly target: DownloadTarget;
+  readonly label: string;
+  readonly filename: string;
+  readonly description: string;
+}> = [
+  {
+    target: "child-support-guidelines",
+    label: "Child support guidelines worksheet",
+    filename: "florida-child-support-guidelines-worksheet.pdf",
+    description:
+      "Your figures laid out in the order Fla. Stat. \u00a761.30 computes them \u2014 the same order Form 12.902(e) walks through.",
+  },
+  {
+    target: "parenting-plan",
+    label: "Parenting plan worksheet",
+    filename: "florida-parenting-plan-worksheet.pdf",
+    description:
+      "The terms Fla. Stat. \u00a761.13(2)(b) requires a parenting plan to cover, with anything undecided listed as an open question.",
+  },
+];
+
 /**
  * Client-side results experience: loads the reviewed intake snapshot from
  * `localStorage`, builds the package view model (a pure, client-safe
@@ -51,6 +76,8 @@ export function ResultsExperience() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [draft, setDraft] = useState<IntakeDraft | null>(null);
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
+  const [downloadTarget, setDownloadTarget] = useState<DownloadTarget | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,32 +115,56 @@ export function ResultsExperience() {
     return buildPackageViewModel(state.reviewed);
   }, [state]);
 
-  const handleDownload = useCallback(async () => {
-    if (state.status !== "ready" || isStale) return;
-    setDownloadState("downloading");
-    try {
-      const response = await fetch("/api/package", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reviewedDraft: state.reviewed }),
-      });
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
+  /**
+   * One download path for the packet and every worksheet. They all post the
+   * confirmed answers and let the server recalculate; the client never sends a
+   * figure. Sharing the path means a worksheet cannot quietly acquire a
+   * different trust model than the packet.
+   */
+  const runDownload = useCallback(
+    async (target: DownloadTarget, url: string, filename: string) => {
+      if (state.status !== "ready" || isStale) return;
+      setDownloadTarget(target);
+      setDownloadState("downloading");
+      setDownloadError(null);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reviewedDraft: state.reviewed }),
+        });
+        if (!response.ok) {
+          // A 409 carries a specific, actionable reason; anything else does not.
+          const message =
+            response.status === 409
+              ? ((await response.json().catch(() => null))?.error ?? null)
+              : null;
+          throw new Error(message ?? `Server responded with ${response.status}`);
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        setDownloadState("idle");
+      } catch (error) {
+        setDownloadError(error instanceof Error ? error.message : null);
+        setDownloadState("error");
+      } finally {
+        setDownloadTarget(null);
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "florida-support-estimate.pdf";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      setDownloadState("idle");
-    } catch {
-      setDownloadState("error");
-    }
-  }, [state, isStale]);
+    },
+    [state, isStale],
+  );
+
+  const handleDownload = useCallback(
+    () => runDownload("package", "/api/package", "florida-support-estimate.pdf"),
+    [runDownload],
+  );
 
   if (state.status === "loading") {
     return <p className="text-ink-muted">Loading your results…</p>;
@@ -160,10 +211,10 @@ export function ResultsExperience() {
           <Button
             type="button"
             onClick={handleDownload}
-            loading={downloadState === "downloading"}
-            disabled={isStale}
+            loading={downloadState === "downloading" && downloadTarget === "package"}
+            disabled={isStale || downloadState === "downloading"}
           >
-            {downloadState === "downloading" ? "Preparing PDF…" : "Download PDF"}
+            {downloadState === "downloading" && downloadTarget === "package" ? "Preparing PDF…" : "Download PDF"}
           </Button>
           <Link href="/intake?step=review" className={buttonClasses("secondary", "md")}>
             Edit my answers
@@ -176,9 +227,43 @@ export function ResultsExperience() {
 
       {downloadState === "error" && (
         <Alert variant="danger" emphasis role="alert">
-          Something went wrong generating the PDF. Please try again.
+          {downloadError ?? "Something went wrong generating the PDF. Please try again."}
         </Alert>
       )}
+
+      <Card className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold text-ink">Court form worksheets</h2>
+          <p className="text-sm text-ink-muted">
+            These are worksheets, not court forms. Each one lays your confirmed answers out in the order the
+            matching Florida form asks for them, so you or your attorney can transcribe them onto the current
+            official form. Download the form itself from the Florida Courts website and check the revision date
+            in its footer \u2014 a superseded form is refused at the clerk\u2019s window.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
+          {WORKSHEET_DOWNLOADS.map((worksheet) => (
+            <div key={worksheet.target} className="flex flex-wrap items-center justify-between gap-3">
+              <p className="max-w-xl text-sm text-ink-muted">{worksheet.description}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  runDownload(
+                    worksheet.target,
+                    `/api/package/worksheet?form=${worksheet.target}`,
+                    worksheet.filename,
+                  )
+                }
+                loading={downloadState === "downloading" && downloadTarget === worksheet.target}
+                disabled={isStale || downloadState === "downloading"}
+              >
+                {worksheet.label}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <ChildSupportOutcomeCard outcome={viewModel.childSupport} />
       <AlimonyOutcomeCard outcome={viewModel.alimony} />

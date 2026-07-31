@@ -8,6 +8,7 @@
  */
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from "pdf-lib";
 
+import type { FormWorksheet } from "@/domain/forms";
 import { formatCentsAsDollars } from "@/domain/package";
 import type { PackageViewModel, ConfirmedFactEntry } from "@/domain/package";
 import type { FormulaStep, MissingFact, RuleFlag, StatutoryCitation, EquitableDistributionResult } from "@/domain/rules";
@@ -448,6 +449,78 @@ async function finishDocument(doc: PDFDocument, writer: PdfWriter, viewModel: Pa
       color: MUTED,
     });
   });
+
+  return doc.save();
+}
+
+/**
+ * Renders a court-form worksheet.
+ *
+ * Two rules shape the layout. The subtitle — which says what this document is
+ * *not* — is rendered in the disclaimer box before any figure, because someone
+ * skimming a page of statutory line items will otherwise assume they are
+ * holding a court form. And gaps are rendered as a section of their own rather
+ * than as blank values, so a term nobody decided reads as an open question
+ * instead of an answer of zero.
+ */
+export async function generateWorksheetPdf(worksheet: FormWorksheet): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  doc.setTitle(worksheet.title);
+  doc.setSubject("Worksheet for attorney review — not a court form");
+  doc.setProducer("Florida Support Guide");
+
+  const fonts: Fonts = {
+    regular: await doc.embedFont(StandardFonts.Helvetica),
+    bold: await doc.embedFont(StandardFonts.HelveticaBold),
+  };
+  const writer = new PdfWriter(doc, fonts);
+
+  writer.title(worksheet.title);
+  writer.paragraph(`Generated ${new Date(worksheet.generatedAt).toLocaleString("en-US")}`, { color: MUTED });
+  writer.spacer(6);
+  writer.disclaimerBox("Not a court form.", worksheet.subtitle);
+
+  writer.heading("Official form this corresponds to");
+  writer.bullet(`Form ${worksheet.officialForm.formNumber} — ${worksheet.officialForm.title}`);
+  if (worksheet.officialForm.verified && worksheet.officialForm.revision) {
+    writer.bullet(`Revision ${worksheet.officialForm.revision}`);
+  }
+  if (worksheet.officialForm.url) writer.bullet(worksheet.officialForm.url);
+  writer.paragraph(worksheet.officialForm.note, { indent: 8, color: MUTED });
+
+  writer.heading("Worksheet");
+  for (const line of worksheet.lines) {
+    if (line.kind === "section") {
+      writer.subheading(line.label);
+      continue;
+    }
+    if (line.kind === "note") {
+      if (line.explanation) {
+        writer.paragraph(`${line.explanation}${line.authority ? ` (${line.authority})` : ""}`, {
+          indent: 8,
+          color: MUTED,
+        });
+      }
+      continue;
+    }
+    writer.bullet(
+      `${line.label}: ${line.value ?? "—"}${line.authority ? `  [${line.authority}]` : ""}`,
+      8,
+    );
+    if (line.explanation) writer.paragraph(line.explanation, { indent: 22, color: MUTED });
+  }
+
+  if (worksheet.gaps.length > 0) {
+    writer.heading("What this worksheet cannot fill in");
+    for (const gap of worksheet.gaps) writer.bullet(gap, 8);
+  }
+
+  writer.heading("Sources");
+  renderCitations(writer, worksheet.citations);
+  writer.paragraph(
+    `Rules version ${worksheet.ruleVersion}, effective ${worksheet.effectiveDate}.`,
+    { color: MUTED },
+  );
 
   return doc.save();
 }

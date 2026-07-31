@@ -84,6 +84,24 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
       "How do I count overnights if our schedule changes seasonally?",
     ],
   },
+  parentingPlan: {
+    knowledgeEntryIds: ["parenting-plan", "child-support-overnights"],
+    statuteSections: ["61.13"],
+    keywords: [
+      "parenting plan",
+      "time-sharing",
+      "timesharing",
+      "parental responsibility",
+      "decision making",
+      "school designation",
+      "relocation",
+    ],
+    suggestedQuestions: [
+      "What must a Florida parenting plan include?",
+      "What is the difference between shared and sole parental responsibility?",
+      "How does a court decide time-sharing between parents?",
+    ],
+  },
   income: {
     knowledgeEntryIds: ["child-support-basics", "alimony-factors", "financial-disclosure"],
     statuteSections: ["61.30"],

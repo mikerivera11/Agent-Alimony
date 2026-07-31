@@ -4,6 +4,7 @@ export * from "./MarriageFields";
 export * from "./SpousesFields";
 export * from "./ChildrenFields";
 export * from "./ParentingTimeFields";
+export * from "./ParentingPlanFields";
 export * from "./IncomeFields";
 export * from "./DeductionsFields";
 export * from "./ChildCostsFields";

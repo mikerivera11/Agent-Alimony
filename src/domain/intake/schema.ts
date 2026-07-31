@@ -173,6 +173,45 @@ export const parentingTimeSchema = z
 
 export type ParentingTime = z.infer<typeof parentingTimeSchema>;
 
+// 5b. Parenting plan ----------------------------------------------------------
+
+/**
+ * The substantive terms a Florida parenting plan has to settle. §61.13(2)(b)
+ * requires a parenting plan in every case involving a minor child, and
+ * requires it to describe how the parents will share daily tasks, the
+ * time-sharing schedule, who is responsible for health care and school-related
+ * matters, and the methods of communication with the child.
+ *
+ * These are choices, not facts that can be derived from the financial intake,
+ * which is why they are collected rather than inferred. Everything here is
+ * optional at the field level so a person can record what they have decided
+ * and leave the rest open; a half-decided plan is the normal state, and
+ * forcing a guess would put an unconsidered term in front of a judge.
+ */
+export const parentingPlanSchema = z.object({
+  planStatus: z.enum(["agreed", "proposed", "in_dispute"], {
+    message: "Choose the option that matches your situation",
+  }),
+  /** §61.13(2)(b)3: school-designation and other addresses. */
+  schoolDesignationParent: z.enum(["you", "other_parent", "undecided"], {
+    message: "Choose who the plan designates",
+  }),
+  /** §61.13(2)(b): shared vs sole parental responsibility for major decisions. */
+  decisionMakingEducation: z.enum(["shared", "you", "other_parent", "undecided"]),
+  decisionMakingHealthcare: z.enum(["shared", "you", "other_parent", "undecided"]),
+  decisionMakingReligion: z.enum(["shared", "you", "other_parent", "undecided"]),
+  weekdaySchedule: longTextSchema.optional(),
+  weekendSchedule: longTextSchema.optional(),
+  holidaySchedule: longTextSchema.optional(),
+  summerSchedule: longTextSchema.optional(),
+  exchangeArrangements: longTextSchema.optional(),
+  communicationBetweenChildAndParent: longTextSchema.optional(),
+  /** §61.13001 relocation is a distinct statutory process; flagged, never advised on. */
+  relocationAnticipated: yesNoSchema,
+});
+
+export type ParentingPlan = z.infer<typeof parentingPlanSchema>;
+
 // 6. Gross income ---------------------------------------------------------
 
 const personIncomeSchema = z.object({
