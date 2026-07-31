@@ -102,6 +102,14 @@ describe("LocalAssistantAdapter", () => {
     expect(answer.escalations.map((signal) => signal.topic)).toContain("domesticViolence");
   });
 
+  it("acknowledges an urgent disclosure instead of brushing it off as off-topic", async () => {
+    const answer = await ask("My husband hit me and I am scared of him.");
+
+    expect(answer.escalations[0]?.severity).toBe("urgent");
+    expect(answer.content).toContain("Thank you for telling me");
+    expect(answer.content).not.toContain("don't have verified Florida material");
+  });
+
   it("attaches an escalation alongside a normal answer", async () => {
     const answer = await ask("How is property divided if my spouse is hiding money in a secret account?");
 

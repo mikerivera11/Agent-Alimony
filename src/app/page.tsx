@@ -92,6 +92,13 @@ export default function Home() {
           See the document checklist and mock extraction preview
         </Link>
 
+        <Link
+          href="/assistant"
+          className="w-fit rounded font-semibold text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+        >
+          Ask a question about Florida family law
+        </Link>
+
         <p className="text-sm text-ink-muted">
           Read the full{" "}
           <Link href="/legal" className="font-semibold text-primary underline underline-offset-4 hover:text-primary-hover">

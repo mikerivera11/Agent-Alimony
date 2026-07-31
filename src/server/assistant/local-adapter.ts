@@ -36,6 +36,15 @@ const NO_MATCH_RESPONSE =
   "If your question is about something else — or about what you specifically should do — a licensed Florida " +
   "family-law attorney is the right person to ask. The Florida Bar Lawyer Referral Service is 1-800-342-8011.";
 
+const URGENT_NO_MATCH_RESPONSE =
+  "Thank you for telling me. Please read the notice above first — it matters more than anything I can explain " +
+  "about how the law works.\n\n" +
+  "I'm a general information tool and I can't advise you on your situation or help with safety planning. What " +
+  "you've described needs a real person: a licensed Florida family-law attorney, or one of the services listed " +
+  "above.\n\n" +
+  "If it would still help later, I can explain how Florida handles alimony, child support, or dividing " +
+  "property. But please get support for the more urgent thing first.";
+
 const INJECTION_RESPONSE =
   "I can only answer questions about how Florida family law works, using the verified material built into this " +
   "app. I can't take on a different role, change how I operate, or set aside how this app calculates figures.\n\n" +
@@ -66,8 +75,14 @@ export class LocalAssistantAdapter implements AssistantAdapter {
     const hits = retrieveKnowledge(request.question);
 
     if (hits.length === 0) {
+      // Answering "I don't have material on that" to someone disclosing
+      // abuse or a court deadline reads as a brush-off. When an urgent
+      // signal fired, acknowledge it instead; the escalation itself carries
+      // the referral and hotline information.
+      const hasUrgentSignal = escalations.some((signal) => signal.severity === "urgent");
+
       return {
-        content: NO_MATCH_RESPONSE,
+        content: hasUrgentSignal ? URGENT_NO_MATCH_RESPONSE : NO_MATCH_RESPONSE,
         citations: [],
         escalations,
         groundedIn: [],
