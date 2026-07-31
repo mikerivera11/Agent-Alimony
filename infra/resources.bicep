@@ -70,8 +70,6 @@ var webAppName = '${namePrefix}-${environmentName}-app'
 
 // Built here (not by a role-assignment GUID literal) so the same role
 // definition ID always maps to a stable, idempotent assignment name.
-var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
@@ -166,32 +164,104 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' existing = {
 
 // --- Managed-identity role assignments (must exist before the Key Vault
 // reference app settings are applied, so App Service never resolves them as
-// "N/A" on cold start) ---
+// "N/A" on cold start). See modules/role-assignments.bicep for why these are
+// a module rather than inline resources. ---
 
-resource storageBlobDataContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccountExisting.id, webAppName, storageBlobDataContributorRoleId)
-  scope: storageAccountExisting
-  properties: {
+module roleAssignments 'modules/role-assignments.bicep' = {
+  name: 'role-assignments'
+  params: {
     principalId: appService.outputs.webAppPrincipalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
+    keyVaultName: keyVault.outputs.keyVaultName
+    storageAccountName: storage.outputs.storageAccountName
+  }
+}
+
+// --- Private endpoints for Key Vault and Storage ---
+//
+// Tenant governance policy forces publicNetworkAccess to Disabled on both
+// resource types after deployment, so these are the only route App Service
+// has to them. Without them the Key Vault references in the app settings
+// below resolve to AccessToKeyVaultDenied and the app starts with unusable
+// configuration -- while the deployment itself still reports success.
+
+resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (enablePrivateNetworking) {
+  name: '${namePrefix}-${environmentName}-kv-pe'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'keyvault'
+        properties: {
+          privateLinkServiceId: keyVaultExisting.id
+          groupIds: [
+            'vault'
+          ]
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    keyVault
+  ]
+}
+
+resource keyVaultPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (enablePrivateNetworking) {
+  parent: keyVaultPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'vaultcore'
+        properties: {
+          privateDnsZoneId: network.outputs.keyVaultPrivateDnsZoneId
+        }
+      }
+    ]
+  }
+}
+
+resource blobPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (enablePrivateNetworking) {
+  name: '${namePrefix}-${environmentName}-blob-pe'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'blob'
+        properties: {
+          privateLinkServiceId: storageAccountExisting.id
+          groupIds: [
+            'blob'
+          ]
+        }
+      }
+    ]
   }
   dependsOn: [
     storage
   ]
 }
 
-resource keyVaultSecretsUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVaultExisting.id, webAppName, keyVaultSecretsUserRoleId)
-  scope: keyVaultExisting
+resource blobPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (enablePrivateNetworking) {
+  parent: blobPrivateEndpoint
+  name: 'default'
   properties: {
-    principalId: appService.outputs.webAppPrincipalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+    privateDnsZoneConfigs: [
+      {
+        name: 'blob'
+        properties: {
+          privateDnsZoneId: network.outputs.blobPrivateDnsZoneId
+        }
+      }
+    ]
   }
-  dependsOn: [
-    keyVault
-  ]
 }
 
 // Single, complete app settings write — see modules/app-service.bicep for
@@ -202,6 +272,10 @@ resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
   name: 'appsettings'
   properties: {
     WEBSITE_NODE_DEFAULT_VERSION: '~24'
+    // Required for regional VNet integration to resolve the private DNS zones
+    // above (and the Postgres one); without it lookups go to public DNS and
+    // return the public IP, which is blocked.
+    WEBSITE_DNS_SERVER: '168.63.129.16'
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
     APP_BASE_URL: 'https://${appService.outputs.webAppDefaultHostName}'
     STORAGE_PROVIDER: 'azure'
@@ -216,8 +290,9 @@ resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     SESSION_SIGNING_SECRET: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.sessionSigningSecretUri})'
   }
   dependsOn: [
-    storageBlobDataContributorAssignment
-    keyVaultSecretsUserAssignment
+    roleAssignments
+    keyVaultPrivateDnsZoneGroup
+    blobPrivateDnsZoneGroup
   ]
 }
 
