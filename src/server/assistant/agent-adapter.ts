@@ -124,7 +124,18 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
     let result: { text: string; searched: boolean };
     try {
       result = await this.runAgent(request);
-    } catch {
+    } catch (error) {
+      // Only the error's own message, which this adapter composes from a status
+      // code and a request path. The question, the answer, and any response
+      // body are deliberately excluded: a body can echo back what the person
+      // typed, which is financial detail this app does not log. Without this
+      // line a provider outage is indistinguishable from a working fallback,
+      // which is exactly the state that made the first live failure opaque.
+      console.warn(
+        `[assistant] Foundry agent unavailable, falling back: ${
+          error instanceof Error ? `${error.name}: ${error.message}` : "unknown error"
+        }`,
+      );
       const fallbackAnswer = await this.fallback.answer(request);
       return {
         ...fallbackAnswer,
