@@ -9,6 +9,9 @@ This application provides **legal information and financial estimates only**. It
 - Thirteen-topic guided intake with explanations, autosave, review/edit, accessibility, responsive layouts, safety prompts, and a fictional demo
 - Deterministic Florida child-support calculations under Fla. Stat. § 61.30
 - Deterministic current-law alimony constraints and scenario range under Fla. Stat. § 61.08
+- Deterministic equitable distribution under Fla. Stat. § 61.075, including per-item exclusion gated on a written agreement
+- Lump-sum settlement modelling, kept outside the rules engine because no statute supplies a rate or a present-value formula
+- A Florida family-law information assistant answering from curated, citation-backed statutory material
 - Full formula traces, assumptions, warnings, statutory citations, ruleset versions, and source-verification dates
 - PDF settlement-information package containing confirmed facts, missing items, calculation details, factors, scenarios, sources, and disclaimers
 - PDF/JPEG/PNG upload validation with magic-byte checks and a clearly labeled mock extraction workflow
@@ -23,6 +26,7 @@ The local MVP stores the working draft and reviewed snapshot in the current brow
 | --- | --- | --- |
 | Alimony | [Fla. Stat. § 61.08 (2025 compilation)](https://www.flsenate.gov/Laws/Statutes/2025/61.08) | `fl-alimony-61.08`, current law applicable to petitions pending/filed on or after July 1, 2023 |
 | Child support | [Fla. Stat. § 61.30 (2025 compilation)](https://www.flsenate.gov/Laws/Statutes/2025/61.30) | `fl-child-support-61.30` |
+| Equitable distribution | [Fla. Stat. § 61.075 (2025 compilation)](https://www.flsenate.gov/Laws/Statutes/2025/61.075) | `fl-equitable-distribution-61.075` |
 | Family-law forms | [Florida Courts family-law forms](https://www.flcourts.gov/Services/family-courts/domestic-relations-court-resources/family-law-forms) | Reference only |
 
 The § 61.30 schedule is generated from the official statute HTML into `data/legal/florida/child-support-schedule-2025.json`. The fixture records the source URL, verification date, and source SHA-256. It is not hand-transcribed.
@@ -34,7 +38,16 @@ The following branches deliberately return an explicit unsupported/review result
 - Pre-July 1, 2023 alimony law
 - Exceptional alimony-duration extensions
 - Disputed/imputed income or disputed need/ability to pay
+- Closely-held business valuation and enterprise goodwill under § 61.075(6)(a)1.f
+- Coverture-fraction passive appreciation on nonmarital mortgage paydown under § 61.075(6)(a)1.c
+- Dissipation offsets under § 61.075(1)(i), and any unequal distribution, for which the statute supplies factors but no formula
 - Official Florida form 12.902(e) visual parity and Rule 12.285 deadline automation until their current revision text is separately pinned
+
+### Lump-sum modelling is finance, not law
+
+Lump-sum present-value modelling lives in `src/domain/finance/`, deliberately outside `src/domain/rules/`. Florida permits alimony to be paid periodically or in a lump sum (§ 61.08(1)(a)) and permits distribution as a lump sum or in installments, where a court "may require a reasonable rate of interest or may otherwise recognize the time value of the money" (§ 61.075(10)(b)). But no statute fixes a rate and none supplies a present-value formula.
+
+Accordingly the discount rate is a required input with **no default** — a default would read as a legal standard — and results are always returned across a band of rates so the figure's sensitivity to an unlegislated assumption stays visible.
 
 ## Local setup
 
@@ -93,8 +106,10 @@ Review every legal-source diff before merging. A successful scrape does not prov
 src/domain/intake/                   Guided schemas, completeness, review, escalation
 src/domain/rules/                    Pure state-agnostic rules contracts
 src/domain/rules/florida/            Versioned Florida calculations
+src/domain/finance/                  Financial modelling that is NOT grounded in statute
 src/domain/integration/              Reviewed-intake to confirmed-fact mapping
 src/domain/package/                  Review-package view model and scenarios
+src/server/assistant/                Florida family-law information assistant
 src/server/extraction/               Mock/configured adapter boundary
 src/server/storage/                  Validation, local storage, Azure Blob adapter
 src/server/session/                  Signed browser-session token boundary
@@ -105,9 +120,37 @@ drizzle/                             SQL migration
 data/legal/florida/                  Immutable generated legal fixtures
 ```
 
+The `src/domain/rules/` and `src/domain/finance/` split is load-bearing. Everything under `rules/` is traceable to statutory text and returns citations; anything that is a modelling assumption instead lives under `finance/` so the two are never confused in review.
+
 Rules functions accept only nominally branded `ConfirmedFact<T>` values. Extraction results are untrusted proposals with provenance and confidence. Human confirmation is required before the server extraction boundary can map a proposal into a fact, and document content cannot choose a ruleset or alter a formula.
 
 Money is represented as integer cents. The child-support schedule, high-income percentages, time-sharing threshold, alimony classifications, duration ceilings, and 35% amount ceiling are deterministic and test-covered.
+
+## Family-law information assistant
+
+`/assistant` answers general questions about Florida family law. It is positioned as an information assistant, **not** an "AI family-law attorney": it states that it is not a lawyer, gives no legal advice, creates no attorney-client relationship, and is not privileged.
+
+The substance of every answer comes from a curated knowledge base in `src/server/assistant/knowledgeBase.ts`, transcribed from the same statutory text already verified for the rulesets. This is the point of the design: a language model asked about Florida alimony from memory will readily describe permanent alimony, which was eliminated for petitions filed on or after July 1, 2023. Retrieval over verified passages keeps the legal substance deterministic and citable. Retrieval itself is transparent lexical scoring rather than embeddings — testable, no network call, and identical in development and production.
+
+Guardrails are enforced in code, not merely requested in the prompt:
+
+- **The assistant never states a dollar figure.** Model output containing currency is discarded in favour of the local adapter, because every figure in this app must come from the deterministic rulesets.
+- Text a person types is wrapped in an untrusted-data envelope with system-like delimiters stripped, and recognised instruction-override attempts are declined before any model call.
+- Any provider failure falls back to the local adapter with a visible note rather than degrading silently.
+- Disclosures that exceed what this app can model — abuse, coercion, hidden assets, business income, special-needs children, out-of-state jurisdiction, imminent deadlines — raise escalation notices with referral information. Detection is recall-biased: a spurious referral is harmless, a missed one is not.
+
+The endpoint is stateless and persists nothing; neither the question nor the answer is logged.
+
+### Providers
+
+| `ASSISTANT_PROVIDER` | Behaviour |
+| --- | --- |
+| `local` (default) | Answers from the built-in statute reference. Needs no AI provider and is not a stub. |
+| `foundry` | Additionally uses Claude Opus 5 on Azure AI Foundry to rephrase the same retrieved passages in plainer language. |
+
+The Foundry adapter calls the Anthropic Messages API at `https://<resource>.services.ai.azure.com/anthropic/v1/messages` using `fetch` and the existing `@azure/identity` dependency, rather than taking a hard dependency on a 0.x provider SDK. It authenticates by managed identity (Entra scope `https://ai.azure.com/.default`, role **Cognitive Services User**), with `AZURE_FOUNDRY_API_KEY` as a fallback.
+
+Not yet implemented, deliberately: the Foundry Bicep module. The current `Microsoft.CognitiveServices/accounts` API version could not be verified from this environment, and this project does not guess at unverified values. When provisioning, note that Foundry does **not** apply Azure content filtering to Claude models, that `Microsoft.SaaS/register/action` must be run once on the subscription, and that CSP, free-trial, student, and sponsored-credit-only subscriptions cannot subscribe to Anthropic Claude on Azure Marketplace.
 
 ## Privacy and security defaults
 
@@ -115,6 +158,7 @@ Money is represented as integer cents. The child-support schedule, high-income p
 - Private Azure Blob containers in the production design
 - Seven-day source-document retention; confirmed structured facts are separate
 - No raw document bytes or extracted financial values in application logs
+- Assistant conversations are never persisted and never logged, and provider error bodies are never echoed
 - Random storage object names; user filenames are display-only
 - MIME declaration, extension, and magic-byte validation
 - Bounded streaming request reads before multipart parsing
