@@ -1,0 +1,2061 @@
+{
+  "rulesetId": "fl-child-support-2025",
+  "jurisdiction": "FL",
+  "statuteCompilation": "2025",
+  "sourceVerifiedAt": "2026-07-30",
+  "source": {
+    "title": "Fla. Stat. § 61.30 — Child support guidelines",
+    "url": "https://www.flsenate.gov/Laws/Statutes/2025/61.30",
+    "sha256": "3357d6b93b5841356e6c20c464c95f91df0d6e31281b9347eda158237b5342c1"
+  },
+  "schedule": [
+    {
+      "combinedMonthlyNetIncomeCents": 80000,
+      "basicNeedCentsByChildren": [
+        19000,
+        21100,
+        21300,
+        21600,
+        21800,
+        22000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 85000,
+      "basicNeedCentsByChildren": [
+        20200,
+        25700,
+        25900,
+        26200,
+        26500,
+        26800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 90000,
+      "basicNeedCentsByChildren": [
+        21300,
+        30200,
+        30500,
+        30900,
+        31200,
+        31500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 95000,
+      "basicNeedCentsByChildren": [
+        22400,
+        34700,
+        35100,
+        35500,
+        35900,
+        36300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 100000,
+      "basicNeedCentsByChildren": [
+        23500,
+        36500,
+        39700,
+        40200,
+        40600,
+        41000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 105000,
+      "basicNeedCentsByChildren": [
+        24600,
+        38200,
+        44300,
+        44800,
+        45300,
+        45800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 110000,
+      "basicNeedCentsByChildren": [
+        25800,
+        40000,
+        48900,
+        49500,
+        50000,
+        50500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 115000,
+      "basicNeedCentsByChildren": [
+        26900,
+        41700,
+        52200,
+        54100,
+        54700,
+        55300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 120000,
+      "basicNeedCentsByChildren": [
+        28000,
+        43500,
+        54400,
+        58800,
+        59400,
+        60000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 125000,
+      "basicNeedCentsByChildren": [
+        29000,
+        45100,
+        56500,
+        63400,
+        64100,
+        64800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 130000,
+      "basicNeedCentsByChildren": [
+        30000,
+        46700,
+        58400,
+        65900,
+        68800,
+        69500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 135000,
+      "basicNeedCentsByChildren": [
+        31000,
+        48200,
+        60300,
+        68100,
+        73500,
+        74300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 140000,
+      "basicNeedCentsByChildren": [
+        32000,
+        49800,
+        62300,
+        70200,
+        76500,
+        79000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 145000,
+      "basicNeedCentsByChildren": [
+        33000,
+        51300,
+        64200,
+        72400,
+        78900,
+        83800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 150000,
+      "basicNeedCentsByChildren": [
+        34000,
+        52900,
+        66200,
+        74600,
+        81300,
+        86900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 155000,
+      "basicNeedCentsByChildren": [
+        35000,
+        54400,
+        68100,
+        76800,
+        83600,
+        89500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 160000,
+      "basicNeedCentsByChildren": [
+        36000,
+        56000,
+        70100,
+        79000,
+        86000,
+        92000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 165000,
+      "basicNeedCentsByChildren": [
+        37000,
+        57500,
+        72000,
+        81200,
+        88400,
+        94500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 170000,
+      "basicNeedCentsByChildren": [
+        38000,
+        59100,
+        74000,
+        83300,
+        90700,
+        97100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 175000,
+      "basicNeedCentsByChildren": [
+        39000,
+        60600,
+        75900,
+        85500,
+        93100,
+        99600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 180000,
+      "basicNeedCentsByChildren": [
+        40000,
+        62200,
+        77900,
+        87700,
+        95500,
+        102200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 185000,
+      "basicNeedCentsByChildren": [
+        41000,
+        63800,
+        79800,
+        90000,
+        97900,
+        104800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 190000,
+      "basicNeedCentsByChildren": [
+        42100,
+        65400,
+        81800,
+        92300,
+        100400,
+        107400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 195000,
+      "basicNeedCentsByChildren": [
+        43100,
+        67000,
+        83900,
+        94600,
+        102900,
+        110100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 200000,
+      "basicNeedCentsByChildren": [
+        44200,
+        68600,
+        85900,
+        96800,
+        105400,
+        112800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 205000,
+      "basicNeedCentsByChildren": [
+        45200,
+        70200,
+        87900,
+        99100,
+        107900,
+        115400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 210000,
+      "basicNeedCentsByChildren": [
+        46300,
+        71800,
+        89900,
+        101400,
+        110400,
+        118100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 215000,
+      "basicNeedCentsByChildren": [
+        47300,
+        73400,
+        91900,
+        103700,
+        112900,
+        120700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 220000,
+      "basicNeedCentsByChildren": [
+        48400,
+        75100,
+        94000,
+        106000,
+        115400,
+        123400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 225000,
+      "basicNeedCentsByChildren": [
+        49400,
+        76700,
+        96000,
+        108200,
+        117900,
+        126100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 230000,
+      "basicNeedCentsByChildren": [
+        50500,
+        78300,
+        98000,
+        110500,
+        120400,
+        128700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 235000,
+      "basicNeedCentsByChildren": [
+        51500,
+        79900,
+        100000,
+        112800,
+        122900,
+        131400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 240000,
+      "basicNeedCentsByChildren": [
+        52600,
+        81500,
+        102000,
+        115100,
+        125400,
+        134000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 245000,
+      "basicNeedCentsByChildren": [
+        53600,
+        83100,
+        104100,
+        117400,
+        127900,
+        136700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 250000,
+      "basicNeedCentsByChildren": [
+        54700,
+        84700,
+        106100,
+        119600,
+        130400,
+        139400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 255000,
+      "basicNeedCentsByChildren": [
+        55700,
+        86400,
+        108100,
+        121900,
+        132900,
+        142000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 260000,
+      "basicNeedCentsByChildren": [
+        56800,
+        88000,
+        110100,
+        124200,
+        135400,
+        144700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 265000,
+      "basicNeedCentsByChildren": [
+        57800,
+        89600,
+        112100,
+        126500,
+        137900,
+        147300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 270000,
+      "basicNeedCentsByChildren": [
+        58800,
+        91200,
+        114100,
+        128700,
+        140300,
+        150000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 275000,
+      "basicNeedCentsByChildren": [
+        59700,
+        92700,
+        116000,
+        130800,
+        142600,
+        152400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 280000,
+      "basicNeedCentsByChildren": [
+        60700,
+        94100,
+        117800,
+        132800,
+        144800,
+        154900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 285000,
+      "basicNeedCentsByChildren": [
+        61600,
+        95600,
+        119700,
+        134900,
+        147100,
+        157300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 290000,
+      "basicNeedCentsByChildren": [
+        62600,
+        97100,
+        121500,
+        137000,
+        149400,
+        159800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 295000,
+      "basicNeedCentsByChildren": [
+        63500,
+        98600,
+        123400,
+        139100,
+        151700,
+        162200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 300000,
+      "basicNeedCentsByChildren": [
+        64400,
+        100100,
+        125200,
+        141200,
+        154000,
+        164700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 305000,
+      "basicNeedCentsByChildren": [
+        65400,
+        101600,
+        127100,
+        143300,
+        156300,
+        167100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 310000,
+      "basicNeedCentsByChildren": [
+        66300,
+        103100,
+        128900,
+        145300,
+        158600,
+        169500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 315000,
+      "basicNeedCentsByChildren": [
+        67300,
+        104500,
+        130800,
+        147400,
+        160800,
+        172000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 320000,
+      "basicNeedCentsByChildren": [
+        68200,
+        106000,
+        132700,
+        149500,
+        163100,
+        174400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 325000,
+      "basicNeedCentsByChildren": [
+        69100,
+        107500,
+        134500,
+        151600,
+        165400,
+        176900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 330000,
+      "basicNeedCentsByChildren": [
+        70100,
+        109000,
+        136400,
+        153700,
+        167700,
+        179300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 335000,
+      "basicNeedCentsByChildren": [
+        71000,
+        110500,
+        138200,
+        155800,
+        170000,
+        181800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 340000,
+      "basicNeedCentsByChildren": [
+        72000,
+        112000,
+        140100,
+        157900,
+        172300,
+        184200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 345000,
+      "basicNeedCentsByChildren": [
+        72900,
+        113500,
+        141900,
+        159900,
+        174500,
+        186700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 350000,
+      "basicNeedCentsByChildren": [
+        73800,
+        114900,
+        143800,
+        162000,
+        176800,
+        189100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 355000,
+      "basicNeedCentsByChildren": [
+        74800,
+        116400,
+        145600,
+        164100,
+        179100,
+        191500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 360000,
+      "basicNeedCentsByChildren": [
+        75700,
+        117900,
+        147500,
+        166200,
+        181400,
+        194000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 365000,
+      "basicNeedCentsByChildren": [
+        76700,
+        119400,
+        149300,
+        168300,
+        183700,
+        196400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 370000,
+      "basicNeedCentsByChildren": [
+        77600,
+        120800,
+        150300,
+        170200,
+        185700,
+        198700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 375000,
+      "basicNeedCentsByChildren": [
+        78400,
+        122100,
+        152000,
+        172100,
+        187800,
+        200900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 380000,
+      "basicNeedCentsByChildren": [
+        79300,
+        123400,
+        153600,
+        174000,
+        189900,
+        203100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 385000,
+      "basicNeedCentsByChildren": [
+        80200,
+        124800,
+        155300,
+        175900,
+        192000,
+        205300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 390000,
+      "basicNeedCentsByChildren": [
+        81100,
+        126100,
+        157000,
+        177800,
+        194000,
+        207500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 395000,
+      "basicNeedCentsByChildren": [
+        81900,
+        127500,
+        158700,
+        179700,
+        196100,
+        209700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 400000,
+      "basicNeedCentsByChildren": [
+        82800,
+        128800,
+        160300,
+        181600,
+        198200,
+        211900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 405000,
+      "basicNeedCentsByChildren": [
+        83700,
+        130200,
+        162000,
+        183500,
+        200200,
+        214100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 410000,
+      "basicNeedCentsByChildren": [
+        84600,
+        131500,
+        163700,
+        185400,
+        202300,
+        216300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 415000,
+      "basicNeedCentsByChildren": [
+        85400,
+        132900,
+        165400,
+        187300,
+        204400,
+        218500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 420000,
+      "basicNeedCentsByChildren": [
+        86300,
+        134200,
+        167000,
+        189200,
+        206400,
+        220700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 425000,
+      "basicNeedCentsByChildren": [
+        87200,
+        135500,
+        168700,
+        191100,
+        208500,
+        222900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 430000,
+      "basicNeedCentsByChildren": [
+        88100,
+        136900,
+        170400,
+        193000,
+        210600,
+        225100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 435000,
+      "basicNeedCentsByChildren": [
+        88900,
+        138200,
+        172100,
+        194900,
+        212700,
+        227300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 440000,
+      "basicNeedCentsByChildren": [
+        89800,
+        139600,
+        173700,
+        196800,
+        214700,
+        229500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 445000,
+      "basicNeedCentsByChildren": [
+        90700,
+        140900,
+        175400,
+        198700,
+        216800,
+        231700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 450000,
+      "basicNeedCentsByChildren": [
+        91600,
+        142300,
+        177100,
+        200600,
+        218900,
+        233900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 455000,
+      "basicNeedCentsByChildren": [
+        92400,
+        143600,
+        178800,
+        202400,
+        220900,
+        236100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 460000,
+      "basicNeedCentsByChildren": [
+        93300,
+        145000,
+        180400,
+        204300,
+        223000,
+        238400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 465000,
+      "basicNeedCentsByChildren": [
+        94200,
+        146300,
+        182100,
+        206200,
+        225100,
+        240600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 470000,
+      "basicNeedCentsByChildren": [
+        95100,
+        147700,
+        183800,
+        208100,
+        227100,
+        242800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 475000,
+      "basicNeedCentsByChildren": [
+        95900,
+        149000,
+        185500,
+        210000,
+        229200,
+        245000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 480000,
+      "basicNeedCentsByChildren": [
+        96800,
+        150300,
+        187100,
+        211900,
+        231300,
+        247200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 485000,
+      "basicNeedCentsByChildren": [
+        97700,
+        151700,
+        188800,
+        213800,
+        233400,
+        249400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 490000,
+      "basicNeedCentsByChildren": [
+        98600,
+        153000,
+        190500,
+        215700,
+        235400,
+        251600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 495000,
+      "basicNeedCentsByChildren": [
+        99300,
+        154200,
+        192700,
+        217400,
+        237200,
+        253500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 500000,
+      "basicNeedCentsByChildren": [
+        100000,
+        155100,
+        193900,
+        218800,
+        238700,
+        255100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 505000,
+      "basicNeedCentsByChildren": [
+        100600,
+        156100,
+        195200,
+        220200,
+        240200,
+        256700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 510000,
+      "basicNeedCentsByChildren": [
+        101300,
+        157100,
+        196400,
+        221500,
+        241700,
+        258300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 515000,
+      "basicNeedCentsByChildren": [
+        101900,
+        158000,
+        197600,
+        222900,
+        243200,
+        259900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 520000,
+      "basicNeedCentsByChildren": [
+        102500,
+        159000,
+        198800,
+        224300,
+        244700,
+        261500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 525000,
+      "basicNeedCentsByChildren": [
+        103200,
+        159900,
+        200000,
+        225600,
+        246200,
+        263100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 530000,
+      "basicNeedCentsByChildren": [
+        103800,
+        160900,
+        201200,
+        227000,
+        247700,
+        264700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 535000,
+      "basicNeedCentsByChildren": [
+        104500,
+        161900,
+        202400,
+        228300,
+        249200,
+        266300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 540000,
+      "basicNeedCentsByChildren": [
+        105100,
+        162800,
+        203700,
+        229700,
+        250700,
+        267900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 545000,
+      "basicNeedCentsByChildren": [
+        105700,
+        163800,
+        204900,
+        231100,
+        252200,
+        269500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 550000,
+      "basicNeedCentsByChildren": [
+        106400,
+        164700,
+        206100,
+        232400,
+        253700,
+        271100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 555000,
+      "basicNeedCentsByChildren": [
+        107000,
+        165700,
+        207300,
+        233800,
+        255200,
+        272700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 560000,
+      "basicNeedCentsByChildren": [
+        107700,
+        166700,
+        208500,
+        235200,
+        256700,
+        274300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 565000,
+      "basicNeedCentsByChildren": [
+        108300,
+        167600,
+        209700,
+        236500,
+        258200,
+        275900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 570000,
+      "basicNeedCentsByChildren": [
+        108900,
+        168600,
+        210900,
+        237900,
+        259700,
+        277500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 575000,
+      "basicNeedCentsByChildren": [
+        109600,
+        169500,
+        212200,
+        239300,
+        261200,
+        279100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 580000,
+      "basicNeedCentsByChildren": [
+        110200,
+        170500,
+        213400,
+        240600,
+        262700,
+        280700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 585000,
+      "basicNeedCentsByChildren": [
+        110700,
+        171300,
+        214400,
+        241800,
+        263900,
+        282000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 590000,
+      "basicNeedCentsByChildren": [
+        111100,
+        172100,
+        215500,
+        242900,
+        265100,
+        283300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 595000,
+      "basicNeedCentsByChildren": [
+        111600,
+        172900,
+        216500,
+        244000,
+        266300,
+        284700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 600000,
+      "basicNeedCentsByChildren": [
+        112100,
+        173700,
+        217500,
+        245100,
+        267600,
+        286000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 605000,
+      "basicNeedCentsByChildren": [
+        112600,
+        174600,
+        218500,
+        246200,
+        268800,
+        287400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 610000,
+      "basicNeedCentsByChildren": [
+        113100,
+        175400,
+        219600,
+        247300,
+        270000,
+        288700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 615000,
+      "basicNeedCentsByChildren": [
+        113600,
+        176200,
+        220600,
+        248400,
+        271200,
+        290000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 620000,
+      "basicNeedCentsByChildren": [
+        114100,
+        177000,
+        221600,
+        249500,
+        272400,
+        291400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 625000,
+      "basicNeedCentsByChildren": [
+        114500,
+        177800,
+        222700,
+        250600,
+        273700,
+        292700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 630000,
+      "basicNeedCentsByChildren": [
+        115000,
+        178600,
+        223700,
+        251700,
+        274900,
+        294100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 635000,
+      "basicNeedCentsByChildren": [
+        115500,
+        179500,
+        224700,
+        252900,
+        276100,
+        295400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 640000,
+      "basicNeedCentsByChildren": [
+        116000,
+        180300,
+        225800,
+        254000,
+        277300,
+        296700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 645000,
+      "basicNeedCentsByChildren": [
+        116500,
+        181100,
+        226800,
+        255100,
+        278500,
+        298100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 650000,
+      "basicNeedCentsByChildren": [
+        117000,
+        181900,
+        227800,
+        256200,
+        279800,
+        299400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 655000,
+      "basicNeedCentsByChildren": [
+        117500,
+        182700,
+        228800,
+        257300,
+        281000,
+        300800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 660000,
+      "basicNeedCentsByChildren": [
+        117900,
+        183500,
+        229900,
+        258400,
+        282200,
+        302100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 665000,
+      "basicNeedCentsByChildren": [
+        118400,
+        184300,
+        230900,
+        259500,
+        283400,
+        303400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 670000,
+      "basicNeedCentsByChildren": [
+        118900,
+        185000,
+        231700,
+        260400,
+        284500,
+        304500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 675000,
+      "basicNeedCentsByChildren": [
+        119300,
+        185600,
+        232500,
+        261300,
+        285400,
+        305500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 680000,
+      "basicNeedCentsByChildren": [
+        119600,
+        186200,
+        233200,
+        262100,
+        286300,
+        306400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 685000,
+      "basicNeedCentsByChildren": [
+        120000,
+        186800,
+        234000,
+        263000,
+        287200,
+        307400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 690000,
+      "basicNeedCentsByChildren": [
+        120400,
+        187300,
+        234700,
+        263900,
+        288200,
+        308400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 695000,
+      "basicNeedCentsByChildren": [
+        120800,
+        187900,
+        235500,
+        264700,
+        289100,
+        309400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 700000,
+      "basicNeedCentsByChildren": [
+        121200,
+        188500,
+        236200,
+        265600,
+        290000,
+        310300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 705000,
+      "basicNeedCentsByChildren": [
+        121600,
+        189100,
+        237000,
+        266400,
+        290900,
+        311300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 710000,
+      "basicNeedCentsByChildren": [
+        122000,
+        189700,
+        237800,
+        267300,
+        291900,
+        312300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 715000,
+      "basicNeedCentsByChildren": [
+        122400,
+        190300,
+        238500,
+        268100,
+        292800,
+        313300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 720000,
+      "basicNeedCentsByChildren": [
+        122800,
+        190900,
+        239300,
+        269000,
+        293700,
+        314200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 725000,
+      "basicNeedCentsByChildren": [
+        123200,
+        191500,
+        240000,
+        269800,
+        294600,
+        315200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 730000,
+      "basicNeedCentsByChildren": [
+        123500,
+        192100,
+        240800,
+        270700,
+        295600,
+        316200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 735000,
+      "basicNeedCentsByChildren": [
+        123900,
+        192700,
+        241500,
+        271600,
+        296500,
+        317200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 740000,
+      "basicNeedCentsByChildren": [
+        124300,
+        193300,
+        242300,
+        272400,
+        297400,
+        318100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 745000,
+      "basicNeedCentsByChildren": [
+        124700,
+        193900,
+        243000,
+        273300,
+        298300,
+        319100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 750000,
+      "basicNeedCentsByChildren": [
+        125100,
+        194500,
+        243800,
+        274100,
+        299300,
+        320100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 755000,
+      "basicNeedCentsByChildren": [
+        125500,
+        195100,
+        244600,
+        275000,
+        300200,
+        321100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 760000,
+      "basicNeedCentsByChildren": [
+        125900,
+        195700,
+        245300,
+        275800,
+        301100,
+        322000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 765000,
+      "basicNeedCentsByChildren": [
+        126300,
+        196300,
+        246100,
+        276700,
+        302000,
+        323000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 770000,
+      "basicNeedCentsByChildren": [
+        126700,
+        196900,
+        246800,
+        277500,
+        303000,
+        324000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 775000,
+      "basicNeedCentsByChildren": [
+        127100,
+        197500,
+        247600,
+        278400,
+        303900,
+        325000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 780000,
+      "basicNeedCentsByChildren": [
+        127400,
+        198100,
+        248300,
+        279200,
+        304800,
+        325900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 785000,
+      "basicNeedCentsByChildren": [
+        127800,
+        198700,
+        249100,
+        280100,
+        305700,
+        326900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 790000,
+      "basicNeedCentsByChildren": [
+        128200,
+        199200,
+        249800,
+        281000,
+        306700,
+        327900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 795000,
+      "basicNeedCentsByChildren": [
+        128600,
+        199800,
+        250600,
+        281800,
+        307600,
+        328900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 800000,
+      "basicNeedCentsByChildren": [
+        129000,
+        200400,
+        251300,
+        282700,
+        308500,
+        329800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 805000,
+      "basicNeedCentsByChildren": [
+        129400,
+        201000,
+        252100,
+        283500,
+        309400,
+        330800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 810000,
+      "basicNeedCentsByChildren": [
+        129800,
+        201600,
+        252900,
+        284400,
+        310400,
+        331800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 815000,
+      "basicNeedCentsByChildren": [
+        130200,
+        202200,
+        253600,
+        285200,
+        311300,
+        332800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 820000,
+      "basicNeedCentsByChildren": [
+        130600,
+        202800,
+        254400,
+        286100,
+        312200,
+        333700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 825000,
+      "basicNeedCentsByChildren": [
+        131000,
+        203400,
+        255100,
+        286900,
+        313100,
+        334700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 830000,
+      "basicNeedCentsByChildren": [
+        131300,
+        204000,
+        255900,
+        287800,
+        314100,
+        335700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 835000,
+      "basicNeedCentsByChildren": [
+        131700,
+        204600,
+        256600,
+        288700,
+        315000,
+        336700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 840000,
+      "basicNeedCentsByChildren": [
+        132100,
+        205200,
+        257400,
+        289500,
+        315900,
+        337600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 845000,
+      "basicNeedCentsByChildren": [
+        132500,
+        205800,
+        258100,
+        290400,
+        316800,
+        338600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 850000,
+      "basicNeedCentsByChildren": [
+        132900,
+        206400,
+        258900,
+        291200,
+        317800,
+        339600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 855000,
+      "basicNeedCentsByChildren": [
+        133300,
+        207000,
+        259700,
+        292100,
+        318700,
+        340600
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 860000,
+      "basicNeedCentsByChildren": [
+        133700,
+        207600,
+        260400,
+        292900,
+        319600,
+        341500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 865000,
+      "basicNeedCentsByChildren": [
+        134100,
+        208200,
+        261200,
+        293800,
+        320500,
+        342500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 870000,
+      "basicNeedCentsByChildren": [
+        134500,
+        208800,
+        261900,
+        294600,
+        321500,
+        343500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 875000,
+      "basicNeedCentsByChildren": [
+        134900,
+        209400,
+        262700,
+        295500,
+        322400,
+        344500
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 880000,
+      "basicNeedCentsByChildren": [
+        135200,
+        210000,
+        263400,
+        296300,
+        323300,
+        345400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 885000,
+      "basicNeedCentsByChildren": [
+        135600,
+        210600,
+        264200,
+        297200,
+        324200,
+        346400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 890000,
+      "basicNeedCentsByChildren": [
+        136000,
+        211100,
+        264900,
+        298100,
+        325200,
+        347400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 895000,
+      "basicNeedCentsByChildren": [
+        136400,
+        211700,
+        265700,
+        298900,
+        326100,
+        348400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 900000,
+      "basicNeedCentsByChildren": [
+        136800,
+        212300,
+        266400,
+        299800,
+        327000,
+        349300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 905000,
+      "basicNeedCentsByChildren": [
+        137200,
+        212900,
+        267200,
+        300600,
+        327900,
+        350300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 910000,
+      "basicNeedCentsByChildren": [
+        137600,
+        213500,
+        268000,
+        301500,
+        328900,
+        351300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 915000,
+      "basicNeedCentsByChildren": [
+        138000,
+        214100,
+        268700,
+        302300,
+        329800,
+        352300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 920000,
+      "basicNeedCentsByChildren": [
+        138400,
+        214700,
+        269500,
+        303200,
+        330700,
+        353200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 925000,
+      "basicNeedCentsByChildren": [
+        138800,
+        215300,
+        270200,
+        304000,
+        331600,
+        354200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 930000,
+      "basicNeedCentsByChildren": [
+        139100,
+        215900,
+        271000,
+        304900,
+        332600,
+        355200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 935000,
+      "basicNeedCentsByChildren": [
+        139500,
+        216500,
+        271700,
+        305800,
+        333500,
+        356200
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 940000,
+      "basicNeedCentsByChildren": [
+        139900,
+        217100,
+        272500,
+        306600,
+        334400,
+        357100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 945000,
+      "basicNeedCentsByChildren": [
+        140300,
+        217700,
+        273200,
+        307500,
+        335300,
+        358100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 950000,
+      "basicNeedCentsByChildren": [
+        140700,
+        218300,
+        274000,
+        308300,
+        336300,
+        359100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 955000,
+      "basicNeedCentsByChildren": [
+        141100,
+        218900,
+        274800,
+        309200,
+        337200,
+        360100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 960000,
+      "basicNeedCentsByChildren": [
+        141500,
+        219500,
+        275500,
+        310000,
+        338100,
+        361000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 965000,
+      "basicNeedCentsByChildren": [
+        141900,
+        220100,
+        276300,
+        310900,
+        339000,
+        362000
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 970000,
+      "basicNeedCentsByChildren": [
+        142200,
+        220600,
+        276700,
+        311500,
+        339600,
+        362800
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 975000,
+      "basicNeedCentsByChildren": [
+        142500,
+        221000,
+        277200,
+        312100,
+        340200,
+        363400
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 980000,
+      "basicNeedCentsByChildren": [
+        142700,
+        221300,
+        277600,
+        312600,
+        340800,
+        364100
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 985000,
+      "basicNeedCentsByChildren": [
+        143000,
+        221700,
+        278100,
+        313200,
+        341400,
+        364700
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 990000,
+      "basicNeedCentsByChildren": [
+        143200,
+        222100,
+        278600,
+        313700,
+        342000,
+        365300
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 995000,
+      "basicNeedCentsByChildren": [
+        143500,
+        222500,
+        279100,
+        314300,
+        342600,
+        365900
+      ]
+    },
+    {
+      "combinedMonthlyNetIncomeCents": 1000000,
+      "basicNeedCentsByChildren": [
+        143700,
+        222800,
+        279500,
+        314800,
+        343200,
+        366600
+      ]
+    }
+  ],
+  "aboveSchedulePercentBasisPointsByChildren": [
+    500,
+    750,
+    950,
+    1100,
+    1200,
+    1250
+  ],
+  "implementationNotes": [
+    "Generated from the official Florida Senate statute table; do not hand edit.",
+    "Below-schedule calculations require a separately versioned HHS poverty guideline.",
+    "Official Florida Courts form 12.902(e) revision parity remains a separate verification."
+  ]
+}

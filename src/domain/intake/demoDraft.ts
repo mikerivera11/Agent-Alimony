@@ -1,0 +1,177 @@
+import { createEmptyDraft } from "./draft";
+import type { IntakeDraft } from "./draft";
+
+/**
+ * A fully filled-in, clearly fictional example draft. This exists purely so
+ * reviewers and testers can see every screen (including the review and
+ * missing-data summary) without spending ten minutes typing test data. It is
+ * never presented as real, saved, or submitted anywhere — every name and
+ * number below is made up.
+ */
+export function createDemoDraft(): IntakeDraft {
+  const draft = createEmptyDraft();
+  draft.isDemo = true;
+  draft.completedStepIds = [
+    "caseBasics",
+    "marriage",
+    "spouses",
+    "children",
+    "parentingTime",
+    "income",
+    "deductions",
+    "childCosts",
+    "householdExpenses",
+    "assetsDebts",
+    "alimonyFactors",
+    "safetyComplexity",
+    "documentReadiness",
+  ];
+  draft.data = {
+    caseBasics: {
+      county: "Sample County (fictional)",
+      caseType: "with_children",
+      petitionStatus: "not_filed",
+      petitionDate: "2026-07-30",
+      hasAttorney: "no",
+    },
+    marriage: {
+      marriageDate: "2011-06-14",
+      separationStatus: "separated_with_date",
+      separationDate: "2025-01-10",
+    },
+    spouses: {
+      yourRole: "petitioner",
+      yourNameOrInitials: "J.R. (fictional demo person)",
+      spouseNameOrInitials: "A.R. (fictional demo person)",
+    },
+    children: {
+      hasChildren: "yes",
+      children: [
+        {
+          id: "demo-child-1",
+          nameOrInitials: "T.R. (fictional)",
+          dateOfBirth: "2014-03-02",
+          hasSpecialNeeds: "no",
+          specialNeedsDetails: "",
+        },
+        {
+          id: "demo-child-2",
+          nameOrInitials: "M.R. (fictional)",
+          dateOfBirth: "2017-09-21",
+          hasSpecialNeeds: "no",
+          specialNeedsDetails: "",
+        },
+      ],
+    },
+    parentingTime: {
+      overnightsWithYouPerYear: 219,
+      overnightsWithOtherParentPerYear: 146,
+      scheduleStatus: "agreed",
+    },
+    income: {
+      self: {
+        wages: 5200,
+        selfEmploymentIncome: 0,
+        bonusesAndCommissions: 200,
+        investmentIncome: 0,
+        rentalIncome: 0,
+        retirementOrPensionIncome: 0,
+        unemploymentBenefits: 0,
+        disabilityBenefits: 0,
+        otherIncome: 0,
+      },
+      spouse: {
+        wages: 3100,
+        selfEmploymentIncome: 600,
+        bonusesAndCommissions: 0,
+        investmentIncome: 50,
+        rentalIncome: 0,
+        retirementOrPensionIncome: 0,
+        unemploymentBenefits: 0,
+        disabilityBenefits: 0,
+        otherIncome: 0,
+      },
+      incomeNotes: "Demo data — the self-employment amount is a fictional rough monthly average.",
+    },
+    deductions: {
+      self: {
+        federalAndStateTaxWithholding: 780,
+        socialSecurityAndMedicareTax: 398,
+        mandatoryRetirementContributions: 200,
+        healthInsurancePremiumsForSelf: 150,
+        unionDues: 0,
+        courtOrderedChildSupportPaidForOtherChildren: 0,
+        spousalSupportPaidUnderPriorOrder: 0,
+      },
+      spouse: {
+        federalAndStateTaxWithholding: 420,
+        socialSecurityAndMedicareTax: 283,
+        mandatoryRetirementContributions: 0,
+        healthInsurancePremiumsForSelf: 150,
+        unionDues: 0,
+        courtOrderedChildSupportPaidForOtherChildren: 0,
+        spousalSupportPaidUnderPriorOrder: 0,
+      },
+    },
+    childCosts: {
+      childCareCostMonthly: 650,
+      childCarePaidBySelfMonthly: 325,
+      childCarePaidByOtherParentMonthly: 325,
+      childrenHealthInsuranceCostMonthly: 180,
+      childHealthInsurancePaidBySelfMonthly: 180,
+      childHealthInsurancePaidByOtherParentMonthly: 0,
+      extraordinaryMedicalCostsMonthly: 0,
+      extraordinaryEducationalCostsMonthly: 100,
+      whoUsuallyPaysChildCare: "split",
+    },
+    householdExpenses: {
+      housingMonthly: 1800,
+      utilitiesMonthly: 260,
+      foodMonthly: 700,
+      transportationMonthly: 350,
+      insuranceMonthly: 180,
+      minimumDebtPaymentsMonthly: 220,
+      otherMonthlyExpenses: 150,
+    },
+    assetsDebts: {
+      maritalAssetsSummary: "Fictional demo: a house with modest equity and a shared retirement account.",
+      maritalAssetsEstimatedValue: 210000,
+      maritalDebtsSummary: "Fictional demo: a car loan and a small amount of credit card debt.",
+      maritalDebtsEstimatedValue: 18000,
+      hasOtherSupportObligations: "no",
+      otherSupportObligationsDetails: "",
+      hasHiddenOrUnknownAssets: "no",
+      hasComplexBusinessInterests: "no",
+    },
+    alimonyFactors: {
+      standardOfLivingDuringMarriage: "Fictional demo: a middle-income, two-earner household in a suburban area.",
+      ageAndHealthSelf: "Fictional demo: late 30s, generally healthy.",
+      ageAndHealthSpouse: "Fictional demo: early 40s, generally healthy.",
+      earningCapacitySelf: "Fictional demo: stable full-time employment in the same field for several years.",
+      earningCapacitySpouse: "Fictional demo: mix of part-time employment and freelance work.",
+      contributionsToMarriage: "Fictional demo: both spouses worked; one took more time away from work for child-rearing.",
+      otherFactors: "",
+      potentialAlimonyRecipient: "spouse",
+      confirmedReasonableMonthlyNeed: 1200,
+      rehabilitativePlanConfirmed: "no",
+      exceptionalCircumstancesExtensionRequested: "no",
+      requestedAlimonyType: "not_sure",
+    },
+    safetyComplexity: {
+      domesticViolenceOrCoercion: "no",
+      feelsSafeToContinueOnline: "yes",
+      hasJurisdictionDispute: "no",
+      incomeIsImputedOrDisputed: "no",
+      filedOrFilingBeforeJuly2023: "no",
+      otherComplexityNotes: "",
+    },
+    documentReadiness: {
+      hasRecentPayStubsOrIncomeProof: "yes",
+      hasTaxReturnsLastThreeYears: "yes",
+      hasBankAndAssetStatements: "no",
+      hasParentingOrTimeshareRecords: "yes",
+      acknowledgesSevenDayRetention: true,
+    },
+  };
+  return draft;
+}
