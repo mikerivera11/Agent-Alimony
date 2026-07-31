@@ -25,6 +25,16 @@ import type { StatutoryCitation } from "@/domain/rules";
 
 import type { FormLine, FormWorksheet, OfficialFormReference } from "./types";
 
+/**
+ * Verified 2026-07-31 by extracting the content streams of the linked PDF: of
+ * 47,262 text strings in the document, exactly one carries a date, and it is
+ * the footer reading "Parenting Plan (03/09)". Note that the court publishes a
+ * *separate* instructions document for this form whose own footer reads
+ * (02/18) — that date belongs to the instructions, not to the form, and must
+ * not be copied here. The PDF `Title` metadata happens to agree with the
+ * footer on this form, which is luck rather than a rule: on 12.902(e) the
+ * filename implies 11/20 while the footer reads 06/25.
+ */
 export const PARENTING_PLAN_FORM: OfficialFormReference = {
   formNumber: "12.995(a)",
   title: "Parenting Plan",
