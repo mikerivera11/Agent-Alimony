@@ -1,13 +1,17 @@
 /**
- * Azure AI Foundry assistant adapter (Claude Opus 5).
+ * Azure AI Foundry assistant adapter (Azure OpenAI GPT).
  *
- * Calls the Anthropic Messages API exposed by a Foundry resource at
- * `https://<resource>.services.ai.azure.com/anthropic`. Implemented with
- * `fetch` and `@azure/identity` rather than a provider SDK: the Messages
- * wire format and the `anthropic-version` header are stable and documented,
- * `@azure/identity` is already a dependency for Blob and Key Vault, and this
- * avoids taking a hard dependency on a 0.x SDK for a path that cannot be
- * exercised without a live Azure subscription.
+ * Calls the Azure OpenAI chat-completions API exposed by a Foundry resource at
+ * `https://<resource>.services.ai.azure.com/openai`. Implemented with `fetch`
+ * and `@azure/identity` rather than a provider SDK: the wire format is stable
+ * and documented, `@azure/identity` is already a dependency for Blob and Key
+ * Vault, and this avoids taking a hard dependency on an SDK for a path that
+ * cannot be exercised without a live Azure subscription.
+ *
+ * NOTE: this transport has not been run against a live Foundry resource. That
+ * is survivable by construction — every failure path below falls back to the
+ * deterministic local adapter, so a wrong route or api-version degrades to the
+ * built-in statute reference instead of breaking the assistant.
  *
  * The model NEVER supplies legal substance. It receives only passages
  * retrieved from the curated knowledge base and rephrases them. Its output
@@ -30,31 +34,28 @@ import { LocalAssistantAdapter } from "./local-adapter";
 import { retrieveKnowledge } from "./retrieval";
 import { ASSISTANT_SYSTEM_PROMPT, buildGroundingBlock } from "./systemPrompt";
 
-/** Entra scope for Foundry data-plane calls. Note: ai.azure.com, not cognitiveservices. */
-const FOUNDRY_TOKEN_SCOPE = "https://ai.azure.com/.default";
-const ANTHROPIC_VERSION = "2023-06-01";
+/** Entra scope for the Azure OpenAI data plane on an AI Services resource. */
+const FOUNDRY_TOKEN_SCOPE = "https://cognitiveservices.azure.com/.default";
 const REQUEST_TIMEOUT_MS = 30_000;
 
 /**
- * Claude Opus 5 on Foundry rejects `temperature` and `top_k`, and requires
- * `top_p` to be exactly 0.99 when supplied.
+ * Sampling parameters are deliberately omitted. Current GPT reasoning models
+ * reject a non-default `temperature`, and this adapter only ever rephrases
+ * passages it was handed — there is nothing to gain from sampling knobs and a
+ * rejected request costs us the answer.
  */
-const TOP_P = 0.99;
 const MAX_OUTPUT_TOKENS = 1024;
 
-interface AnthropicContentBlock {
-  readonly type: string;
-  readonly text?: string;
-}
-
-interface AnthropicMessagesResponse {
-  readonly content?: readonly AnthropicContentBlock[];
-  readonly stop_reason?: string;
+interface ChatCompletionResponse {
+  readonly choices?: readonly {
+    readonly message?: { readonly content?: string };
+    readonly finish_reason?: string;
+  }[];
 }
 
 export class FoundryAssistantAdapter implements AssistantAdapter {
   readonly name = "foundry";
-  readonly label = "Azure AI Foundry (Claude Opus 5), grounded in Florida statutes";
+  readonly label = "Azure AI Foundry (Azure OpenAI GPT), grounded in Florida statutes";
 
   private readonly fallback = new LocalAssistantAdapter();
   private credential: TokenCredential | undefined;
@@ -121,14 +122,14 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
 
     // API key is supported but managed identity is preferred in Azure.
     if (env.AZURE_FOUNDRY_API_KEY) {
-      return { "x-api-key": env.AZURE_FOUNDRY_API_KEY };
+      return { "api-key": env.AZURE_FOUNDRY_API_KEY };
     }
 
     const token = await this.getCredential().getToken(FOUNDRY_TOKEN_SCOPE);
     if (!token) {
       throw new AssistantProviderUnavailableError(
         "Could not acquire an Entra ID token for Azure AI Foundry. Ensure the app's identity holds the " +
-          "Cognitive Services User role on the Foundry resource.",
+          "Cognitive Services OpenAI User role on the Foundry resource.",
       );
     }
     return { Authorization: `Bearer ${token.token}` };
@@ -144,6 +145,7 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
     }
 
     const messages = [
+      { role: "system" as const, content: ASSISTANT_SYSTEM_PROMPT },
       ...request.history.map((message) => ({
         role: message.role,
         content: message.role === "user" ? encloseUntrustedText(message.content) : message.content,
@@ -155,19 +157,20 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetch(`${env.AZURE_FOUNDRY_ENDPOINT.replace(/\/$/, "")}/anthropic/v1/messages`, {
+      const url =
+        `${env.AZURE_FOUNDRY_ENDPOINT.replace(/\/$/, "")}/openai/deployments/` +
+        `${encodeURIComponent(env.AZURE_FOUNDRY_DEPLOYMENT)}/chat/completions` +
+        `?api-version=${encodeURIComponent(env.AZURE_FOUNDRY_API_VERSION)}`;
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "anthropic-version": ANTHROPIC_VERSION,
           ...(await this.authorizationHeader()),
         },
         body: JSON.stringify({
-          model: env.AZURE_FOUNDRY_DEPLOYMENT,
-          max_tokens: MAX_OUTPUT_TOKENS,
-          top_p: TOP_P,
-          system: ASSISTANT_SYSTEM_PROMPT,
           messages,
+          max_completion_tokens: MAX_OUTPUT_TOKENS,
         }),
         signal: controller.signal,
       });
@@ -180,12 +183,8 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
         );
       }
 
-      const payload = (await response.json()) as AnthropicMessagesResponse;
-      const text = (payload.content ?? [])
-        .filter((block) => block.type === "text" && typeof block.text === "string")
-        .map((block) => block.text)
-        .join("")
-        .trim();
+      const payload = (await response.json()) as ChatCompletionResponse;
+      const text = (payload.choices?.[0]?.message?.content ?? "").trim();
 
       if (!text) {
         throw new AssistantProviderUnavailableError("Azure AI Foundry returned an empty response.");

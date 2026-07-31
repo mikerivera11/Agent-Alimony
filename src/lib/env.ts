@@ -37,9 +37,12 @@ const serverEnvSchema = z.object({
   ASSISTANT_PROVIDER: emptyStringAsUndefined(z.enum(["local", "foundry"]).default("local")),
   /** e.g. https://<resource>.services.ai.azure.com */
   AZURE_FOUNDRY_ENDPOINT: optionalUrl(),
-  /** Foundry model deployment name, e.g. claude-opus-5. */
+  /** Foundry model deployment name, e.g. gpt-5. */
   AZURE_FOUNDRY_DEPLOYMENT: optionalString(),
-  /** Optional. Prefer managed identity with the Cognitive Services User role. */
+  /** Azure OpenAI data-plane API version. Overridable so a model that needs a
+   *  newer version doesn't require a code change. */
+  AZURE_FOUNDRY_API_VERSION: emptyStringAsUndefined(z.string().default("2024-10-21")),
+  /** Optional. Prefer managed identity with the Cognitive Services OpenAI User role. */
   AZURE_FOUNDRY_API_KEY: optionalString(),
   MAX_UPLOAD_BYTES: emptyStringAsUndefined(z.coerce.number().int().positive().default(10 * 1024 * 1024)),
 });

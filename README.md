@@ -149,11 +149,13 @@ The endpoint is stateless and persists nothing; neither the question nor the ans
 | `ASSISTANT_PROVIDER` | Behaviour |
 | --- | --- |
 | `local` (default) | Answers from the built-in statute reference. Needs no AI provider and is not a stub. |
-| `foundry` | Additionally uses Claude Opus 5 on Azure AI Foundry to rephrase the same retrieved passages in plainer language. |
+| `foundry` | Additionally uses an Azure OpenAI GPT deployment on Azure AI Foundry to rephrase the same retrieved passages in plainer language. |
 
-The Foundry adapter calls the Anthropic Messages API at `https://<resource>.services.ai.azure.com/anthropic/v1/messages` using `fetch` and the existing `@azure/identity` dependency, rather than taking a hard dependency on a 0.x provider SDK. It authenticates by managed identity (Entra scope `https://ai.azure.com/.default`, role **Cognitive Services User**), with `AZURE_FOUNDRY_API_KEY` as a fallback.
+The Foundry adapter calls the Azure OpenAI chat-completions API at `https://<resource>.services.ai.azure.com/openai/deployments/<deployment>/chat/completions` using `fetch` and the existing `@azure/identity` dependency, rather than taking a hard dependency on a provider SDK. It authenticates by managed identity (Entra scope `https://cognitiveservices.azure.com/.default`, role **Cognitive Services OpenAI User**), with `AZURE_FOUNDRY_API_KEY` as a fallback. The API version defaults to `2024-10-21` and is overridable via `AZURE_FOUNDRY_API_VERSION` so a model needing a newer one does not require a code change.
 
-Not yet implemented, deliberately: the Foundry Bicep module. The current `Microsoft.CognitiveServices/accounts` API version could not be verified from this environment, and this project does not guess at unverified values. When provisioning, note that Foundry does **not** apply Azure content filtering to Claude models, that `Microsoft.SaaS/register/action` must be run once on the subscription, and that CSP, free-trial, student, and sponsored-credit-only subscriptions cannot subscribe to Anthropic Claude on Azure Marketplace.
+This transport has **not** been exercised against a live Foundry resource. That is safe by construction: every failure path falls back to the local adapter, so a wrong route or api-version degrades to the built-in statute reference rather than breaking the assistant.
+
+Not yet implemented, deliberately: the Foundry Bicep module. The current `Microsoft.CognitiveServices/accounts` API version could not be verified from this environment, and this project does not guess at unverified values. Provision the Foundry resource and model deployment out of band, then set the environment variables above.
 
 ## Privacy and security defaults
 
