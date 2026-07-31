@@ -30,7 +30,7 @@ import {
 } from "./adapter";
 import { detectEscalationSignals, encloseUntrustedText, scanForCalculatedFigures, scanForPromptInjection } from "./guardrails";
 import { LocalAssistantAdapter } from "./local-adapter";
-import { gatherGrounding, groundingCitations, isUngrounded } from "./grounding";
+import { citationsUsedIn, gatherGrounding, isUngrounded } from "./grounding";
 import { ASSISTANT_SYSTEM_PROMPT, buildGroundingBlock } from "./systemPrompt";
 
 /** Entra scope for the Azure OpenAI data plane on an AI Services resource. */
@@ -103,9 +103,9 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
 
     return {
       content: text.trim(),
-      // When curated entries grounded the answer, only their citations are
-      // listed. See groundingCitations() for why.
-      citations: groundingCitations(grounding),
+      // Read back out of the answer, not assumed from the grounding. See
+      // citationsUsedIn() for why neither tier alone is the right answer here.
+      citations: citationsUsedIn(text, grounding),
       escalations,
       groundedIn: [
         ...grounding.entries.map((hit) => hit.entry.id),

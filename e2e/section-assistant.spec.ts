@@ -21,7 +21,12 @@ test("answers a question from the section it was opened on, grounded in that sec
   // Suggested starters give people a way in before they know what to ask.
   await dock.getByRole("button", { name: /What makes an asset marital versus nonmarital/i }).click();
 
-  await expect(dock.getByText(/equitable distribution/i).first()).toBeVisible({ timeout: 15_000 });
+  // Asserted on the substance of the question and on the citation, not on any
+  // particular phrasing. When ASSISTANT_PROVIDER=foundry a model rephrases the
+  // same retrieved passages, so exact wording is provider-dependent; what must
+  // hold either way is that the answer classifies assets and shows the statute
+  // it came from.
+  await expect(dock.getByText(/nonmarital/i).first()).toBeVisible({ timeout: 30_000 });
   // Grounded answers cite the statute they came from.
   await expect(dock.getByText(/61\.075/).first()).toBeVisible();
 });
@@ -58,7 +63,8 @@ test("stays available across pages and keeps the thread while you move", async (
 
   await dock.getByRole("textbox").fill("How is child support calculated in Florida?");
   await dock.getByRole("button", { name: "Ask", exact: true }).click();
-  await expect(dock.getByText(/61\.30/).first()).toBeVisible({ timeout: 15_000 });
+  // 30s rather than 15s: when a model is configured this round-trips to Azure.
+  await expect(dock.getByText(/61\.30/).first()).toBeVisible({ timeout: 30_000 });
 
   // Escape closes it and the launcher brings the same conversation back.
   await page.keyboard.press("Escape");

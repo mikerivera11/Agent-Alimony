@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { INTAKE_ASSISTANT_TOPICS, INTAKE_ASSISTANT_TOPIC_IDS } from "@/domain/intake";
 
-import { gatherGrounding, groundingCitations, isUngrounded } from "../grounding";
+import { citationsUsedIn, gatherGrounding, groundingCitations, isUngrounded } from "../grounding";
 import { scanForCalculatedFigures } from "../guardrails";
 import { LocalAssistantAdapter } from "../local-adapter";
 import { STATUTE_CHUNKS, STATUTE_CORPUS } from "../statuteCorpus";
@@ -296,5 +296,67 @@ describe("groundingCitations", () => {
     const local = await new LocalAssistantAdapter().answer({ question, history: [], topic: "children" });
 
     expect(local.citations.map((c) => c.citation)).toEqual(expected);
+  });
+});
+
+/**
+ * Citations for a generated answer, read back out of the answer itself.
+ *
+ * Both simpler rules were tried against the live model and both were wrong.
+ * Citing everything retrieved pointed readers at s. 61.14 (modification) for a
+ * question about which children count on the worksheet. Citing only the
+ * curated entries then went too far the other way: an answer the model built
+ * entirely from s. 61.14(4) and s. 61.30(14) was cited to s. 61.30(1)-(6),
+ * because a general child-support entry had also matched.
+ */
+describe("citationsUsedIn", () => {
+  const grounding = gatherGrounding("would I also include children from other marriages", "children");
+
+  it("keeps only the sections the answer actually names", () => {
+    const answer =
+      "Only children you share are counted. Fla. Stat. § 61.30(1)(a). Support you actually pay for " +
+      "other children may be deducted. Fla. Stat. § 61.30(3)(f).";
+
+    expect(citationsUsedIn(answer, grounding).map((c) => c.citation)).toEqual([
+      "Fla. Stat. §61.30(1)(a)",
+      "Fla. Stat. §61.30(3)(f)",
+    ]);
+  });
+
+  it("matches regardless of the spacing the model uses after the section symbol", () => {
+    const spaced = citationsUsedIn("See Fla. Stat. § 61.30(1)(a).", grounding);
+    const tight = citationsUsedIn("See Fla. Stat. §61.30(1)(a).", grounding);
+
+    expect(spaced.map((c) => c.citation)).toEqual(["Fla. Stat. §61.30(1)(a)"]);
+    expect(tight.map((c) => c.citation)).toEqual(spaced.map((c) => c.citation));
+  });
+
+  it("drops a section the answer names that the grounding does not support", () => {
+    // s. 61.13 was never retrieved here, so whether the model recalled it from
+    // training data or invented it, it has not been verified and is not shown.
+    const answer = "Only shared children count. Fla. Stat. § 61.30(1)(a). See also Fla. Stat. § 61.13(2).";
+    const cited = citationsUsedIn(answer, grounding).map((c) => c.citation);
+
+    expect(cited).toContain("Fla. Stat. §61.30(1)(a)");
+    expect(cited.some((c) => c.includes("61.13"))).toBe(false);
+  });
+
+  it("cites a statute chunk the curated entries do not carry, when the answer used it", () => {
+    const modification = gatherGrounding("can child support be modified later", undefined);
+    const chunkCitations = modification.statutes.map((hit) => hit.chunk.citation);
+    expect(chunkCitations.length).toBeGreaterThan(0);
+
+    const answer = `Yes, support can be modified. ${chunkCitations[0].replace("§", "§ ")}`;
+    expect(citationsUsedIn(answer, modification).map((c) => c.citation)).toContain(chunkCitations[0]);
+  });
+
+  it("falls back to the grounding when the answer names no section at all", () => {
+    const answer = "Only the children you and your spouse share are counted on the worksheet.";
+
+    expect(citationsUsedIn(answer, grounding)).toEqual(groundingCitations(grounding));
+  });
+
+  it("never invents a citation out of an empty grounding", () => {
+    expect(citationsUsedIn("Fla. Stat. § 61.30(1)(a).", { entries: [], statutes: [] })).toEqual([]);
   });
 });
