@@ -43,8 +43,6 @@ export interface IntakeDraft {
   draftId: string;
   createdAt: string;
   updatedAt: string;
-  /** True only for the built-in fictional example draft — never real user data. */
-  isDemo: boolean;
   /** Topics the person has actively confirmed via "Save and continue". */
   completedStepIds: IntakeStepId[];
   data: IntakeDraftData;
@@ -79,7 +77,6 @@ export function createEmptyDraft(): IntakeDraft {
     draftId: generateId(),
     createdAt: now,
     updatedAt: now,
-    isDemo: false,
     completedStepIds: [],
     data: structuredCloneDraftData(EMPTY_INTAKE_DRAFT_DATA),
   };

@@ -1,13 +1,14 @@
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, createDemoDraft } from "@/domain/intake";
+import { buildReviewedDraft, } from "@/domain/intake";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 
 import { buildPackageViewModel } from "../buildPackageViewModel";
 import { PACKAGE_DISCLAIMER_BODY, PACKAGE_DISCLAIMER_HEADING } from "../disclaimer";
 
 function demoReviewedDraft(): ReviewedIntakeDraft {
-  return buildReviewedDraft(createDemoDraft());
+  return buildReviewedDraft(createSampleDraft());
 }
 
 describe("buildPackageViewModel", () => {

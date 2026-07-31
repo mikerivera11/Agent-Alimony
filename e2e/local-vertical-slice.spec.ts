@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-test("completes the fictional intake, calculates results, downloads a package, and reviews demo proposals", async ({
+import { seedCompleteDraft } from "./seedDraft";
+
+test("completes the intake, calculates results, downloads a package, and reviews extraction proposals", async ({
   page,
 }) => {
-  await page.goto("/intake?demo=1");
-  await expect(page.getByText(/demo mode/i).first()).toBeVisible();
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
 
   for (let step = 0; step < 12; step += 1) {
     await page.getByRole("button", { name: "Save and continue" }).click();
@@ -35,7 +37,8 @@ test("completes the fictional intake, calculates results, downloads a package, a
 test("keeps an excluded asset in the estate until a written agreement is confirmed", async ({
   page,
 }) => {
-  await page.goto("/intake?demo=1");
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
 
   // Walk to the assets and debts step.
   for (let step = 0; step < 9; step += 1) {

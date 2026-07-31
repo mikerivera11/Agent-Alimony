@@ -3,18 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { primaryButtonClasses, secondaryButtonClasses } from "./fields/inputStyles";
+import { primaryButtonClasses } from "./fields/inputStyles";
 
 interface ConsentGateProps {
   startHref: string;
-  demoHref: string;
 }
 /**
  * Requires an explicit privacy/consent acknowledgement before the "Start"
  * button becomes usable. Kept as its own small client component so the
  * surrounding landing page can stay a plain server-rendered page.
  */
-export function ConsentGate({ startHref, demoHref }: ConsentGateProps) {
+export function ConsentGate({ startHref }: ConsentGateProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
   return (
@@ -50,16 +49,6 @@ export function ConsentGate({ startHref, demoHref }: ConsentGateProps) {
           className={`${primaryButtonClasses} ${!acknowledged ? "pointer-events-none opacity-50" : ""}`}
         >
           Start my guided intake
-        </Link>
-        <Link
-          href={demoHref}
-          aria-disabled={!acknowledged}
-          onClick={(event) => {
-            if (!acknowledged) event.preventDefault();
-          }}
-          className={`${secondaryButtonClasses} ${!acknowledged ? "pointer-events-none opacity-50" : ""}`}
-        >
-          See a fictional demo draft
         </Link>
       </div>
       {!acknowledged ? (

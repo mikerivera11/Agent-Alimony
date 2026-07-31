@@ -24,7 +24,6 @@ import { INTAKE_STEPS } from "@/domain/intake";
 
 import { AllAtOnceForm } from "./AllAtOnceForm";
 import { AttorneyEscalationNotice } from "./AttorneyEscalationNotice";
-import { DemoBanner } from "./DemoBanner";
 import { primaryButtonClasses, secondaryButtonClasses } from "./fields/inputStyles";
 import { IntakeModeToggle } from "./IntakeModeToggle";
 import { MissingDataSummary } from "./MissingDataSummary";
@@ -236,7 +235,6 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
         ) : null}
       </Card>
 
-      {draft.isDemo ? <DemoBanner onExitDemo={handleStartOver} /> : null}
 
       {escalation.safetyConcern ? (
         <Alert variant="danger" emphasis role="alert" title="Your safety comes first.">

@@ -6,13 +6,6 @@ export const metadata: Metadata = {
   title: "Guided intake — Florida Support Guide",
 };
 
-interface IntakePageProps {
-  searchParams: Promise<{ demo?: string | string[] }>;
-}
-
-export default async function IntakePage({ searchParams }: IntakePageProps) {
-  const params = await searchParams;
-  const isDemo = params.demo === "1" || params.demo === "true";
-
-  return <IntakeExperience isDemo={isDemo} />;
+export default function IntakePage() {
+  return <IntakeExperience />;
 }

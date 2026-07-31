@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { seedCompleteDraft } from "./seedDraft";
+
 /** Every dollar figure rendered on the results page, in order. */
 async function resultsFigures(page: Page): Promise<string> {
   const text = await page.locator("main").innerText();
@@ -15,7 +17,8 @@ test("the one-page layout produces exactly the same figures as the guided flow",
   // Offering a second way in is only safe if it cannot change the answer, so
   // this compares every dollar figure on the results page rather than spot
   // checking one of them.
-  await page.goto("/intake?demo=1");
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
   for (let step = 0; step < 12; step += 1) {
     await page.getByRole("button", { name: "Save and continue" }).click();
   }
@@ -27,7 +30,8 @@ test("the one-page layout produces exactly the same figures as the guided flow",
   expect(guided.length).toBeGreaterThan(0);
 
   await page.evaluate(() => window.localStorage.clear());
-  await page.goto("/intake?demo=1");
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
   await chooseOnePage(page);
   await page.getByRole("button", { name: "Check answers and review" }).click();
   await expect(page.getByRole("heading", { name: "Review your answers" })).toBeVisible();
@@ -52,7 +56,8 @@ test("the one-page layout applies the same validation before review", async ({ p
 });
 
 test("sections appear and disappear as the children answer changes", async ({ page }) => {
-  await page.goto("/intake?demo=1");
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
   await chooseOnePage(page);
 
   const sections = page.locator("section[id^='section-']");
@@ -69,7 +74,8 @@ test("sections appear and disappear as the children answer changes", async ({ pa
 });
 
 test("answers carry across when switching layouts", async ({ page }) => {
-  await page.goto("/intake?demo=1");
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
   await chooseOnePage(page);
 
   const onePageCounty = page.locator("#section-caseBasics").getByLabel(/county/i).first();

@@ -1,14 +1,15 @@
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 
 import { buildPackageViewModel } from "@/domain/package";
-import { buildReviewedDraft, createDemoDraft } from "@/domain/intake";
+import { buildReviewedDraft, } from "@/domain/intake";
 
 import { generatePackagePdf } from "../pdf";
 
 describe("generatePackagePdf", () => {
   it("produces bytes with a valid PDF header that pdf-lib can reload", async () => {
-    const viewModel = buildPackageViewModel(buildReviewedDraft(createDemoDraft()));
+    const viewModel = buildPackageViewModel(buildReviewedDraft(createSampleDraft()));
     const bytes = await generatePackagePdf(viewModel);
 
     expect(bytes).toBeInstanceOf(Uint8Array);
@@ -21,7 +22,7 @@ describe("generatePackagePdf", () => {
   });
 
   it("wraps content across multiple pages for a full demo packet", async () => {
-    const viewModel = buildPackageViewModel(buildReviewedDraft(createDemoDraft()));
+    const viewModel = buildPackageViewModel(buildReviewedDraft(createSampleDraft()));
     const bytes = await generatePackagePdf(viewModel);
     const reloaded = await PDFDocument.load(bytes);
 
@@ -31,7 +32,7 @@ describe("generatePackagePdf", () => {
   });
 
   it("still renders successfully when child support and alimony both need input (minimal draft)", async () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     reviewed.data.children.hasChildren = "no";
     reviewed.data.children.children = [];
     reviewed.data.parentingTime = undefined;

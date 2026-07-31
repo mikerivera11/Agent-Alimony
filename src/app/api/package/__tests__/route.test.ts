@@ -1,6 +1,7 @@
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, createDemoDraft } from "@/domain/intake";
+import { buildReviewedDraft, } from "@/domain/intake";
 
 import { POST } from "../route";
 
@@ -14,7 +15,7 @@ function postRequest(body: unknown): Request {
 
 describe("POST /api/package", () => {
   it("returns an attachment PDF with no-store headers for a valid reviewed-draft payload", async () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     const response = await POST(postRequest({ reviewedDraft: reviewed }));
 
     expect(response.status).toBe(200);
@@ -39,7 +40,7 @@ describe("POST /api/package", () => {
   });
 
   it("rejects a payload carrying an extraneous field instead of silently accepting it", async () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     const response = await POST(
       postRequest({ reviewedDraft: reviewed, htmlOverride: "<script>alert(1)</script>" }),
     );

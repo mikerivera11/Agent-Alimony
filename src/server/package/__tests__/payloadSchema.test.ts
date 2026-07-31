@@ -1,18 +1,19 @@
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, createDemoDraft } from "@/domain/intake";
+import { buildReviewedDraft, } from "@/domain/intake";
 
 import { packageRequestSchema } from "../payloadSchema";
 
 describe("packageRequestSchema", () => {
   it("accepts a valid reviewed-draft payload built from the demo draft", () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     const result = packageRequestSchema.safeParse({ reviewedDraft: reviewed });
     expect(result.success).toBe(true);
   });
 
   it("rejects a payload with an unexpected top-level field (e.g. a precomputed result or raw HTML)", () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     const result = packageRequestSchema.safeParse({
       reviewedDraft: reviewed,
       precomputedOutcome: { monthlyTransferAmountCents: 999_999 },
@@ -21,7 +22,7 @@ describe("packageRequestSchema", () => {
   });
 
   it("rejects a payload with an unexpected key inside the reviewed data envelope", () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     const withExtra = {
       reviewedDraft: {
         ...reviewed,

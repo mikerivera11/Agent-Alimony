@@ -97,7 +97,6 @@ export function ResultsExperience() {
       <Card padding="sm" className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">
           Generated {new Date(viewModel.generatedAt).toLocaleString()}
-          {viewModel.isDemo ? " — demo data" : ""}
         </p>
         <div className="flex flex-wrap gap-3">
           <Button type="button" onClick={handleDownload} loading={downloadState === "downloading"}>

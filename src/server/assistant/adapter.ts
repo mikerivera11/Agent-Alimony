@@ -53,5 +53,6 @@ export class AssistantProviderUnavailableError extends Error {
   }
 }
 
-export const MAX_QUESTION_LENGTH = 2000;
-export const MAX_HISTORY_TURNS = 12;
+// Re-exported so server code keeps a single import site, while the client can
+// import the same numbers without reaching into `src/server/`.
+export { MAX_CONVERSATION_LENGTH, MAX_HISTORY_TURNS, MAX_QUESTION_LENGTH } from "@/lib/assistantLimits";

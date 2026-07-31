@@ -157,7 +157,6 @@ export function buildPackageViewModel(reviewed: ReviewedIntakeDraft): PackageVie
   return {
     draftId: reviewed.draftId,
     generatedAt: new Date().toISOString(),
-    isDemo: reviewed.isDemo,
     disclaimer: PACKAGE_DISCLAIMER,
     confirmedFacts: buildConfirmedFactEntries(reviewed),
     missingOrUnsupported,

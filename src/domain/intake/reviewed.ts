@@ -28,7 +28,6 @@ import type {
 export interface ReviewedIntakeDraft {
   draftId: string;
   reviewedAt: string;
-  isDemo: boolean;
   data: {
     caseBasics: CaseBasics;
     marriage: Marriage;
@@ -79,7 +78,6 @@ export function buildReviewedDraft(draft: IntakeDraft): ReviewedIntakeDraft {
   return {
     draftId: draft.draftId,
     reviewedAt: new Date().toISOString(),
-    isDemo: draft.isDemo,
     data: {
       caseBasics: parseStep("caseBasics", draft.data),
       marriage: parseStep("marriage", draft.data),

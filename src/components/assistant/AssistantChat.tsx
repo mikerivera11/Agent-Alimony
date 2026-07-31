@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Alert, Badge, Button, Card } from "@/components/ui";
+import { MAX_QUESTION_LENGTH } from "@/lib/assistantLimits";
 
 /**
  * Chat panel for the Florida family-law information assistant.
@@ -50,8 +51,10 @@ const SUGGESTED_QUESTIONS = [
   "What financial documents do I have to provide?",
 ];
 
-const MAX_QUESTION_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 10;
+
+/** Only warn near the ceiling; a running count on every question is just noise. */
+const COUNTER_VISIBLE_FROM = MAX_QUESTION_LENGTH - 2_000;
 
 function renderInline(text: string) {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
@@ -289,7 +292,7 @@ export function AssistantChat() {
             id="assistant-question"
             aria-describedby="assistant-question-hint"
             value={draft}
-            onChange={(event) => setDraft(event.target.value.slice(0, MAX_QUESTION_LENGTH))}
+            onChange={(event) => setDraft(event.target.value)}
             rows={3}
             maxLength={MAX_QUESTION_LENGTH}
             placeholder="For example: how does the length of my marriage affect alimony?"
@@ -297,7 +300,9 @@ export function AssistantChat() {
           />
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-xs text-ink-subtle">
-              {draft.length}/{MAX_QUESTION_LENGTH}
+              {draft.length >= COUNTER_VISIBLE_FROM
+                ? `${draft.length.toLocaleString()} / ${MAX_QUESTION_LENGTH.toLocaleString()} characters`
+                : ""}
             </span>
             <Button type="submit" loading={pending} disabled={!draft.trim()}>
               Ask

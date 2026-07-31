@@ -1,12 +1,13 @@
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, createDemoDraft, type ReviewedIntakeDraft } from "@/domain/intake";
+import { buildReviewedDraft, type ReviewedIntakeDraft } from "@/domain/intake";
 import { unwrapConfirmedFact } from "@/domain/rules";
 
 import { mapReviewedDraftToAlimonyInput } from "../alimonyMapper";
 
 function demoReviewedDraft(): ReviewedIntakeDraft {
-  return buildReviewedDraft(createDemoDraft());
+  return buildReviewedDraft(createSampleDraft());
 }
 
 function clone(reviewed: ReviewedIntakeDraft): ReviewedIntakeDraft {

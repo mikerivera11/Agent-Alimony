@@ -34,7 +34,6 @@ export const packageRequestSchema = z
       .object({
         draftId: z.string().trim().min(1).max(200),
         reviewedAt: z.string().trim().min(1).max(100),
-        isDemo: z.boolean(),
         data: z
           .object({
             caseBasics: caseBasicsSchema,

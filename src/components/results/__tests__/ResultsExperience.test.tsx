@@ -1,9 +1,10 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest";
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, createDemoDraft } from "@/domain/intake";
+import { buildReviewedDraft, } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
 
 import { ResultsExperience } from "../ResultsExperience";
@@ -22,7 +23,7 @@ describe("ResultsExperience", () => {
   });
 
   it("renders the disclaimer and deterministic child-support and alimony results", async () => {
-    const reviewed = buildReviewedDraft(createDemoDraft());
+    const reviewed = buildReviewedDraft(createSampleDraft());
     await createLocalStorageReviewedSnapshotStorage().save(reviewed);
 
     render(<ResultsExperience />);

@@ -83,7 +83,7 @@ export default function Home() {
           </Alert>
         </section>
 
-        <ConsentGate startHref="/intake" demoHref="/intake?demo=1" />
+        <ConsentGate startHref="/intake" />
 
         <Link
           href="/documents"

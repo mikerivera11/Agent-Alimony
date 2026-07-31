@@ -1,7 +1,6 @@
 export * from "./fields";
 export * from "./IntakeWizard";
 export * from "./QuickExitLink";
-export * from "./DemoBanner";
 export * from "./ProgressIndicator";
 export * from "./MissingDataSummary";
 export * from "./AttorneyEscalationNotice";

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   ASSISTANT_DISCLAIMER,
+  MAX_CONVERSATION_LENGTH,
   MAX_HISTORY_TURNS,
   MAX_QUESTION_LENGTH,
   getAssistantAdapter,
@@ -48,7 +49,29 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const parsed = requestSchema.safeParse(payload);
   if (!parsed.success) {
-    return errorResponse(400, "invalid_request", `Ask a question of up to ${MAX_QUESTION_LENGTH} characters.`);
+    const emptyQuestion = parsed.error.issues.some(
+      (issue) => issue.path[0] === "question" && issue.code === "too_small",
+    );
+    return errorResponse(
+      400,
+      "invalid_request",
+      emptyQuestion
+        ? "Type a question first."
+        : `That's longer than this form accepts. Questions can be up to ${MAX_QUESTION_LENGTH.toLocaleString()} characters — try asking about the part you most need explained.`,
+    );
+  }
+
+  // A per-message cap doesn't bound the request on its own: a full history of
+  // maximum-length turns would still be enormous. Bound the conversation too.
+  const conversationLength =
+    parsed.data.question.length +
+    parsed.data.history.reduce((total, message) => total + message.content.length, 0);
+  if (conversationLength > MAX_CONVERSATION_LENGTH) {
+    return errorResponse(
+      400,
+      "conversation_too_long",
+      "This conversation has grown too long to send. Reload the page to start a fresh one — nothing is saved either way.",
+    );
   }
 
   try {

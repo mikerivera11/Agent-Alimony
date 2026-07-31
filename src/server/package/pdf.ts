@@ -370,9 +370,7 @@ export async function generatePackagePdf(viewModel: PackageViewModel): Promise<U
 async function finishDocument(doc: PDFDocument, writer: PdfWriter, viewModel: PackageViewModel): Promise<Uint8Array> {
   writer.title("Florida Support & Alimony Estimate Packet");
   writer.paragraph(
-    `Generated ${new Date(viewModel.generatedAt).toLocaleString("en-US")} · Draft ${viewModel.draftId}${
-      viewModel.isDemo ? " · DEMO DATA (fictional example)" : ""
-    }`,
+    `Generated ${new Date(viewModel.generatedAt).toLocaleString("en-US")} · Draft ${viewModel.draftId}`,
     { color: MUTED },
   );
   writer.spacer(6);

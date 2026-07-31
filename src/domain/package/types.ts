@@ -78,7 +78,6 @@ export interface PackageLumpSum {
 export interface PackageViewModel {
   readonly draftId: string;
   readonly generatedAt: string;
-  readonly isDemo: boolean;
   readonly disclaimer: string;
   readonly confirmedFacts: readonly ConfirmedFactEntry[];
   readonly missingOrUnsupported: readonly MappingIssue[];

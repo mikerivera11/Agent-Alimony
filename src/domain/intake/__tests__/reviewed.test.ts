@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createEmptyDraft } from "../draft";
-import { createDemoDraft } from "../demoDraft";
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { buildReviewedDraft, DraftNotReadyError } from "../reviewed";
 import { createInMemoryIntakeDraftStorage } from "../storage";
 
@@ -12,19 +12,18 @@ describe("buildReviewedDraft", () => {
   });
 
   it("returns a fully-typed snapshot for a complete draft, omitting non-applicable topics", () => {
-    const demo = createDemoDraft();
-    const reviewed = buildReviewedDraft(demo);
+    const sample = createSampleDraft();
+    const reviewed = buildReviewedDraft(sample);
     expect(reviewed.data.caseBasics.county).toContain("Sample County");
     expect(reviewed.data.parentingTime).toBeDefined();
     expect(reviewed.data.childCosts).toBeDefined();
-    expect(reviewed.isDemo).toBe(true);
     expect(reviewed.reviewedAt).toEqual(expect.any(String));
   });
 
   it("omits parentingTime and childCosts for a childless, otherwise-complete draft", () => {
-    const demo = createDemoDraft();
-    demo.data.children = { hasChildren: "no", children: [] };
-    const reviewed = buildReviewedDraft(demo);
+    const sample = createSampleDraft();
+    sample.data.children = { hasChildren: "no", children: [] };
+    const reviewed = buildReviewedDraft(sample);
     expect(reviewed.data.parentingTime).toBeUndefined();
     expect(reviewed.data.childCosts).toBeUndefined();
   });

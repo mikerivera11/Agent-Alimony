@@ -1,16 +1,15 @@
-import { createEmptyDraft } from "./draft";
-import type { IntakeDraft } from "./draft";
+import { createEmptyDraft, type IntakeDraft } from "@/domain/intake";
 
 /**
- * A fully filled-in, clearly fictional example draft. This exists purely so
- * reviewers and testers can see every screen (including the review and
- * missing-data summary) without spending ten minutes typing test data. It is
- * never presented as real, saved, or submitted anywhere — every name and
- * number below is made up.
+ * A fully filled-in, fictional draft used **only by tests**.
+ *
+ * This deliberately lives outside `src/domain` and is not exported from any
+ * barrel, so it cannot be imported by shipped application code and can never
+ * reach a user. Tests use it to exercise the review, results, and package
+ * screens without typing thirteen sections of input by hand.
  */
-export function createDemoDraft(): IntakeDraft {
+export function createSampleDraft(): IntakeDraft {
   const draft = createEmptyDraft();
-  draft.isDemo = true;
   draft.completedStepIds = [
     "caseBasics",
     "marriage",

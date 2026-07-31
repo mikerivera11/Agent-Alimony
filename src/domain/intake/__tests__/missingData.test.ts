@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createEmptyDraft } from "../draft";
-import { createDemoDraft } from "../demoDraft";
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { getMissingDataSummary, isDraftReadyForReview } from "../missingData";
 import { getApplicableStepIds } from "../steps";
 
@@ -41,7 +41,7 @@ describe("getMissingDataSummary", () => {
   });
 
   it("is empty for the fully completed demo draft", () => {
-    const draft = createDemoDraft();
+    const draft = createSampleDraft();
     const summary = getMissingDataSummary(draft);
     expect(summary).toEqual([]);
     expect(isDraftReadyForReview(draft)).toBe(true);

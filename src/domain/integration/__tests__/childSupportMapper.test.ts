@@ -1,13 +1,14 @@
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, createDemoDraft } from "@/domain/intake";
+import { buildReviewedDraft, } from "@/domain/intake";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import { isConfirmedFact, unwrapConfirmedFact } from "@/domain/rules";
 
 import { mapReviewedDraftToChildSupportInput } from "../childSupportMapper";
 
 function demoReviewedDraft(): ReviewedIntakeDraft {
-  return buildReviewedDraft(createDemoDraft());
+  return buildReviewedDraft(createSampleDraft());
 }
 
 /** Deep-clones a reviewed draft so tests can mutate it without cross-contamination. */
