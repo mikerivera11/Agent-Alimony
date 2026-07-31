@@ -12,6 +12,15 @@ const serverEnvSchema = z.object({
   AZURE_KEY_VAULT_URL: z.string().url().optional(),
   EXTRACTION_PROVIDER: z.enum(["mock", "configured"]).default("mock"),
   AI_PROVIDER_API_KEY: z.string().optional(),
+  // Florida family-law information assistant. `local` answers from the
+  // curated statute knowledge base with no AI provider and is the default.
+  ASSISTANT_PROVIDER: z.enum(["local", "foundry"]).default("local"),
+  /** e.g. https://<resource>.services.ai.azure.com */
+  AZURE_FOUNDRY_ENDPOINT: z.string().url().optional(),
+  /** Foundry model deployment name, e.g. claude-opus-5. */
+  AZURE_FOUNDRY_DEPLOYMENT: z.string().optional(),
+  /** Optional. Prefer managed identity with the Cognitive Services User role. */
+  AZURE_FOUNDRY_API_KEY: z.string().optional(),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
 });
 
