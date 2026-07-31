@@ -26,3 +26,20 @@ export const FLORIDA_ALIMONY_STATUTE_CITATION = {
   title: "Alimony",
   url: "https://www.flsenate.gov/Laws/Statutes/2025/61.08",
 } as const;
+
+export const FLORIDA_EQUITABLE_DISTRIBUTION_STATUTE_CITATION = {
+  citation: "Fla. Stat. §61.075",
+  title: "Equitable distribution of marital assets and liabilities",
+  url: "https://www.flsenate.gov/Laws/Statutes/2025/61.075",
+} as const;
+
+/**
+ * Effective date used for the §61.075 equitable-distribution ruleset. The 2024
+ * amendments to §61.075 (which added, among other things, the §61.075(6)(a)1.c
+ * coverture-fraction treatment of principal paydown on nonmarital real
+ * property) took effect July 1, 2024 and are carried into the 2025 statutory
+ * compilation this ruleset implements against. This ruleset does not gate its
+ * computation on a petition date the way §61.08 does; the date is recorded as
+ * ruleset metadata for provenance only.
+ */
+export const FLORIDA_EQUITABLE_DISTRIBUTION_EFFECTIVE_DATE = "2024-07-01";

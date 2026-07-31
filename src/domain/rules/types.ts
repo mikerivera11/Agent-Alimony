@@ -101,7 +101,7 @@ export interface PredicateDescriptor {
   readonly description: string;
 }
 
-export type RulesetTopic = "child-support" | "alimony";
+export type RulesetTopic = "child-support" | "alimony" | "equitable-distribution";
 
 export interface RulesetMetadata {
   readonly rulesetId: string;

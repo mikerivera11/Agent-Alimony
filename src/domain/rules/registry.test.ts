@@ -30,6 +30,13 @@ describe("ruleset registry", () => {
     const ids = rulesets.map((r) => r.rulesetId);
     expect(ids).toContain("fl-child-support-61.30");
     expect(ids).toContain("fl-alimony-61.08");
+    expect(ids).toContain("fl-equitable-distribution-61.075");
+
+    const equitableDistribution = getRuleset("fl-equitable-distribution-61.075");
+    expect(equitableDistribution?.metadata.jurisdiction).toBe("FL");
+    expect(equitableDistribution?.metadata.topic).toBe("equitable-distribution");
+    expect(equitableDistribution?.metadata.citations.length).toBeGreaterThan(0);
+    expect(equitableDistribution?.metadata.supportedPredicates.length).toBeGreaterThan(0);
 
     const childSupport = getRuleset("fl-child-support-61.30");
     expect(childSupport?.metadata.jurisdiction).toBe("FL");
