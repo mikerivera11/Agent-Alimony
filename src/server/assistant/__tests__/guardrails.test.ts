@@ -23,6 +23,51 @@ describe("detectEscalationSignals", () => {
     expect(signals.map((signal) => signal.topic)).toContain("domesticViolence");
   });
 
+  // A safety referral must not depend on someone choosing the one verb tense
+  // the detector happens to know. Every phrasing below was a miss before the
+  // stem-based matching landed, including the plain present tense "hits me".
+  it.each([
+    "My husband hits me and I am scared to leave.",
+    "My husband hit me last night.",
+    "He hits me when he drinks.",
+    "My wife slapped me during an argument.",
+    "He punched me in front of the kids.",
+    "My husband pushes and shoves me.",
+    "He beat me up.",
+    "He kicked me.",
+    "He grabbed me by the throat.",
+    "He threw a plate at me.",
+    "I am scared of my husband.",
+    "My husband makes me afraid.",
+    "My partner screams at me and breaks things.",
+    "I'm afraid he will hurt the children.",
+    "My spouse is abusive.",
+  ])("flags %j as an urgent domestic-violence disclosure", (disclosure) => {
+    const signals = detectEscalationSignals(disclosure);
+    const dv = signals.find((signal) => signal.topic === "domesticViolence");
+
+    expect(dv).toBeDefined();
+    expect(dv?.severity).toBe("urgent");
+  });
+
+  // Recall-biased matching still must not put a hotline notice on top of every
+  // ordinary support question, which would train people to ignore it.
+  it.each([
+    "How long can durational alimony last for a 22 year marriage?",
+    "How is child support calculated in Florida?",
+    "What documents do I need for my financial affidavit?",
+    "How do overnights change the support amount?",
+    "Is my 401(k) marital property?",
+    "Can I pay alimony as a lump sum instead of monthly?",
+    "What is bridge-the-gap alimony?",
+    "My wife and I agreed to split the house equally.",
+    "How does the court divide credit card debt?",
+    "We were married for 12 years and have two children.",
+  ])("does not raise a domestic-violence notice for %j", (question) => {
+    const signals = detectEscalationSignals(question);
+    expect(signals.map((signal) => signal.topic)).not.toContain("domesticViolence");
+  });
+
   it("flags pressure to sign an agreement as coercion", () => {
     const signals = detectEscalationSignals("He is pressuring me to sign the settlement tomorrow.");
     expect(signals.map((signal) => signal.topic)).toContain("coercionOrDuress");

@@ -42,6 +42,63 @@ interface EscalationRule {
 }
 
 /**
+ * Verb stems describing physical harm. Each is matched as a stem plus up to
+ * four trailing word characters, which covers the inflections people actually
+ * type ("hit"/"hits"/"hitting", "shov[e|es|ed|ing]", "strangl[e|ed|ing]")
+ * without needing every form enumerated. Over-matching a word like "hitch" is
+ * acceptable: a person or child must also appear nearby, and the cost of a
+ * false positive is one extra safety notice.
+ */
+const VIOLENCE_VERB_STEMS = [
+  "hit",
+  "hurt",
+  "harm",
+  "punch",
+  "slap",
+  "smack",
+  "kick",
+  "shov",
+  "push",
+  "beat",
+  "grab",
+  "chok",
+  "strangl",
+  "threaten",
+  "stalk",
+  "attack",
+  "assault",
+  "bruis",
+  "burn",
+  "drag",
+  "spit",
+  "bit",
+  "batter",
+  "intimidat",
+  "terroriz",
+  "terroris",
+  "threw",
+  "thrown",
+  "scream",
+  "yell",
+  "rage",
+  "smash",
+] as const;
+
+/** Who the harm is directed at. */
+const VIOLENCE_OBJECT = "(?:me|my|us|him|her|them|child|children|kids?|baby)";
+
+/** Words describing being in fear. */
+const FEAR_TERM = "(?:afraid|scared|unsafe|not safe|fear(?:ful|s|ed)?|terrified|frightened|petrified|walking on eggshells)";
+
+/** Who the fear is about. */
+const FEAR_SUBJECT = "(?:husband|wife|spouse|partner|ex|him|her|them|he|she)";
+
+const VIOLENCE_VERB_PATTERN = new RegExp(
+  `\\b(?:${VIOLENCE_VERB_STEMS.join("|")})\\w{0,4}\\b.{0,30}\\b${VIOLENCE_OBJECT}\\b`,
+  "i",
+);
+
+/**
  * Detection is intentionally recall-biased: a false positive shows an extra
  * "talk to a lawyer / here is a hotline" notice, which is harmless. A false
  * negative could leave someone without a safety referral.
@@ -51,11 +108,16 @@ const ESCALATION_RULES: readonly EscalationRule[] = [
     topic: "domesticViolence",
     severity: "urgent",
     patterns: [
-      /\b(domestic violence|abus(e|ed|ive)|batter(y|ed)|assault(ed)?)\b/i,
-      /\b(hit|hurt|threaten(ed|ing)?|strangl|chok(e|ed)|stalk(ed|ing)?)\b.{0,30}\b(me|us|child|children|kids?)\b/i,
+      /\b(domestic violence|abus(e|ed|es|ive|ing)|batter(y|ed|ing)|assault(ed|ing)?)\b/i,
+      VIOLENCE_VERB_PATTERN,
       /\b(restraining|protective)\s+order\b/i,
       /\binjunction\b.{0,40}\b(protection|violence)\b/i,
-      /\b(afraid|scared|unsafe|not safe|fear(ful)?)\b.{0,40}\b(husband|wife|spouse|partner|him|her|them)\b/i,
+      // Fear matched in both directions: "scared of my husband" and
+      // "my husband ... makes me afraid" are the same disclosure.
+      new RegExp(`\\b${FEAR_TERM}\\b.{0,40}\\b${FEAR_SUBJECT}\\b`, "i"),
+      new RegExp(`\\b${FEAR_SUBJECT}\\b.{0,40}\\b${FEAR_TERM}\\b`, "i"),
+      // Fear of leaving is a safety disclosure even with no subject named.
+      new RegExp(`\\b${FEAR_TERM}\\b.{0,20}\\bto leave\\b`, "i"),
     ],
     message:
       "What you described may involve safety or abuse. Your safety comes first. In an emergency call 911. " +

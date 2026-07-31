@@ -49,6 +49,8 @@ Lump-sum present-value modelling lives in `src/domain/finance/`, deliberately ou
 
 Accordingly the discount rate is a required input with **no default** — a default would read as a legal standard — and results are always returned across a band of rates so the figure's sensitivity to an unlegislated assumption stays visible.
 
+The model also refuses to invent a term. If the alimony calculation produced no durational term, the buyout is declined and explained rather than falling back to the length of the marriage. That fallback is tempting and wrong: durational alimony is unavailable below three years of marriage, and bridge-the-gap and rehabilitative alimony are capped at two and five years and tied to specific needs rather than a fixed term, so marriage length would inflate a buyout far past anything § 61.08 permits — and would do so worst in the longest marriages.
+
 ## Local setup
 
 Prerequisites:
