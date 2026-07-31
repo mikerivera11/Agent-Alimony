@@ -31,8 +31,8 @@ export function ChildrenFields({ register, errors, control }: StepFieldsProps<Ch
       {hasChildren === "yes" ? (
         <div className="flex flex-col gap-4">
           {fields.map((field, index) => (
-            <fieldset key={field.id} className="flex flex-col gap-4 rounded-md border border-slate-300 p-4">
-              <legend className="px-1 text-base font-semibold text-slate-900">Child {index + 1}</legend>
+            <fieldset key={field.id} className="flex flex-col gap-4 rounded-xl border border-border p-4">
+              <legend className="px-1 text-base font-semibold text-ink">Child {index + 1}</legend>
               <TextField
                 id={`children.${index}.nameOrInitials`}
                 label="Name or initials"
@@ -86,7 +86,7 @@ export function ChildrenFields({ register, errors, control }: StepFieldsProps<Ch
             + Add a child
           </button>
           {errors.children?.message ? (
-            <p role="alert" className="text-sm font-medium text-red-700">
+            <p role="alert" className="text-sm font-medium text-danger-solid">
               {errors.children.message}
             </p>
           ) : null}

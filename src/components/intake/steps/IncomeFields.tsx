@@ -29,8 +29,8 @@ function PersonIncomeFieldset({
   errors: FieldErrors<Income>;
 }) {
   return (
-    <fieldset className="flex flex-col gap-4 rounded-md border border-slate-300 p-4">
-      <legend className="px-1 text-base font-semibold text-slate-900">{legend}</legend>
+    <fieldset className="flex flex-col gap-4 rounded-xl border border-border p-4">
+      <legend className="px-1 text-base font-semibold text-ink">{legend}</legend>
       {INCOME_FIELDS.map(({ name, label, hint }) => (
         <MoneyField
           key={name}

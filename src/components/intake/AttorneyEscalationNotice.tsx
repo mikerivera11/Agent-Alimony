@@ -1,5 +1,7 @@
 import type { EscalationAssessment } from "@/domain/intake";
 
+import { Alert } from "@/components/ui";
+
 interface AttorneyEscalationNoticeProps {
   assessment: EscalationAssessment;
 }
@@ -11,9 +13,8 @@ export function AttorneyEscalationNotice({ assessment }: AttorneyEscalationNotic
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border-2 border-purple-800 bg-purple-50 p-4 text-purple-950">
-      <p className="font-semibold">Based on your answers, talking with a family law attorney is a good idea:</p>
-      <ul className="flex flex-col gap-2 pl-5 list-disc">
+    <Alert variant="attorney" title="Based on your answers, talking with a family law attorney is a good idea:">
+      <ul className="flex list-disc flex-col gap-2 pl-5">
         {assessment.attorneyFlags.map((flag) => (
           <li key={flag.id}>
             <span className="font-semibold">{flag.label}.</span> {flag.reason}
@@ -32,6 +33,6 @@ export function AttorneyEscalationNotice({ assessment }: AttorneyEscalationNotic
         </a>
         .
       </p>
-    </div>
+    </Alert>
   );
 }

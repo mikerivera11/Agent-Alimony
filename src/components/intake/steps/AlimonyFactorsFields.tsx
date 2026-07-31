@@ -6,7 +6,7 @@ import type { StepFieldsProps } from "./StepFieldsProps";
 export function AlimonyFactorsFields({ register, errors }: StepFieldsProps<AlimonyFactors>) {
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-ink-muted">
         Florida law (Section 61.08, Florida Statutes) asks judges to weigh several factors when deciding
         alimony. These questions cover the main ones in plain language — short answers are fine.
       </p>

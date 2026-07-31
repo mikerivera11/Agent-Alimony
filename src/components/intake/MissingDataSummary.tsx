@@ -1,6 +1,6 @@
 import type { MissingDataSummaryEntry } from "@/domain/intake";
 
-import { secondaryButtonClasses } from "./fields/inputStyles";
+import { Alert, Button } from "@/components/ui";
 
 interface MissingDataSummaryProps {
   entries: MissingDataSummaryEntry[];
@@ -11,30 +11,32 @@ interface MissingDataSummaryProps {
 export function MissingDataSummary({ entries, onEdit }: MissingDataSummaryProps) {
   if (entries.length === 0) {
     return (
-      <p role="status" className="rounded-md border border-green-700 bg-green-50 px-4 py-3 text-green-900">
+      <Alert variant="success" role="status">
         Every topic looks complete. You can review your answers below before finishing.
-      </p>
+      </Alert>
     );
   }
 
   return (
-    <div role="alert" className="flex flex-col gap-3 rounded-md border-2 border-amber-700 bg-amber-50 p-4">
-      <p className="font-semibold text-amber-950">
-        {entries.length} topic{entries.length === 1 ? "" : "s"} still need{entries.length === 1 ? "s" : ""} a bit more
-        information:
-      </p>
+    <Alert
+      variant="warning"
+      role="alert"
+      title={`${entries.length} topic${entries.length === 1 ? "" : "s"} still need${
+        entries.length === 1 ? "s" : ""
+      } a bit more information:`}
+    >
       <ul className="flex flex-col gap-2">
         {entries.map((entry) => (
           <li key={entry.stepId} className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-amber-950">
+            <span>
               {entry.title} — {entry.issues.length} item{entry.issues.length === 1 ? "" : "s"} to finish
             </span>
-            <button type="button" onClick={() => onEdit(entry.stepId)} className={secondaryButtonClasses}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => onEdit(entry.stepId)}>
               Finish {entry.title}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
-    </div>
+    </Alert>
   );
 }

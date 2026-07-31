@@ -5,9 +5,9 @@ interface MissingItemsPanelProps {
 }
 
 const SEVERITY_STYLES: Record<MappingIssueSeverity, string> = {
-  blocking: "border-red-800 bg-red-50 text-red-950",
-  warning: "border-amber-700 bg-amber-50 text-amber-950",
-  info: "border-slate-400 bg-slate-50 text-slate-900",
+  blocking: "border-danger-border bg-danger-surface text-danger-text",
+  warning: "border-warning-border bg-warning-surface text-warning-text",
+  info: "border-border-strong bg-surface-2 text-ink",
 };
 
 const SEVERITY_LABELS: Record<MappingIssueSeverity, string> = {
@@ -24,7 +24,7 @@ const SEVERITY_LABELS: Record<MappingIssueSeverity, string> = {
 export function MissingItemsPanel({ issues }: MissingItemsPanelProps) {
   if (issues.length === 0) {
     return (
-      <p role="status" className="rounded-md border border-green-700 bg-green-50 px-4 py-3 text-green-900">
+      <p role="status" className="rounded-xl border border-success-border bg-success-surface px-4 py-3 text-success-text">
         No missing or unsupported items were found for the facts you entered.
       </p>
     );
@@ -36,7 +36,7 @@ export function MissingItemsPanel({ issues }: MissingItemsPanelProps) {
         <li
           key={issue.code}
           role={issue.severity === "blocking" ? "alert" : undefined}
-          className={`rounded-md border-2 p-3 ${SEVERITY_STYLES[issue.severity]}`}
+          className={`rounded-xl border-2 p-3 ${SEVERITY_STYLES[issue.severity]}`}
         >
           <p className="text-xs font-semibold uppercase tracking-wide">{SEVERITY_LABELS[issue.severity]}</p>
           <p className="font-medium">{issue.message}</p>

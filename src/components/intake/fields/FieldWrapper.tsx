@@ -40,11 +40,11 @@ export function FieldWrapper({ id, label, hint, example, error, required, childr
       <label htmlFor={id} className={labelClasses}>
         {label}
         {required ? (
-          <span aria-hidden="true" className="ml-1 text-red-700">
+          <span aria-hidden="true" className="ml-1 text-danger-solid">
             *
           </span>
         ) : (
-          <span className="ml-1 font-normal text-slate-600">(optional)</span>
+          <span className="ml-1 font-normal text-ink-subtle">(optional)</span>
         )}
       </label>
       {hint ? (

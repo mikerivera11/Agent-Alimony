@@ -6,7 +6,7 @@ import type { StepFieldsProps } from "./StepFieldsProps";
 export function DocumentReadinessFields({ register, errors }: StepFieldsProps<DocumentReadiness>) {
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-ink-muted">
         This is just a checklist for you — nothing is uploaded or checked in this preview.
       </p>
       <YesNoField

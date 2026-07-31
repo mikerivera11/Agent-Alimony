@@ -28,10 +28,10 @@ export function ProposalReviewList({ proposals, decisions, onAction }: ProposalR
 
   return (
     <section aria-labelledby="proposal-review-heading" className="flex flex-col gap-3">
-      <h2 id="proposal-review-heading" className="text-xl font-semibold text-slate-950">
+      <h2 id="proposal-review-heading" className="text-xl font-semibold text-ink">
         Review proposed fields
       </h2>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-ink-muted">
         Every proposal below is <strong>demo data only</strong>. Review the field, value, and source, then choose
         Confirm, Edit, or Reject for each one. Your choice is saved only in this browser and is never used to run a
         calculation automatically.

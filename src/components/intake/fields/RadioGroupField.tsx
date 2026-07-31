@@ -43,14 +43,14 @@ export function RadioGroupField({
 
   return (
     <fieldset className="flex flex-col gap-1.5" aria-describedby={describedBy} aria-invalid={Boolean(error)}>
-      <legend className="text-base font-semibold text-slate-900">
+      <legend className="text-base font-semibold text-ink">
         {legend}
         {required ? (
-          <span aria-hidden="true" className="ml-1 text-red-700">
+          <span aria-hidden="true" className="ml-1 text-danger-solid">
             *
           </span>
         ) : (
-          <span className="ml-1 font-normal text-slate-600">(optional)</span>
+          <span className="ml-1 font-normal text-ink-subtle">(optional)</span>
         )}
       </legend>
       {hint ? (
@@ -70,13 +70,13 @@ export function RadioGroupField({
             <label
               key={option.value}
               htmlFor={optionId}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-slate-400 bg-white px-3 py-2 text-base text-slate-900 has-[:checked]:border-blue-700 has-[:checked]:bg-blue-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-700"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-field-border bg-surface px-3.5 py-2.5 text-base text-ink transition-colors hover:bg-surface-hover has-[:checked]:border-primary has-[:checked]:bg-primary-surface has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
             >
               <input
                 id={optionId}
                 type="radio"
                 value={option.value}
-                className="h-5 w-5 accent-blue-800"
+                className="size-5 accent-primary"
                 {...registration}
               />
               {option.label}

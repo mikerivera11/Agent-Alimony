@@ -1,5 +1,7 @@
 import type { RuleOutcome } from "@/domain/rules";
 
+import { Alert } from "@/components/ui";
+
 interface RuleOutcomeStatusProps {
   outcome: Exclude<RuleOutcome<unknown>, { kind: "calculated" }>;
 }
@@ -13,22 +15,21 @@ interface RuleOutcomeStatusProps {
 export function RuleOutcomeStatus({ outcome }: RuleOutcomeStatusProps) {
   if (outcome.kind === "needsInput") {
     return (
-      <div role="status" className="flex flex-col gap-2 rounded-md border-2 border-amber-700 bg-amber-50 p-4">
-        <p className="font-semibold text-amber-950">{outcome.message}</p>
+      <Alert variant="warning" role="status" title={outcome.message}>
         {outcome.missingFacts.length > 0 && (
-          <ul className="list-disc pl-6 text-amber-950">
+          <ul className="list-disc pl-6">
             {outcome.missingFacts.map((fact) => (
               <li key={fact.factId}>{fact.description}</li>
             ))}
           </ul>
         )}
-      </div>
+      </Alert>
     );
   }
 
   if (outcome.kind === "notImplemented") {
     return (
-      <div className="flex flex-col gap-2 rounded-md border border-slate-400 bg-slate-50 p-4 text-slate-900">
+      <div className="flex flex-col gap-2 rounded-xl border border-border-strong bg-surface-2 p-4 text-ink">
         <p className="font-semibold">Not available in this tool yet</p>
         <p>{outcome.reason}</p>
       </div>
@@ -36,8 +37,7 @@ export function RuleOutcomeStatus({ outcome }: RuleOutcomeStatusProps) {
   }
 
   return (
-    <div role="alert" className="flex flex-col gap-2 rounded-md border-2 border-red-800 bg-red-50 p-4 text-red-950">
-      <p className="font-semibold">Requires professional review</p>
+    <Alert variant="danger" role="alert" title="Requires professional review">
       <p>{outcome.reason}</p>
       {outcome.flags.length > 0 && (
         <ul className="list-disc pl-6">
@@ -46,6 +46,6 @@ export function RuleOutcomeStatus({ outcome }: RuleOutcomeStatusProps) {
           ))}
         </ul>
       )}
-    </div>
+    </Alert>
   );
 }

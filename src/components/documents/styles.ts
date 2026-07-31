@@ -1,29 +1,28 @@
+import { buttonClasses } from "@/components/ui";
+
 /**
- * Shared Tailwind class fragments for the `/documents` experience.
- * Mirrors the conventions used elsewhere in the app (min 44px touch
- * targets, visible focus rings, high-contrast slate/blue palette) so this
- * feature looks and behaves consistently without importing from other
- * ownership areas.
+ * Shared Tailwind class fragments for the `/documents` experience. All colors
+ * come from the semantic design tokens (see `globals.css`), and the buttons
+ * delegate to the shared `buttonClasses()` primitive so this feature stays
+ * visually consistent with the rest of the app.
  */
-export const primaryButtonClasses =
-  "min-h-11 min-w-11 inline-flex items-center justify-center gap-2 rounded-md bg-blue-800 px-5 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400";
+export const primaryButtonClasses = buttonClasses("primary", "md");
 
-export const secondaryButtonClasses =
-  "min-h-11 min-w-11 inline-flex items-center justify-center gap-2 rounded-md border border-slate-500 bg-white px-5 py-2.5 text-base font-semibold text-slate-900 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-800 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+export const secondaryButtonClasses = buttonClasses("secondary", "md");
 
-export const dangerButtonClasses =
-  "min-h-11 min-w-11 inline-flex items-center justify-center gap-2 rounded-md border-2 border-red-800 bg-red-50 px-5 py-2.5 text-base font-semibold text-red-900 shadow-sm hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-800 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+export const dangerButtonClasses = buttonClasses("danger", "md");
 
-export const cardClasses = "flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm";
+export const cardClasses =
+  "flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm";
 
 export const badgeClasses =
-  "inline-flex w-fit items-center rounded-full border border-amber-800 bg-amber-100 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-950";
+  "inline-flex w-fit items-center rounded-pill border border-warning-border bg-warning-surface px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-warning-text";
 
 export const alertClasses =
-  "flex flex-col gap-1 rounded-md border-2 border-red-800 bg-red-50 p-4 text-red-950";
+  "flex flex-col gap-1 rounded-xl border-2 border-danger-border bg-danger-surface p-4 text-danger-text";
 
 export const successClasses =
-  "flex flex-col gap-1 rounded-md border-2 border-green-800 bg-green-50 p-4 text-green-950";
+  "flex flex-col gap-1 rounded-xl border-2 border-success-border bg-success-surface p-4 text-success-text";
 
 export const fileInputClasses =
-  "block w-full cursor-pointer rounded-md border border-slate-400 bg-white text-base text-slate-900 shadow-sm file:mr-4 file:min-h-11 file:cursor-pointer file:rounded-md file:border-0 file:bg-blue-800 file:px-4 file:py-2.5 file:text-base file:font-semibold file:text-white hover:file:bg-blue-900 focus-within:ring-2 focus-within:ring-blue-700 focus-within:ring-offset-1";
+  "block w-full cursor-pointer rounded-lg border border-field-border bg-surface text-base text-ink shadow-xs file:mr-4 file:min-h-11 file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2.5 file:text-base file:font-semibold file:text-primary-ink hover:file:bg-primary-hover focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-surface";

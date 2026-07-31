@@ -42,10 +42,10 @@ export function DemoExtractionPanel({ onProposals }: DemoExtractionPanelProps) {
 
   return (
     <section aria-labelledby="demo-extraction-heading" className="flex flex-col gap-3">
-      <h2 id="demo-extraction-heading" className="text-xl font-semibold text-slate-950">
+      <h2 id="demo-extraction-heading" className="text-xl font-semibold text-ink">
         Run fictional demo extraction
       </h2>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-ink-muted">
         <span className={badgeClasses}>Demo data only</span>{" "}
         This does not read any file you upload. It runs the mock extraction adapter against one fixed, fictional
         example fixture and returns made-up example values so you can see how proposal review works.
@@ -70,7 +70,7 @@ export function DemoExtractionPanel({ onProposals }: DemoExtractionPanelProps) {
       ) : null}
 
       {status === "done" ? (
-        <p role="status" className="text-sm font-medium text-slate-700">
+        <p role="status" className="text-sm font-medium text-ink-muted">
           {proposalCount > 0
             ? `Generated ${proposalCount} fictional demo proposal${proposalCount === 1 ? "" : "s"} below. Review each one.`
             : "The demo run completed with no proposals."}

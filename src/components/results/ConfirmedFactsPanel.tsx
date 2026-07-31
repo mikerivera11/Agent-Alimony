@@ -18,25 +18,25 @@ export function ConfirmedFactsPanel({ entries }: ConfirmedFactsPanelProps) {
   }
 
   if (bySection.size === 0) {
-    return <p className="text-slate-700">No confirmed facts are available yet.</p>;
+    return <p className="text-ink-muted">No confirmed facts are available yet.</p>;
   }
 
   return (
     <div className="flex flex-col gap-6">
       {Array.from(bySection.values()).map(({ title, entries: sectionEntries }) => (
         <div key={title} className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
+          <h3 className="text-lg font-semibold text-ink">{title}</h3>
           <table className="w-full border-collapse text-left text-sm">
             <caption className="sr-only">{title} confirmed facts</caption>
             <tbody>
               {sectionEntries.map((entry) => (
-                <tr key={`${entry.sectionId}-${entry.label}`} className="border-b border-slate-200">
-                  <th scope="row" className="w-1/2 py-1.5 pr-3 font-medium text-slate-700">
+                <tr key={`${entry.sectionId}-${entry.label}`} className="border-b border-border">
+                  <th scope="row" className="w-1/2 py-1.5 pr-3 font-medium text-ink-muted">
                     {entry.label}
                   </th>
-                  <td className="py-1.5 text-slate-950">
+                  <td className="py-1.5 text-ink">
                     {entry.value}
-                    <span className="ml-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <span className="ml-2 text-xs font-medium uppercase tracking-wide text-ink-subtle">
                       {entry.provenance}
                     </span>
                   </td>

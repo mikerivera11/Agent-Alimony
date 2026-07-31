@@ -45,7 +45,7 @@ function MoneyInput({
   const describedBy = useFieldDescribedBy();
   return (
     <div className="relative">
-      <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600">
+      <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle">
         $
       </span>
       <input
@@ -55,7 +55,7 @@ function MoneyInput({
         step="0.01"
         min="0"
         placeholder="0"
-        className={`${textInputClasses} pl-7`}
+        className={`${textInputClasses} pl-7 tabular-nums`}
         aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         {...registration}

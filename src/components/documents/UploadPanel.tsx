@@ -67,15 +67,15 @@ export function UploadPanel({ onProposals }: UploadPanelProps) {
 
   return (
     <section aria-labelledby="upload-heading" className="flex flex-col gap-3">
-      <h2 id="upload-heading" className="text-xl font-semibold text-slate-950">
+      <h2 id="upload-heading" className="text-xl font-semibold text-ink">
         Upload a document
       </h2>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-ink-muted">
         Accepts PDF, JPEG, or PNG files up to 10MB. This local preview does not store the file itself — only safe
         metadata (file type, size, and a content fingerprint) is shown below.
       </p>
 
-      <label htmlFor={inputId} className="block text-base font-semibold text-slate-900">
+      <label htmlFor={inputId} className="block text-base font-semibold text-ink">
         Choose a file
       </label>
       <input
@@ -89,12 +89,12 @@ export function UploadPanel({ onProposals }: UploadPanelProps) {
         disabled={state.status === "uploading"}
         aria-describedby={`${inputId}-hint`}
       />
-      <p id={`${inputId}-hint`} className="text-xs text-slate-600">
+      <p id={`${inputId}-hint`} className="text-xs text-ink-subtle">
         Your file type is verified by its actual content, not just its name or extension.
       </p>
 
       {state.status === "uploading" ? (
-        <p role="status" className="text-sm font-medium text-slate-700">
+        <p role="status" className="text-sm font-medium text-ink-muted">
           Uploading and validating…
         </p>
       ) : null}
@@ -127,7 +127,7 @@ export function UploadPanel({ onProposals }: UploadPanelProps) {
               <dd className="break-all font-mono text-xs">{state.document.sha256}</dd>
             </div>
           </dl>
-          <div className="mt-2 rounded-md bg-white/70 p-3">
+          <div className="mt-2 rounded-md bg-surface/80 p-3">
             <p className="font-semibold">{state.outcome.headline}</p>
             <p className="text-sm">{state.outcome.detail}</p>
           </div>

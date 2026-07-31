@@ -8,10 +8,10 @@ import { alertClasses } from "./styles";
 export function DocumentPrivacyNotice() {
   return (
     <section aria-labelledby="document-privacy-heading" className="flex flex-col gap-3">
-      <h2 id="document-privacy-heading" className="text-xl font-semibold text-slate-950">
+      <h2 id="document-privacy-heading" className="text-xl font-semibold text-ink">
         Before you upload
       </h2>
-      <ul className="flex flex-col gap-2 text-slate-800">
+      <ul className="flex flex-col gap-2 text-ink-muted">
         <li>
           <strong>Seven-day retention.</strong> Source files are only ever kept for up to seven days before
           automatic deletion, and this local preview does not persist uploaded file bytes at all — only safe,

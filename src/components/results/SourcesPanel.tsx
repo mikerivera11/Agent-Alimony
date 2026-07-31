@@ -12,8 +12,8 @@ export function SourcesPanel({ sources, verifications, assumptions }: SourcesPan
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-lg font-semibold text-slate-950">Statutory citations</h3>
-        <ul className="list-disc pl-6 text-slate-800">
+        <h3 className="text-lg font-semibold text-ink">Statutory citations</h3>
+        <ul className="list-disc pl-6 text-ink-muted">
           {sources.map((source) => (
             <li key={source.citation}>
               {source.url ? (
@@ -30,11 +30,11 @@ export function SourcesPanel({ sources, verifications, assumptions }: SourcesPan
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-slate-950">Ruleset &amp; source verification dates</h3>
+        <h3 className="text-lg font-semibold text-ink">Ruleset &amp; source verification dates</h3>
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">Ruleset verification dates</caption>
           <thead>
-            <tr className="border-b-2 border-slate-300 text-xs uppercase tracking-wide text-slate-600">
+            <tr className="border-b-2 border-border-strong text-xs uppercase tracking-wide text-ink-subtle">
               <th scope="col" className="py-1.5 pr-3">
                 Ruleset
               </th>
@@ -48,12 +48,12 @@ export function SourcesPanel({ sources, verifications, assumptions }: SourcesPan
           </thead>
           <tbody>
             {verifications.map((verification) => (
-              <tr key={verification.rulesetId} className="border-b border-slate-200">
-                <td className="py-1.5 pr-3 text-slate-950">
+              <tr key={verification.rulesetId} className="border-b border-border">
+                <td className="py-1.5 pr-3 text-ink">
                   {verification.jurisdiction} {verification.topic} ({verification.statutoryCompilation})
                 </td>
-                <td className="py-1.5 pr-3 text-slate-800">{verification.effectiveDate}</td>
-                <td className="py-1.5 text-slate-800">
+                <td className="py-1.5 pr-3 text-ink-muted">{verification.effectiveDate}</td>
+                <td className="py-1.5 text-ink-muted">
                   {verification.sourceUrl ? (
                     <a href={verification.sourceUrl} target="_blank" rel="noreferrer" className="underline">
                       {verification.sourceVerifiedAt}
@@ -69,8 +69,8 @@ export function SourcesPanel({ sources, verifications, assumptions }: SourcesPan
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-slate-950">Assumptions behind these figures</h3>
-        <ul className="list-disc pl-6 text-slate-800">
+        <h3 className="text-lg font-semibold text-ink">Assumptions behind these figures</h3>
+        <ul className="list-disc pl-6 text-ink-muted">
           {assumptions.map((assumption) => (
             <li key={assumption}>{assumption}</li>
           ))}

@@ -24,14 +24,14 @@ export function StepLayout({ title, summary, whyWeAsk, children }: StepLayoutPro
   }, []);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="animate-step-in flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-slate-950 outline-none">
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight text-ink outline-none sm:text-3xl">
           {title}
         </h1>
-        <p className="text-lg text-slate-700">{summary}</p>
+        <p className="text-lg text-ink-muted">{summary}</p>
       </div>
-      <p className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+      <p className="rounded-xl border border-info-border bg-info-surface px-4 py-3 text-sm text-info-text">
         <span className="font-semibold">Why we ask: </span>
         {whyWeAsk}
       </p>

@@ -89,20 +89,20 @@ function StepSummarySection({
   const entries = buildEntries(stepId, data);
 
   return (
-    <section aria-labelledby={`review-heading-${stepId}`} className="flex flex-col gap-3 rounded-md border border-slate-300 p-4">
+    <section aria-labelledby={`review-heading-${stepId}`} className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={`review-heading-${stepId}`} className="text-lg font-semibold text-slate-950">
+        <h2 id={`review-heading-${stepId}`} className="text-lg font-semibold text-ink">
           {title}
         </h2>
         <button type="button" onClick={() => onEdit(stepId)} className={secondaryButtonClasses}>
           Edit {title}
         </button>
       </div>
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
         {entries.map((entry) => (
-          <div key={entry.label}>
-            <dt className="text-sm font-medium capitalize text-slate-600">{entry.label}</dt>
-            <dd className="text-base text-slate-900">{entry.value}</dd>
+          <div key={entry.label} className="flex flex-col gap-0.5">
+            <dt className="text-sm font-medium capitalize text-ink-subtle">{entry.label}</dt>
+            <dd className="text-base text-ink">{entry.value}</dd>
           </div>
         ))}
       </dl>

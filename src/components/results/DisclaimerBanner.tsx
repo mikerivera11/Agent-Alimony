@@ -1,5 +1,7 @@
 import { PACKAGE_DISCLAIMER_BODY, PACKAGE_DISCLAIMER_HEADING } from "@/domain/package";
 
+import { Alert } from "@/components/ui";
+
 /**
  * Prominent, non-dismissible disclaimer shown at the top of the results
  * page (and mirrored on the first page of the generated PDF). Deliberately
@@ -7,9 +9,9 @@ import { PACKAGE_DISCLAIMER_BODY, PACKAGE_DISCLAIMER_HEADING } from "@/domain/pa
  */
 export function DisclaimerBanner() {
   return (
-    <section role="alert" className="flex flex-col gap-2 rounded-lg border-2 border-blue-800 bg-blue-50 p-5">
-      <p className="text-lg font-semibold text-blue-950">{PACKAGE_DISCLAIMER_HEADING}.</p>
-      <p className="text-blue-950">{PACKAGE_DISCLAIMER_BODY}</p>
-    </section>
+    <Alert variant="info" emphasis hideIcon role="alert" className="flex-col gap-2">
+      <p className="text-lg font-semibold">{PACKAGE_DISCLAIMER_HEADING}.</p>
+      <p>{PACKAGE_DISCLAIMER_BODY}</p>
+    </Alert>
   );
 }

@@ -21,7 +21,7 @@ export function SafetyComplexityFields({ register, errors, control }: StepFields
         error={errors.domesticViolenceOrCoercion?.message}
       />
       {domesticViolenceOrCoercion === "yes" ? (
-        <div role="alert" className="rounded-md border-2 border-red-800 bg-red-50 p-4 text-red-950">
+        <div role="alert" className="rounded-xl border-2 border-danger-border bg-danger-surface p-4 text-danger-text">
           <p className="font-semibold">Your safety matters more than this form.</p>
           <p className="mt-1 text-sm">
             If you are in immediate danger, call 911. You can also reach the National Domestic Violence

@@ -18,14 +18,14 @@ export function ConsentGate({ startHref, demoHref }: ConsentGateProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border-2 border-blue-800 bg-blue-50 p-5">
-      <label htmlFor="consent-checkbox" className="flex min-h-11 cursor-pointer items-start gap-3 text-base text-blue-950">
+    <div className="flex flex-col gap-4 rounded-2xl border-2 border-info-border bg-info-surface p-5 sm:p-6">
+      <label htmlFor="consent-checkbox" className="flex min-h-11 cursor-pointer items-start gap-3 text-base text-info-text">
         <input
           id="consent-checkbox"
           type="checkbox"
           checked={acknowledged}
           onChange={(event) => setAcknowledged(event.target.checked)}
-          className="mt-1 h-5 w-5 accent-blue-800"
+          className="mt-1 size-5 accent-primary"
         />
         <span>
           I understand this tool gives general legal information and a financial estimate only — it is not legal
@@ -63,7 +63,7 @@ export function ConsentGate({ startHref, demoHref }: ConsentGateProps) {
         </Link>
       </div>
       {!acknowledged ? (
-        <p className="text-sm text-blue-900">Check the box above to continue.</p>
+        <p className="text-sm text-info-text">Check the box above to continue.</p>
       ) : null}
     </div>
   );

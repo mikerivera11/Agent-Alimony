@@ -28,19 +28,19 @@ export function ProposalCard({ proposal, decision, onAction }: ProposalCardProps
     <li className={cardClasses}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={badgeClasses}>Demo data only</span>
-        <span className="text-xs font-medium text-slate-500">
-          Status: <span className="font-semibold text-slate-800">{decision.status}</span>
+        <span className="text-xs font-medium text-ink-subtle">
+          Status: <span className="font-semibold text-ink-muted">{decision.status}</span>
         </span>
       </div>
 
       <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
         <div>
-          <dt className="font-semibold text-slate-700">Field</dt>
-          <dd className="text-slate-900">{proposal.fieldKey}</dd>
+          <dt className="font-semibold text-ink-muted">Field</dt>
+          <dd className="text-ink">{proposal.fieldKey}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-700">Proposed value</dt>
-          <dd className="text-slate-900">
+          <dt className="font-semibold text-ink-muted">Proposed value</dt>
+          <dd className="text-ink">
             {isEditing ? (
               <label className="flex flex-col gap-1">
                 <span className="sr-only">Edit value for {proposal.fieldKey}</span>
@@ -48,7 +48,7 @@ export function ProposalCard({ proposal, decision, onAction }: ProposalCardProps
                   type="text"
                   value={draftText}
                   onChange={(event) => setDraftText(event.target.value)}
-                  className="min-h-11 w-full rounded-md border border-slate-400 px-2 py-1 text-slate-900 focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700"
+                  className="min-h-11 w-full rounded-lg border border-field-border bg-surface px-3 py-2 text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </label>
             ) : (
@@ -57,21 +57,21 @@ export function ProposalCard({ proposal, decision, onAction }: ProposalCardProps
           </dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-700">Source document</dt>
-          <dd className="text-slate-900">{proposal.sourceDocumentId}</dd>
+          <dt className="font-semibold text-ink-muted">Source document</dt>
+          <dd className="text-ink">{proposal.sourceDocumentId}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-700">Page</dt>
-          <dd className="text-slate-900">{proposal.sourcePage ?? "—"}</dd>
+          <dt className="font-semibold text-ink-muted">Page</dt>
+          <dd className="text-ink">{proposal.sourcePage ?? "—"}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-700">Confidence</dt>
-          <dd className="text-slate-900">{Math.round(proposal.confidence * 100)}%</dd>
+          <dt className="font-semibold text-ink-muted">Confidence</dt>
+          <dd className="text-ink">{Math.round(proposal.confidence * 100)}%</dd>
         </div>
         {proposal.sourceLocation?.note ? (
           <div>
-            <dt className="font-semibold text-slate-700">Provenance note</dt>
-            <dd className="text-slate-900">{proposal.sourceLocation.note}</dd>
+            <dt className="font-semibold text-ink-muted">Provenance note</dt>
+            <dd className="text-ink">{proposal.sourceLocation.note}</dd>
           </div>
         ) : null}
       </dl>

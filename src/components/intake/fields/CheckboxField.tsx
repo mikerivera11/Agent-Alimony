@@ -20,12 +20,12 @@ export function CheckboxField({ id, label, hint, error, registration }: Checkbox
     <div className="flex flex-col gap-1.5">
       <label
         htmlFor={id}
-        className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-900 has-[:checked]:border-blue-700 has-[:checked]:bg-blue-50"
+        className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-field-border bg-surface px-3.5 py-3 text-base text-ink transition-colors hover:bg-surface-hover has-[:checked]:border-primary has-[:checked]:bg-primary-surface"
       >
         <input
           id={id}
           type="checkbox"
-          className="mt-0.5 h-5 w-5 accent-blue-800"
+          className="mt-0.5 size-5 accent-primary"
           aria-describedby={describedBy}
           aria-invalid={Boolean(error)}
           {...registration}

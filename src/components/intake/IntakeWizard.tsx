@@ -25,6 +25,7 @@ import { ProgressIndicator } from "./ProgressIndicator";
 import { QuickExitLink } from "./QuickExitLink";
 import { ReviewSummary } from "./ReviewSummary";
 import { StepForm } from "./StepForm";
+import { Alert, Card } from "@/components/ui";
 
 type WizardScreen = IntakeStepId | "review" | "done";
 
@@ -74,7 +75,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
 
   if (isLoading || !draft) {
     return (
-      <p role="status" className="p-6 text-lg text-slate-700">
+      <p role="status" className="p-6 text-lg text-ink-muted">
         Loading your saved answers…
       </p>
     );
@@ -150,32 +151,31 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <Card padding="sm" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <ProgressIndicator steps={displaySteps} currentStepId={currentDisplayStepId} completedStepIds={draft.completedStepIds} />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-none items-center gap-2">
           <QuickExitLink />
         </div>
-      </div>
+      </Card>
 
       {draft.isDemo ? <DemoBanner onExitDemo={handleStartOver} /> : null}
 
       {escalation.safetyConcern ? (
-        <div role="alert" className="rounded-md border-2 border-red-800 bg-red-50 p-4 text-red-950">
-          <p className="font-semibold">Your safety comes first.</p>
-          <p className="mt-1 text-sm">
+        <Alert variant="danger" emphasis role="alert" title="Your safety comes first.">
+          <p className="text-sm">
             If you are in danger, call 911. The National Domestic Violence Hotline is available any time at{" "}
             <a href="tel:18007997233" className="font-semibold underline">
               1-800-799-7233
             </a>
             . Use &quot;Quick exit&quot; above to leave this site immediately.
           </p>
-        </div>
+        </Alert>
       ) : null}
 
       {screen === "done" ? (
-        <div className="flex flex-col gap-4 rounded-md border border-green-700 bg-green-50 p-6">
-          <h1 className="text-2xl font-bold text-green-950">Your answers are saved</h1>
-          <p className="text-green-950">
+        <div className="flex flex-col gap-4 rounded-2xl border-2 border-success-border bg-success-surface p-6 text-success-text">
+          <h1 className="text-2xl font-bold">Your answers are saved</h1>
+          <p>
             Everything you entered is saved on this device (as of {confirmedAt ? new Date(confirmedAt).toLocaleString() : "now"}
             ). Your confirmed facts are being prepared for the transparent calculation results.
           </p>
@@ -187,8 +187,8 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
       ) : screen === "review" ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-slate-950">Review your answers</h1>
-            <p className="text-lg text-slate-700">
+            <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Review your answers</h1>
+            <p className="text-lg text-ink-muted">
               Check everything below before finishing. You can edit any topic.
             </p>
           </div>
@@ -223,7 +223,7 @@ export function IntakeWizard({ storage, initialDraft, onReviewComplete }: Intake
 
       {screen !== "review" && screen !== "done" ? (
         <div className="pt-2">
-          <button type="button" onClick={handleStartOver} className="text-sm font-medium text-slate-600 underline">
+          <button type="button" onClick={handleStartOver} className="rounded text-sm font-medium text-ink-muted underline underline-offset-4 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
             Clear saved answers and start over
           </button>
         </div>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import { secondaryButtonClasses, primaryButtonClasses } from "@/components/intake";
+import { Alert, Button, Card, buttonClasses } from "@/components/ui";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
 import { buildPackageViewModel } from "@/domain/package";
@@ -81,7 +81,7 @@ export function ResultsExperience() {
   }, [state]);
 
   if (state.status === "loading") {
-    return <p className="text-slate-700">Loading your results…</p>;
+    return <p className="text-ink-muted">Loading your results…</p>;
   }
 
   if (state.status === "empty" || !viewModel) {
@@ -92,53 +92,53 @@ export function ResultsExperience() {
     <div className="flex flex-col gap-8">
       <DisclaimerBanner />
 
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-300 bg-white p-4">
-        <p className="text-sm text-slate-700">
+      <Card padding="sm" className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-muted">
           Generated {new Date(viewModel.generatedAt).toLocaleString()}
           {viewModel.isDemo ? " — demo data" : ""}
         </p>
         <div className="flex flex-wrap gap-3">
-          <button type="button" onClick={handleDownload} disabled={downloadState === "downloading"} className={primaryButtonClasses}>
+          <Button type="button" onClick={handleDownload} loading={downloadState === "downloading"}>
             {downloadState === "downloading" ? "Preparing PDF…" : "Download PDF"}
-          </button>
-          <Link href="/documents" className={secondaryButtonClasses}>
+          </Button>
+          <Link href="/documents" className={buttonClasses("secondary", "md")}>
             Go to documents
           </Link>
         </div>
-      </section>
+      </Card>
 
       {downloadState === "error" && (
-        <p role="alert" className="rounded-md border-2 border-red-800 bg-red-50 p-3 text-red-950">
+        <Alert variant="danger" emphasis role="alert">
           Something went wrong generating the PDF. Please try again.
-        </p>
+        </Alert>
       )}
 
       <ChildSupportOutcomeCard outcome={viewModel.childSupport} />
       <AlimonyOutcomeCard outcome={viewModel.alimony} />
 
-      <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-5">
-        <h2 className="text-xl font-semibold text-slate-950">Missing or unsupported items</h2>
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold text-ink">Missing or unsupported items</h2>
         <MissingItemsPanel issues={viewModel.missingOrUnsupported} />
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-5">
-        <h2 className="text-xl font-semibold text-slate-950">Illustrative scenarios</h2>
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold text-ink">Illustrative scenarios</h2>
         <ScenariosPanel scenarios={viewModel.scenarios} />
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-5">
-        <h2 className="text-xl font-semibold text-slate-950">Confirmed facts used in this estimate</h2>
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold text-ink">Confirmed facts used in this estimate</h2>
         <ConfirmedFactsPanel entries={viewModel.confirmedFacts} />
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-5">
-        <h2 className="text-xl font-semibold text-slate-950">Sources, citations &amp; assumptions</h2>
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold text-ink">Sources, citations &amp; assumptions</h2>
         <SourcesPanel sources={viewModel.sources} verifications={viewModel.verifications} assumptions={viewModel.assumptions} />
-      </section>
+      </Card>
 
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-muted">
         Want to change an answer?{" "}
-        <Link href="/intake" className="font-semibold underline">
+        <Link href="/intake" className="font-semibold text-primary underline underline-offset-4 hover:text-primary-hover">
           Return to guided intake
         </Link>
         .

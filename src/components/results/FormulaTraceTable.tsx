@@ -20,7 +20,7 @@ export function FormulaTraceTable({ steps }: FormulaTraceTableProps) {
     <table className="w-full border-collapse text-left text-sm">
       <caption className="sr-only">Formula trace</caption>
       <thead>
-        <tr className="border-b-2 border-slate-300 text-xs uppercase tracking-wide text-slate-600">
+        <tr className="border-b-2 border-border-strong text-xs uppercase tracking-wide text-ink-subtle">
           <th scope="col" className="py-1.5 pr-3">
             Step
           </th>
@@ -34,18 +34,19 @@ export function FormulaTraceTable({ steps }: FormulaTraceTableProps) {
       </thead>
       <tbody>
         {steps.map((step) => (
-          <tr key={step.stepId} className="border-b border-slate-200 align-top">
-            <td className="py-2 pr-3 text-slate-950">{step.description}</td>
-            <td className="py-2 pr-3 text-slate-800">
+          <tr key={step.stepId} className="border-b border-border align-top">
+            <td className="py-2 pr-3 text-ink">{step.description}</td>
+            <td className="py-2 pr-3 text-ink-muted">
               <ul className="flex flex-col gap-0.5">
                 {Object.entries(step.values).map(([key, value]) => (
                   <li key={key}>
-                    <span className="font-medium">{key}:</span> {formatValue(value)}
+                    <span className="font-medium">{key}:</span>{" "}
+                    <span className="tabular-nums">{formatValue(value)}</span>
                   </li>
                 ))}
               </ul>
             </td>
-            <td className="py-2 text-xs text-slate-600">{step.citation ?? "—"}</td>
+            <td className="py-2 text-xs text-ink-subtle">{step.citation ?? "—"}</td>
           </tr>
         ))}
       </tbody>

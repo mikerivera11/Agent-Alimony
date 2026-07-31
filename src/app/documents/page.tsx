@@ -12,8 +12,8 @@ export default function DocumentsPage() {
   return (
     <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-slate-950">Documents</h1>
-        <p className="text-lg text-slate-700">
+        <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Documents</h1>
+        <p className="text-lg text-ink-muted">
           Gather the right paperwork for a Florida alimony/support case, and try a secure, local-first preview of
           document upload and (mock) extraction.
         </p>
