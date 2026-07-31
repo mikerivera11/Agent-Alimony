@@ -241,6 +241,79 @@ export const KNOWLEDGE_BASE: readonly KnowledgeEntry[] = [
     ],
   },
   {
+    id: "child-support-which-children",
+    title: "Which children go into the child support calculation?",
+    keywords: [
+      "other children",
+      "children from other marriages",
+      "other marriage",
+      "previous marriage",
+      "previous relationship",
+      "prior relationship",
+      "another relationship",
+      "another marriage",
+      "first marriage",
+      "shared minor children",
+      "shared children",
+      "which children",
+      "include children",
+      "stepchild",
+      "stepchildren",
+      "step child",
+      "half sibling",
+      "subsequent children",
+      "child from a previous",
+      "my other kids",
+      "other kids",
+      "dependent in fact",
+      "still in high school",
+      "turns 18",
+      "age 18",
+    ],
+    answer:
+      "Only the children **you and your spouse share in this case** go into the child support calculation. " +
+      "Children you have from another relationship are **not** added to the number of children on the " +
+      "worksheet.\n\n" +
+      "A child counts if they are a minor, or if they are 18 to 19 years old, still in high school, dependent " +
+      "in fact, and reasonably expected to graduate before turning 19.\n\n" +
+      "Children from another relationship can still affect the result, but only in specific ways:\n\n" +
+      "1. **As a deduction.** Court-ordered support for other children that you *actually pay* is subtracted " +
+      "   from your gross income. Both parts matter — it has to be under a court order, and it has to actually " +
+      "   be paid. An informal arrangement does not qualify. There is a field for this in the deductions " +
+      "   step.\n" +
+      "2. **As a possible reason to depart from the guidelines.** For children born or adopted *after* the " +
+      "   support obligation arose (the statute calls these \"subsequent children\"), the general rule is that " +
+      "   their existence is **not** a basis for disregarding the guideline amount. A parent may raise them as " +
+      "   a justification for deviating, but only in a proceeding to increase an existing award — never to " +
+      "   justify decreasing one. If it is raised, the court also considers the income of the other parent of " +
+      "   those children.\n\n" +
+      "Alimony you pay under a court order from a previous marriage is a separate allowable deduction.\n\n" +
+      "Stepchildren are not part of this calculation. If your situation involves an existing support order for " +
+      "other children, it is worth having a Florida family-law attorney check how the two interact.",
+    citations: [
+      {
+        citation: "Fla. Stat. §61.30(1)(a)",
+        title: "Which child the guideline amount covers",
+        url: `${FL_SENATE}/61.30`,
+      },
+      {
+        citation: "Fla. Stat. §61.30(3)(f)",
+        title: "Deduction for court-ordered support for other children actually paid",
+        url: `${FL_SENATE}/61.30`,
+      },
+      {
+        citation: "Fla. Stat. §61.30(3)(g)",
+        title: "Deduction for spousal support paid under a prior order",
+        url: `${FL_SENATE}/61.30`,
+      },
+      {
+        citation: "Fla. Stat. §61.30(12)",
+        title: "Subsequent children and deviation from the guidelines",
+        url: `${FL_SENATE}/61.30`,
+      },
+    ],
+  },
+  {
     id: "child-support-overnights",
     title: "How do overnights and time-sharing change child support?",
     keywords: [

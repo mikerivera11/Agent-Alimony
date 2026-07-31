@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "sources:florida": "tsx scripts/sync-florida-guidelines.ts"
+    "sources:florida": "tsx scripts/sync-florida-guidelines.ts",
+    "sources:statutes": "tsx scripts/sync-florida-statutes.ts"
   },
   "engines": {
     "node": ">=24 <25"

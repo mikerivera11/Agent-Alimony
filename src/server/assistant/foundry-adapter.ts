@@ -31,7 +31,8 @@ import {
 } from "./adapter";
 import { detectEscalationSignals, encloseUntrustedText, scanForCalculatedFigures, scanForPromptInjection } from "./guardrails";
 import { LocalAssistantAdapter } from "./local-adapter";
-import { retrieveKnowledge, topicRetrievalOptions } from "./retrieval";
+import { gatherGrounding, isUngrounded } from "./grounding";
+import { statuteChunkCitation } from "./statuteCorpus";
 import { ASSISTANT_SYSTEM_PROMPT, buildGroundingBlock } from "./systemPrompt";
 
 /** Entra scope for the Azure OpenAI data plane on an AI Services resource. */
@@ -68,17 +69,17 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
       return this.fallback.answer(request);
     }
 
-    const hits = retrieveKnowledge(request.question, topicRetrievalOptions(request.topic));
+    const grounding = gatherGrounding(request.question, request.topic);
 
     // No verified grounding means nothing for the model to rephrase. Saying
     // "I don't know" is the correct answer and needs no model call.
-    if (hits.length === 0) {
+    if (isUngrounded(grounding)) {
       return this.fallback.answer(request);
     }
 
     let text: string;
     try {
-      text = await this.callModel(request, buildGroundingBlock(hits));
+      text = await this.callModel(request, buildGroundingBlock(grounding));
     } catch {
       // Never surface provider errors or degrade into invented content.
       const fallbackAnswer = await this.fallback.answer(request);
@@ -104,9 +105,15 @@ export class FoundryAssistantAdapter implements AssistantAdapter {
 
     return {
       content: text.trim(),
-      citations: hits.flatMap((hit) => hit.entry.citations),
+      citations: [
+        ...grounding.entries.flatMap((hit) => hit.entry.citations),
+        ...grounding.statutes.map((hit) => statuteChunkCitation(hit.chunk)),
+      ],
       escalations,
-      groundedIn: hits.map((hit) => hit.entry.id),
+      groundedIn: [
+        ...grounding.entries.map((hit) => hit.entry.id),
+        ...grounding.statutes.map((hit) => hit.chunk.id),
+      ],
       source: this.label,
       outOfScope: false,
     };

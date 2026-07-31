@@ -20,6 +20,12 @@ import type { IntakeStepId } from "./draft";
 export interface IntakeAssistantTopic {
   /** Knowledge base entries most likely to answer questions about this topic. */
   readonly knowledgeEntryIds: readonly string[];
+  /**
+   * Chapter 61 sections that govern this topic. Like `knowledgeEntryIds`,
+   * these only re-rank statutory chunks the question already matched; they
+   * cannot lift an irrelevant chunk over the relevance threshold.
+   */
+  readonly statuteSections: readonly string[];
   /** Extra terms that bias retrieval toward this topic's subject matter. */
   readonly keywords: readonly string[];
   /** Plain-language starters, so the box is useful before anyone knows what to ask. */
@@ -29,6 +35,7 @@ export interface IntakeAssistantTopic {
 export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic> = {
   caseBasics: {
     knowledgeEntryIds: ["app-scope", "financial-disclosure"],
+    statuteSections: ["61.052", "61.046"],
     keywords: ["florida", "filing", "county", "jurisdiction", "dissolution"],
     suggestedQuestions: [
       "What can this app help me estimate, and what can't it do?",
@@ -38,6 +45,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   marriage: {
     knowledgeEntryIds: ["alimony-marriage-length", "alimony-forms"],
+    statuteSections: ["61.08", "61.046"],
     keywords: ["marriage", "length of marriage", "short-term", "moderate-term", "long-term", "duration"],
     suggestedQuestions: [
       "How does the length of my marriage affect alimony?",
@@ -47,6 +55,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   spouses: {
     knowledgeEntryIds: ["alimony-factors", "alimony-forms"],
+    statuteSections: ["61.08"],
     keywords: ["need", "ability to pay", "standard of living", "age", "health", "earning capacity"],
     suggestedQuestions: [
       "What does Florida mean by 'need' and 'ability to pay'?",
@@ -55,16 +64,19 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
     ],
   },
   children: {
-    knowledgeEntryIds: ["child-support-basics"],
+    knowledgeEntryIds: ["child-support-which-children", "child-support-basics"],
+    statuteSections: ["61.30", "61.13", "61.046"],
     keywords: ["children", "child support", "minor child", "guidelines"],
     suggestedQuestions: [
       "How does Florida calculate child support?",
+      "Do I include children from another marriage or relationship?",
       "Until what age is child support usually owed in Florida?",
       "Does child support change if we have more than one child?",
     ],
   },
   parentingTime: {
     knowledgeEntryIds: ["child-support-overnights", "child-support-basics"],
+    statuteSections: ["61.13", "61.30", "61.046"],
     keywords: ["overnights", "time-sharing", "timesharing", "parenting plan", "substantial", "gross-up"],
     suggestedQuestions: [
       "How do overnights change the child support amount?",
@@ -74,6 +86,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   income: {
     knowledgeEntryIds: ["child-support-basics", "alimony-factors", "financial-disclosure"],
+    statuteSections: ["61.30"],
     keywords: ["gross income", "income", "wages", "bonus", "self-employment", "imputed income"],
     suggestedQuestions: [
       "What counts as gross income under Florida law?",
@@ -82,7 +95,8 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
     ],
   },
   deductions: {
-    knowledgeEntryIds: ["child-support-basics", "financial-disclosure"],
+    knowledgeEntryIds: ["child-support-basics", "child-support-which-children", "financial-disclosure"],
+    statuteSections: ["61.30"],
     keywords: ["deductions", "allowable deductions", "net income", "taxes", "withholding"],
     suggestedQuestions: [
       "Which deductions does Florida allow when figuring net income?",
@@ -92,6 +106,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   childCosts: {
     knowledgeEntryIds: ["child-support-basics", "child-support-overnights"],
+    statuteSections: ["61.30", "61.13"],
     keywords: ["childcare", "child care", "health insurance", "extraordinary", "medical"],
     suggestedQuestions: [
       "How are childcare costs shared between parents?",
@@ -101,6 +116,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   householdExpenses: {
     knowledgeEntryIds: ["alimony-factors", "financial-disclosure"],
+    statuteSections: ["61.08", "61.30"],
     keywords: ["expenses", "household", "standard of living", "budget", "financial affidavit"],
     suggestedQuestions: [
       "Why do my monthly household expenses matter for alimony?",
@@ -110,6 +126,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   assetsDebts: {
     knowledgeEntryIds: ["equitable-distribution", "retirement-accounts", "lump-sum"],
+    statuteSections: ["61.075", "61.077"],
     keywords: [
       "assets",
       "debts",
@@ -130,6 +147,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   alimonyFactors: {
     knowledgeEntryIds: ["alimony-factors", "alimony-forms", "alimony-amount-cap", "lump-sum"],
+    statuteSections: ["61.08"],
     keywords: ["alimony", "spousal support", "durational", "bridge-the-gap", "rehabilitative", "factors"],
     suggestedQuestions: [
       "What factors does Florida consider when awarding alimony?",
@@ -139,6 +157,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   safetyComplexity: {
     knowledgeEntryIds: ["app-scope"],
+    statuteSections: ["61.13", "61.052"],
     keywords: ["safety", "domestic violence", "hidden assets", "special needs", "attorney"],
     suggestedQuestions: [
       "When should I stop and talk to a Florida attorney?",
@@ -148,6 +167,7 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   },
   documentReadiness: {
     knowledgeEntryIds: ["financial-disclosure", "alimony-forms"],
+    statuteSections: ["61.30", "61.08"],
     keywords: ["documents", "disclosure", "financial affidavit", "tax return", "pay stub", "mandatory disclosure"],
     suggestedQuestions: [
       "Which documents does Florida require for financial disclosure?",

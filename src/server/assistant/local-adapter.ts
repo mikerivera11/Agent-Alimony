@@ -11,8 +11,14 @@
 import type { StatutoryCitation } from "@/domain/rules/types";
 
 import type { AssistantAdapter, AssistantAnswer, AssistantRequest } from "./adapter";
-import { detectEscalationSignals, scanForPromptInjection } from "./guardrails";
-import { retrieveKnowledge, topicRetrievalOptions } from "./retrieval";
+import { gatherGrounding, isUngrounded } from "./grounding";
+import {
+  containsCurrency,
+  detectEscalationSignals,
+  redactCurrency,
+  scanForPromptInjection,
+} from "./guardrails";
+import { statuteChunkCitation, type StatuteChunk } from "./statuteCorpus";
 
 /** Deduplicates citations by citation string, preserving first-seen order. */
 function mergeCitations(groups: readonly (readonly StatutoryCitation[])[]): readonly StatutoryCitation[] {
@@ -51,6 +57,41 @@ const INJECTION_RESPONSE =
   "If you have a question about alimony, child support, dividing property, or the documents you need, ask it " +
   "directly and I'll do my best.";
 
+/**
+ * Presents statutory chunks when no curated entry covers the question.
+ *
+ * Dollar amounts are redacted rather than quoted. Statutory thresholds are
+ * enacted text, not calculations, so quoting them would arguably be
+ * defensible — but "the assistant never states a dollar figure" is only
+ * worth having as a guarantee if it is absolute and machine-checkable. A
+ * reader who needs the exact threshold has the citation and a link to the
+ * official text, and every figure this app produces comes from the
+ * deterministic calculators instead.
+ */
+function formatStatuteOnlyAnswer(chunks: readonly StatuteChunk[]): string {
+  const redacted = chunks.some((chunk) => containsCurrency(chunk.text));
+
+  const quoted = chunks
+    .map(
+      (chunk) =>
+        `**${chunk.citation} — ${chunk.sectionTitle}**\n\n> ${redactCurrency(chunk.text, "[amount — see the linked statute]")}\n\n[Read it on the Florida Senate site](${chunk.url})`,
+    )
+    .join("\n\n");
+
+  return (
+    "I don't have a plain-language explanation written for that question, but Florida law does address it. " +
+    "Here is the statutory text itself:\n\n" +
+    `${quoted}\n\n` +
+    (redacted
+      ? "Dollar amounts are left out above on purpose — this assistant never states figures. Use the link to " +
+        "see the exact statutory text, and use the app's results screen for any amount in your own case.\n\n"
+      : "") +
+    "Statutes are written for lawyers, so if that is hard to apply to your situation, a licensed Florida " +
+    "family-law attorney can tell you what it means for you. The Florida Bar Lawyer Referral Service is " +
+    "1-800-342-8011."
+  );
+}
+
 export class LocalAssistantAdapter implements AssistantAdapter {
   readonly name = "local";
   readonly label = "Florida statute reference (built in, no AI)";
@@ -72,9 +113,10 @@ export class LocalAssistantAdapter implements AssistantAdapter {
       };
     }
 
-    const hits = retrieveKnowledge(request.question, topicRetrievalOptions(request.topic));
+    const grounding = gatherGrounding(request.question, request.topic);
+    const hits = grounding.entries;
 
-    if (hits.length === 0) {
+    if (isUngrounded(grounding)) {
       // Answering "I don't have material on that" to someone disclosing
       // abuse or a court deadline reads as a brush-off. When an urgent
       // signal fired, acknowledge it instead; the escalation itself carries
@@ -88,6 +130,20 @@ export class LocalAssistantAdapter implements AssistantAdapter {
         groundedIn: [],
         source: this.label,
         outOfScope: true,
+      };
+    }
+
+    // With no curated entry, the statute itself is the answer. It is quoted
+    // rather than paraphrased: paraphrasing enacted text without a lawyer in
+    // the loop is exactly the kind of quiet interpretation this app avoids.
+    if (hits.length === 0) {
+      return {
+        content: formatStatuteOnlyAnswer(grounding.statutes.map((hit) => hit.chunk)),
+        citations: grounding.statutes.map((hit) => statuteChunkCitation(hit.chunk)),
+        escalations,
+        groundedIn: grounding.statutes.map((hit) => hit.chunk.id),
+        source: this.label,
+        outOfScope: false,
       };
     }
 
@@ -105,6 +161,10 @@ export class LocalAssistantAdapter implements AssistantAdapter {
 
     return {
       content: sections.join("\n\n---\n\n"),
+      // Only the curated entries' own citations are listed. Statutory chunks
+      // retrieved alongside them are grounding for a model, not text this
+      // answer showed — citing them would point the reader at a section the
+      // answer never relied on.
       citations: mergeCitations(hits.map((hit) => hit.entry.citations)),
       escalations,
       groundedIn: hits.map((hit) => hit.entry.id),

@@ -96,6 +96,18 @@ export interface RetrievalOptions {
 const PREFERRED_ENTRY_BOOST = 1;
 
 /**
+ * Entries scoring below this fraction of the best hit are dropped.
+ *
+ * Without it, a question with one obviously-correct answer still returns the
+ * broad overview entries that share a word or two with it, and those get
+ * appended underneath. That is what made "would I also include children from
+ * other marriages?" read as a generic answer even once a specific entry
+ * existed: the specific entry was first, but the general child-support
+ * overview followed it and buried the point.
+ */
+const RELEVANCE_GAP_RATIO = 0.4;
+
+/**
  * Retrieval options for a question asked from a specific intake section.
  * Kept here so every adapter grounds the same way — an adapter that retrieved
  * differently would be a second, untested source of legal grounding.
@@ -114,11 +126,15 @@ export function retrieveKnowledge(question: string, options: RetrievalOptions = 
   const { limit = 3, minimumScore = 2, preferredEntryIds = [] } = options;
   const preferred = new Set(preferredEntryIds);
 
-  return KNOWLEDGE_BASE.map((entry) => scoreEntry(entry, question))
+  const ranked = KNOWLEDGE_BASE.map((entry) => scoreEntry(entry, question))
     // The boost is applied after this filter, so a preferred entry still has to
     // earn its place on the question's own merits before being promoted.
     .filter((hit) => hit.score >= minimumScore)
     .map((hit) => (preferred.has(hit.entry.id) ? { ...hit, score: hit.score + PREFERRED_ENTRY_BOOST } : hit))
-    .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
-    .slice(0, limit);
+    .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id));
+
+  if (ranked.length === 0) return ranked;
+
+  const threshold = ranked[0].score * RELEVANCE_GAP_RATIO;
+  return ranked.filter((hit) => hit.score >= threshold).slice(0, limit);
 }

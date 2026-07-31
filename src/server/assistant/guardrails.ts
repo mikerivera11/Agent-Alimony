@@ -285,6 +285,25 @@ export function scanForCalculatedFigures(text: string): FigureScanResult {
   return { containsCurrency: currencyMentions.length > 0, currencyMentions };
 }
 
+export function containsCurrency(text: string): boolean {
+  return scanForCalculatedFigures(text).containsCurrency;
+}
+
+/**
+ * Removes dollar amounts from text that will be shown to a person or handed
+ * to a model.
+ *
+ * Statutory text carries real thresholds, and quoting an enacted figure is
+ * not the same thing as calculating one. But "the assistant never states a
+ * dollar figure" is only useful as a guarantee if it holds without
+ * exceptions, so statutory amounts are redacted too and the citation is
+ * offered instead. Redacting before the model call also means the model
+ * cannot leak a figure it was never given.
+ */
+export function redactCurrency(text: string, replacement = "[amount omitted]"): string {
+  return text.replace(CURRENCY_PATTERN, replacement);
+}
+
 /** Shown wherever the assistant is available. Not legal advice, not privileged. */
 export const ASSISTANT_DISCLAIMER =
   "This assistant gives general legal information about Florida family law. It is not a lawyer, does not give " +

@@ -9,7 +9,8 @@
  * no tools, no database access, and cannot influence the rules engine.
  */
 
-import type { RetrievalHit } from "./retrieval";
+import type { Grounding } from "./grounding";
+import { redactCurrency } from "./guardrails";
 
 export const ASSISTANT_SYSTEM_PROMPT = `You are the Florida family-law information assistant inside a self-help application. You explain how Florida family law works in plain, calm, everyday language.
 
@@ -38,22 +39,41 @@ HOW TO WRITE
 If the user describes abuse, threats, coercion, hidden assets, a business that needs valuation, a child with significant special needs, a case touching another state or country, or an imminent court deadline, acknowledge it briefly and recommend a licensed Florida family-law attorney. The application shows its own safety resources, so do not invent hotline numbers or legal deadlines that are not in the reference material.`;
 
 /**
- * Renders retrieved knowledge entries as the model's sole permitted source
- * of legal substance.
+ * Renders retrieved material as the model's sole permitted source of legal
+ * substance: curated plain-language entries first, then verbatim statutory
+ * text. Statutory chunks are labelled as exact quotations so the model
+ * rephrases them rather than treating them as loose paraphrase it may extend.
  */
-export function buildGroundingBlock(hits: readonly RetrievalHit[]): string {
-  if (hits.length === 0) {
-    return "REFERENCE MATERIAL\n\n(none — no verified material matched this question)";
+export function buildGroundingBlock(grounding: Grounding): string {
+  const sections: string[] = [];
+
+  for (const hit of grounding.entries) {
+    const citations = hit.entry.citations.map(
+      (citation) => `- ${citation.citation}: ${citation.title ?? ""}`.trimEnd(),
+    );
+    sections.push(
+      [
+        `## ${hit.entry.title}`,
+        hit.entry.answer,
+        citations.length > 0 ? `Citations:\n${citations.join("\n")}` : "Citations: (none)",
+      ].join("\n\n"),
+    );
   }
 
-  const sections = hits.map((hit) => {
-    const citations = hit.entry.citations.map((citation) => `- ${citation.citation}: ${citation.title ?? ""}`.trimEnd());
-    return [
-      `## ${hit.entry.title}`,
-      hit.entry.answer,
-      citations.length > 0 ? `Citations:\n${citations.join("\n")}` : "Citations: (none)",
-    ].join("\n\n");
-  });
+  for (const hit of grounding.statutes) {
+    sections.push(
+      [
+        `## ${hit.chunk.citation} — ${hit.chunk.sectionTitle}`,
+        "Exact statutory text (quote or restate faithfully; do not extend beyond it):",
+        redactCurrency(hit.chunk.text),
+        `Citations:\n- ${hit.chunk.citation}: ${hit.chunk.sectionTitle}`,
+      ].join("\n\n"),
+    );
+  }
+
+  if (sections.length === 0) {
+    return "REFERENCE MATERIAL\n\n(none — no verified material matched this question)";
+  }
 
   return `REFERENCE MATERIAL (the only source you may rely on)\n\n${sections.join("\n\n---\n\n")}`;
 }
