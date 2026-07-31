@@ -103,8 +103,10 @@ export function LumpSumOutcomeCard({ lumpSum }: LumpSumOutcomeCardProps) {
       <h2 className="text-xl font-semibold text-ink">Lump-sum settlement (optional)</h2>
 
       <Alert variant="warning" role="note" title="This is your assumption, not the law">
-        No Florida statute sets a discount rate or a present-value formula. The figures below depend entirely on the
-        rate you choose, so they are shown as a <strong>range</strong>, never a single &ldquo;correct&rdquo; number.
+        <p>
+          No Florida statute sets a discount rate or a present-value formula. The figures below depend entirely on the
+          rate you choose, so they are shown as a <strong>range</strong>, never a single &ldquo;correct&rdquo; number.
+        </p>
       </Alert>
 
       <div className="flex flex-col gap-2">

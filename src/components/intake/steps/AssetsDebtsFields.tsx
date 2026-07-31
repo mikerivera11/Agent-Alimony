@@ -197,9 +197,11 @@ export function AssetsDebtsFields({ register, errors, control, setValue }: StepF
   return (
     <div className="flex flex-col gap-6">
       <Alert variant="info" role="note" className="text-sm">
-        List each major asset and debt separately. For each one you&apos;ll say who holds it and whether it&apos;s
-        shared (marital) or separate (nonmarital) property. Florida starts from an <strong>equal split</strong> of the
-        shared estate, so itemizing is what lets us show the effect of every choice.
+        <p>
+          List each major asset and debt separately. For each one you&apos;ll say who holds it and whether it&apos;s
+          shared (marital) or separate (nonmarital) property. Florida starts from an <strong>equal split</strong> of
+          the shared estate, so itemizing is what lets us show the effect of every choice.
+        </p>
       </Alert>
 
       <div className="flex flex-col gap-4">
