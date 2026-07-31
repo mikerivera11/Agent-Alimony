@@ -1,7 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import { getRuleset, listRulesets } from "./registry";
+import { getRuleset, listRulesets, registerRuleset, type RulesetRegistration } from "./registry";
 import "./florida"; // registers the Florida rulesets as a side effect
+
+function registration(overrides: Partial<RulesetRegistration["metadata"]>): RulesetRegistration {
+  return {
+    metadata: {
+      rulesetId: "test-ruleset",
+      jurisdiction: "FL",
+      topic: "alimony",
+      statutoryCompilation: "2025",
+      effectiveDate: "2023-07-01",
+      applicability: "test",
+      citations: [],
+      supportedPredicates: [],
+      assumptions: [],
+      limitations: [],
+      ...overrides,
+    },
+    calculate: () => {
+      throw new Error("not used");
+    },
+  };
+}
 
 describe("ruleset registry", () => {
   it("registers the Florida child support and alimony rulesets with full metadata", () => {
@@ -24,5 +45,20 @@ describe("ruleset registry", () => {
 
   it("returns undefined for an unknown ruleset id", () => {
     expect(getRuleset("does-not-exist")).toBeUndefined();
+  });
+
+  it("rejects a different version of the law claiming an already-registered id", () => {
+    registerRuleset(registration({ rulesetId: "collision-check" }));
+
+    expect(() =>
+      registerRuleset(registration({ rulesetId: "collision-check", effectiveDate: "2099-01-01" })),
+    ).toThrow(/already registered/);
+  });
+
+  it("tolerates re-registering the same ruleset id and law version outside production", () => {
+    registerRuleset(registration({ rulesetId: "reload-check" }));
+
+    expect(() => registerRuleset(registration({ rulesetId: "reload-check" }))).not.toThrow();
+    expect(getRuleset("reload-check")?.metadata.effectiveDate).toBe("2023-07-01");
   });
 });

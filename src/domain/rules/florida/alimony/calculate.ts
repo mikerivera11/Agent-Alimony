@@ -285,6 +285,32 @@ export function calculateFloridaAlimony(
   const limitingFactor: "reasonableNeed" | "thirtyFivePercentIncomeDifference" =
     reasonableNeedCents <= thirtyFivePercentCents ? "reasonableNeed" : "thirtyFivePercentIncomeDifference";
 
+  if (reasonableNeedCents === 0) {
+    warnings.push({
+      flagId: "zeroReasonableNeed",
+      description:
+        "The recipient's reasonable monthly need is $0.00, which forces the amount ceiling to $0.00 regardless of " +
+        "either party's income. Under §61.08(2)(a) need is a threshold element, so no alimony amount can be " +
+        "supported until a documented monthly need is established.",
+      severity: "warning",
+      citation: "Fla. Stat. §61.08(2)(a)",
+    });
+  }
+
+  if (rangeCeilingCents === 0) {
+    warnings.push({
+      flagId: "zeroAmountCeiling",
+      description:
+        "The estimated amount range is $0.00 because at least one of the two statutory limits is $0.00: the " +
+        `recipient's reasonable monthly need and 35% of the parties' net-income difference. Need is currently ` +
+        `${reasonableNeedCents === 0 ? "$0.00" : "greater than $0.00"} and the 35% figure is currently ` +
+        `${thirtyFivePercentCents === 0 ? "$0.00" : "greater than $0.00"}. The ceiling is always the lesser of the ` +
+        "two, so raising only the larger one will not change this result.",
+      severity: "warning",
+      citation: "Fla. Stat. §61.08(8)(c)",
+    });
+  }
+
   formulaTrace.push({
     stepId: "amount-ceiling",
     description:

@@ -16,11 +16,30 @@ export interface RulesetRegistration<TInput = unknown, TResult = unknown> {
 
 const registry = new Map<string, RulesetRegistration>();
 
+/**
+ * Registers a ruleset, refusing to let two *different* rulesets claim the
+ * same id — that would silently change which formula runs for a jurisdiction.
+ *
+ * In development the module graph is re-evaluated on hot reload, which
+ * produces a fresh registration object for the very same ruleset id and
+ * version. That is not a collision, so outside production a re-registration
+ * of the same id and same law version (effective date + statutory
+ * compilation) replaces the previous entry instead of throwing. Production
+ * keeps the strict check, as does any genuine id collision between two
+ * different versions of the law.
+ */
 export function registerRuleset<TInput, TResult>(
   registration: RulesetRegistration<TInput, TResult>,
 ): void {
   const existing = registry.get(registration.metadata.rulesetId);
-  if (existing && existing !== (registration as RulesetRegistration)) {
+  const isSameRegistration = existing === (registration as RulesetRegistration);
+  const isHotReloadOfSameRuleset =
+    process.env.NODE_ENV !== "production" &&
+    existing !== undefined &&
+    existing.metadata.effectiveDate === registration.metadata.effectiveDate &&
+    existing.metadata.statutoryCompilation === registration.metadata.statutoryCompilation;
+
+  if (existing && !isSameRegistration && !isHotReloadOfSameRuleset) {
     throw new Error(`Ruleset already registered: ${registration.metadata.rulesetId}`);
   }
   registry.set(registration.metadata.rulesetId, registration as RulesetRegistration);

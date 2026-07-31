@@ -35,7 +35,7 @@ export function AlimonyFactorsFields({ register, errors }: StepFieldsProps<Alimo
       <MoneyField
         id="confirmedReasonableMonthlyNeed"
         label="Recipient's documented reasonable monthly need"
-        hint="Use the monthly shortfall you can support with a budget and records. This is an input, not an amount chosen by AI."
+        hint="Optional. Leave this at 0 and we'll calculate the monthly shortfall for you from the living expenses and income you already entered. Enter a figure here only if you have a documented budget you'd rather use."
         cadenceLabel="per month"
         registration={register("confirmedReasonableMonthlyNeed")}
         error={errors.confirmedReasonableMonthlyNeed?.message}
