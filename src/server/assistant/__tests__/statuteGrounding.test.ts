@@ -359,4 +359,33 @@ describe("citationsUsedIn", () => {
   it("never invents a citation out of an empty grounding", () => {
     expect(citationsUsedIn("Fla. Stat. § 61.30(1)(a).", { entries: [], statutes: [] })).toEqual([]);
   });
+
+  // A model routinely cites a subsection more precisely than the corpus labels
+  // the entry. Treating those as different sections sent every such answer to
+  // the fallback, which lists everything retrieved.
+  it("matches a model subsection against the section the corpus labels", () => {
+    const grounding = gatherGrounding(
+      "How does Florida decide what counts as gross income for child support?",
+      undefined,
+    );
+
+    const used = citationsUsedIn("Wages and bonuses count under §61.30(2)(a).", grounding);
+
+    expect(used.map((citation) => citation.citation)).toEqual(["Fla. Stat. §61.30(2)"]);
+  });
+
+  it("does not treat a shorter number as a prefix of a different section", () => {
+    const grounding = gatherGrounding(
+      "How does Florida decide what counts as gross income for child support?",
+      undefined,
+    );
+
+    // §61.3 is not a section; if prefix matching ignored subsection boundaries
+    // it would swallow §61.30 and cite the child support statute as though the
+    // answer had relied on it. Matching nothing means falling back to the full
+    // grounding set, which is what "no supported citation was named" looks like.
+    const used = citationsUsedIn("See §61.3 for details.", grounding);
+
+    expect(used).toEqual(groundingCitations(grounding));
+  });
 });

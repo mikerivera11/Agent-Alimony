@@ -79,8 +79,15 @@ export function isUngrounded(grounding: Grounding): boolean {
  * quietly recalled from training data, is not in the grounding and is
  * therefore dropped rather than shown as if it had been verified.
  *
- * Falls back to `groundingCitations` when the answer names no section at all,
- * so an answer is never left with nothing to point at.
+ * Matching is by subsection containment, not string equality. A model asked
+ * about gross income cites s. 61.30(2)(a) while the corpus labels that entry
+ * s. 61.30(2); they refer to the same authority, and treating them as
+ * unrelated sent the whole thing to the fallback below and listed five
+ * sections instead of one. Containment holds in both directions, since the
+ * model may also cite a subsection more loosely than the corpus labels it.
+ *
+ * Falls back to `groundingCitations` when the answer names no section the
+ * grounding supports, so an answer is never left with nothing to point at.
  */
 export function citationsUsedIn(content: string, grounding: Grounding): readonly StatutoryCitation[] {
   const available = [
@@ -101,12 +108,25 @@ export function citationsUsedIn(content: string, grounding: Grounding): readonly
   const used: StatutoryCitation[] = [];
   for (const citation of available) {
     const key = citation.citation.replace(/^.*§\s*/, "").replace(/\s+/g, "").toLowerCase();
-    if (!mentioned.has(key) || seen.has(citation.citation)) continue;
+    if (seen.has(citation.citation)) continue;
+    if (![...mentioned].some((reference) => coversSameSubsection(reference, key))) continue;
     seen.add(citation.citation);
     used.push(citation);
   }
 
   return used.length > 0 ? used : groundingCitations(grounding);
+}
+
+/**
+ * True when two normalized section references point at the same authority,
+ * one being the other or an enumerated part of it. The boundary check matters:
+ * without it "61.3" would swallow "61.30", and 61.30 is the child support
+ * statute while 61.3 is not a section at all.
+ */
+function coversSameSubsection(left: string, right: string): boolean {
+  if (left === right) return true;
+  const [longer, shorter] = left.length > right.length ? [left, right] : [right, left];
+  return longer.startsWith(shorter) && longer[shorter.length] === "(";
 }
 
 /**

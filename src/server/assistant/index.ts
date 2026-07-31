@@ -1,6 +1,7 @@
 import { getServerEnv } from "@/lib/env";
 
 import type { AssistantAdapter } from "./adapter";
+import { FoundryAgentAssistantAdapter } from "./agent-adapter";
 import { FoundryAssistantAdapter } from "./foundry-adapter";
 import { LocalAssistantAdapter } from "./local-adapter";
 
@@ -8,6 +9,7 @@ export * from "./adapter";
 export * from "./guardrails";
 export { KNOWLEDGE_BASE, SUGGESTED_QUESTIONS, type KnowledgeEntry } from "./knowledgeBase";
 export { retrieveKnowledge, type RetrievalHit } from "./retrieval";
+export { FoundryAgentAssistantAdapter } from "./agent-adapter";
 export { FoundryAssistantAdapter } from "./foundry-adapter";
 export { LocalAssistantAdapter } from "./local-adapter";
 
@@ -19,6 +21,8 @@ export { LocalAssistantAdapter } from "./local-adapter";
 export function getAssistantAdapter(): AssistantAdapter {
   const env = getServerEnv();
   switch (env.ASSISTANT_PROVIDER) {
+    case "agent":
+      return new FoundryAgentAssistantAdapter();
     case "foundry":
       return new FoundryAssistantAdapter();
     case "local":

@@ -180,6 +180,7 @@ The topic is a **closed enum of step ids** at the API boundary, never free text,
 | --- | --- |
 | `local` (default) | Answers from the built-in statute reference. Needs no AI provider and is not a stub. |
 | `foundry` | Additionally uses an Azure OpenAI GPT deployment on Azure AI Foundry to rephrase the same retrieved passages in plainer language. |
+| `agent` (deployed) | Runs a Foundry **Agent Service** agent that decides when to retrieve, by calling a `search_florida_law` tool. Falls back to `foundry`, which falls back to `local`. |
 
 The Foundry adapter calls the Azure OpenAI chat-completions API at `https://<resource>.openai.azure.com/openai/deployments/<deployment>/chat/completions` using `fetch` and the existing `@azure/identity` dependency, rather than taking a hard dependency on a provider SDK. It authenticates by managed identity (Entra scope `https://cognitiveservices.azure.com/.default`, role **Cognitive Services OpenAI User**), with `AZURE_FOUNDRY_API_KEY` as a fallback. The API version is set by `AZURE_FOUNDRY_API_VERSION` so a model needing a newer one does not require a code change.
 
@@ -193,7 +194,25 @@ Three things about that module are load-bearing rather than incidental:
 
 Enabling the model does not move any legal substance out of this repository. Retrieval still runs in application code against the committed corpus; the model only ever sees passages retrieval already selected, and its output is still scanned for dollar figures and discarded if any appear. Every failure path — unreachable account, missing role assignment, rejected API version — falls back to the local adapter with a visible note, so a misconfiguration degrades phrasing rather than breaking the assistant or changing an answer.
 
+### The agent tier
+
+`foundry` pre-fetches passages and hands the model one prompt, so a follow-up question arrives with no memory of the last answer and retrieval is fixed before the model has seen anything. The `agent` provider instead registers one tool, `search_florida_law`, and lets the agent decide when to call it and what to search for, on a Foundry thread that carries the conversation.
+
+That inverts where grounding comes from, so it is worth being precise about what did **not** change. The tool runs the same `gatherGrounding` over the same committed corpus, so the agent cannot reach material the other adapters could not. Retrieval still happens in application code, in this repository, under test. Passages are currency-redacted *before* the agent reads them, so the "never states a dollar figure" guarantee does not rest on the agent's restraint.
+
+What did change is that grounding is no longer structurally guaranteed. A model free to skip retrieval will sometimes skip it, and what comes back then is recalled training data wearing this app's citations. So the run is inspected rather than trusted: **an answer produced without a tool call is discarded** and the question is re-answered by the fallback with a visible note. Unknown tool names are refused rather than guessed at, and a search that matches nothing returns an explicit instruction to decline instead of an empty result the agent might fill from memory.
+
+Threads are created per request and prior turns replayed into them, rather than one long-lived server-side thread per user. A persistent thread would be conversation content living outside this app's own retention rules.
+
+**The agent runs gpt-5.1, not gpt-5.6-sol, and that is a constraint rather than a preference.** The Agent Service always sends `top_p`, which gpt-5.5 and the whole gpt-5.6 family reject outright; this was verified against a live resource across five API versions and cannot be configured away by setting the parameter explicitly. gpt-5.1 accepts it. The chat-completions tier keeps the newer model, and since substance comes from the corpus either way, the difference is phrasing. gpt-5.1 is also a regional `Standard` deployment drawing on a separate quota pool, not `GlobalStandard`.
+
+The agent itself is created by the app on first use and reused by name. Agents are data-plane objects with no ARM type, so Bicep cannot declare one; doing it in code keeps release to a single `git push` rather than a bootstrap step that can be skipped.
+
+**Not yet built: calculator tools.** The obvious next step is letting the agent call the deterministic rulesets so it can answer "what would my support be". It is not built because it runs into a real boundary rather than a missing afternoon: every calculation accepts only a `ConfirmedFact`, whose source must be `user-entered`, `user-confirmed-extraction`, or `document-confirmed`. Numbers a model parses out of a chat message are none of those, and passing them as `user-entered` would quietly defeat the confirmation boundary the whole application is built on. The options — calculate only from saved intake data, add a distinct conversational-scenario provenance whose results are labelled and never persisted, or use saved data as a base with echoed-back overrides — are a product decision, not an implementation detail.
+
 > **First deployment needs one re-run.** ARM sometimes starts the model deployment while the parent Cognitive Services account is still in `Accepted` and fails with `AccountProvisioningStateInvalid`. The `parent` relationship is the strongest ordering Bicep can express, so there is no template fix; wait for the account to report `Succeeded` and re-run. Subsequent deployments are unaffected.
+>
+> The same error has a second, permanent cause worth distinguishing: **creating or updating the project returns the account to `Accepted`**, and any write touching the account while it is there fails. That one does not resolve on a re-run, because ARM starts the private endpoint in parallel with the project every time. It is fixed in the template with an explicit `dependsOn`, since the `parent` graph does not imply that ordering.
 
 ## Saving, editing, and coming back
 

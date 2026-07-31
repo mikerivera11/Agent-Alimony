@@ -72,6 +72,21 @@ param foundryModelCapacity int = 50
 @description('Azure OpenAI data-plane API version. Newer models reject older versions, so this is a parameter rather than a constant.')
 param foundryApiVersion string = '2025-04-01-preview'
 
+@description('Run the assistant as a Foundry Agent Service agent with a retrieval tool, rather than as a single pre-grounded chat completion. Falls back to the chat model, then to the local adapter.')
+param enableFoundryAgent bool = true
+
+@description('Model the Agent Service runs. The Agent Service always sends top_p, which gpt-5.5 and the gpt-5.6 family reject, so this cannot simply track foundryModelName.')
+param foundryAgentModelName string = 'gpt-5.1'
+
+@description('Version of the Agent Service model.')
+param foundryAgentModelVersion string = '2025-11-13'
+
+@description('Thousands of tokens per minute for the Agent Service model. Drawn from the regional Standard pool, not the GlobalStandard one.')
+param foundryAgentCapacity int = 50
+
+@description('Agent Service data-plane API version.')
+param foundryAgentApiVersion string = '2025-05-01'
+
 var uniqueSuffix = uniqueString(resourceGroup().id, namePrefix, environmentName)
 
 // Resource names are computed once, here, from parameters/variables only
@@ -87,6 +102,9 @@ var webAppName = '${namePrefix}-${environmentName}-app'
 // only, so it can be referenced as a `scope` below.
 var foundryAccountName = toLower(take('ai-${replace(namePrefix, '-', '')}-${environmentName}-${uniqueSuffix}', 24))
 var foundryDeploymentName = foundryModelName
+// Project names allow only alphanumerics and hyphens, and must be unique
+// within the account rather than globally.
+var foundryProjectName = toLower(take('proj-${replace(namePrefix, '-', '')}-${environmentName}', 32))
 
 // Built here (not by a role-assignment GUID literal) so the same role
 // definition ID always maps to a stable, idempotent assignment name.
@@ -171,6 +189,10 @@ module foundry 'modules/foundry.bicep' = if (enableFoundryAssistant) {
     modelName: foundryModelName
     modelVersion: foundryModelVersion
     capacity: foundryModelCapacity
+    agentModelName: foundryAgentModelName
+    agentModelVersion: foundryAgentModelVersion
+    agentCapacity: foundryAgentCapacity
+    projectName: foundryProjectName
     privateLinkSubnetId: network.outputs.privateEndpointSubnetId
     virtualNetworkId: network.outputs.vnetId
     principalId: appService.outputs.webAppPrincipalId
@@ -329,10 +351,16 @@ resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     DATABASE_URL: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.databaseUrlSecretUri})'
     SESSION_SIGNING_SECRET: '@Microsoft.KeyVault(SecretUri=${keyVault.outputs.sessionSigningSecretUri})'
   }, enableFoundryAssistant ? {
-    ASSISTANT_PROVIDER: 'foundry'
+    ASSISTANT_PROVIDER: enableFoundryAgent ? 'agent' : 'foundry'
     AZURE_FOUNDRY_ENDPOINT: foundry!.outputs.endpoint
     AZURE_FOUNDRY_DEPLOYMENT: foundry!.outputs.deploymentName
     AZURE_FOUNDRY_API_VERSION: foundryApiVersion
+    // Always set, even when the agent is off, so the chat adapter and the
+    // agent adapter differ only by ASSISTANT_PROVIDER and switching back is
+    // a one-setting change rather than a redeploy.
+    AZURE_FOUNDRY_PROJECT_ENDPOINT: foundry!.outputs.projectEndpoint
+    AZURE_FOUNDRY_AGENT_MODEL: foundry!.outputs.agentModelName
+    AZURE_FOUNDRY_AGENT_API_VERSION: foundryAgentApiVersion
   } : {
     ASSISTANT_PROVIDER: 'local'
   })

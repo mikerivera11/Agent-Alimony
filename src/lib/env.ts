@@ -34,7 +34,7 @@ const serverEnvSchema = z.object({
   AI_PROVIDER_API_KEY: optionalString(),
   // Florida family-law information assistant. `local` answers from the
   // curated statute knowledge base with no AI provider and is the default.
-  ASSISTANT_PROVIDER: emptyStringAsUndefined(z.enum(["local", "foundry"]).default("local")),
+  ASSISTANT_PROVIDER: emptyStringAsUndefined(z.enum(["local", "foundry", "agent"]).default("local")),
   /** e.g. https://<resource>.services.ai.azure.com */
   AZURE_FOUNDRY_ENDPOINT: optionalUrl(),
   /** Foundry model deployment name, e.g. gpt-5. */
@@ -44,6 +44,14 @@ const serverEnvSchema = z.object({
   AZURE_FOUNDRY_API_VERSION: emptyStringAsUndefined(z.string().default("2024-10-21")),
   /** Optional. Prefer managed identity with the Cognitive Services OpenAI User role. */
   AZURE_FOUNDRY_API_KEY: optionalString(),
+  /** Foundry *project* data plane, e.g. https://<resource>.services.ai.azure.com/api/projects/<project>.
+   *  Required by ASSISTANT_PROVIDER=agent; the chat-completions endpoint above is a different host path. */
+  AZURE_FOUNDRY_PROJECT_ENDPOINT: optionalUrl(),
+  /** Model the Agent Service runs. Not interchangeable with AZURE_FOUNDRY_DEPLOYMENT:
+   *  the Agent Service always sends `top_p`, which the gpt-5.5/5.6 reasoning models
+   *  reject outright, so the agent needs a model that accepts it. */
+  AZURE_FOUNDRY_AGENT_MODEL: optionalString(),
+  AZURE_FOUNDRY_AGENT_API_VERSION: emptyStringAsUndefined(z.string().default("2025-05-01")),
   MAX_UPLOAD_BYTES: emptyStringAsUndefined(z.coerce.number().int().positive().default(10 * 1024 * 1024)),
 });
 

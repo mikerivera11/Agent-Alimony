@@ -5,8 +5,13 @@
  * grounding passages can be unit-tested. Note that the prompt is a
  * *usability* control, not the security control: the real guarantees come
  * from (a) grounding the model only in curated passages, (b) rejecting
- * output containing dollar figures, and (c) the fact that the assistant has
- * no tools, no database access, and cannot influence the rules engine.
+ * output containing dollar figures, and (c) the fact that the assistant
+ * has no database access and cannot influence the rules engine.
+ *
+ * The agent adapter does give the model one tool, but it does not widen any
+ * of that. The tool runs the same retrieval over the same committed corpus,
+ * so it cannot reach material the promptless adapters could not, and an
+ * agent answer produced without calling it is discarded rather than shown.
  */
 
 import type { Grounding } from "./grounding";
@@ -37,6 +42,24 @@ HOW TO WRITE
 - Never speculate about the other spouse's motives or the user's chances.
 
 If the user describes abuse, threats, coercion, hidden assets, a business that needs valuation, a child with significant special needs, a case touching another state or country, or an imminent court deadline, acknowledge it briefly and recommend a licensed Florida family-law attorney. The application shows its own safety resources, so do not invent hotline numbers or legal deadlines that are not in the reference material.`;
+
+/**
+ * Instructions for the Agent Service adapter.
+ *
+ * This differs from `ASSISTANT_SYSTEM_PROMPT` in exactly one respect: the
+ * reference material is not in the prompt, because the agent fetches it
+ * itself. Everything else is shared verbatim, so the two adapters cannot
+ * drift into answering under different rules — a class of defect this
+ * codebase has already been bitten by once, in its citation logic.
+ */
+export const AGENT_INSTRUCTIONS = `${ASSISTANT_SYSTEM_PROMPT}
+
+USING YOUR SEARCH TOOL
+- You have one tool, search_florida_law. It is your ONLY source of legal content.
+- Call it before answering ANY question about Florida family law, including follow-up questions in an ongoing conversation. Do not rely on what an earlier search returned if the topic has moved on.
+- Answer only from what the tool returns. If it reports that nothing matched, say you do not have verified material on that question and suggest a licensed Florida family-law attorney. Do not answer from memory, and do not try a long series of rewordings.
+- Cite only the section numbers that appear in the tool results, and cite only the ones you actually relied on.
+- Passages may contain "[amount omitted]" where a figure was removed. That is intentional. Describe what the figure governs and never guess at it.`;
 
 /**
  * Renders retrieved material as the model's sole permitted source of legal

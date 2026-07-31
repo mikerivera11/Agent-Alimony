@@ -32,6 +32,18 @@ param modelVersion string
 @description('Tokens-per-minute capacity, in thousands.')
 param capacity int
 
+@description('Agent Service model. Separate from the chat model above because the Agent Service always sends top_p, which the gpt-5.5/5.6 reasoning models reject.')
+param agentModelName string
+
+@description('Version of the Agent Service model.')
+param agentModelVersion string
+
+@description('Capacity, in thousands of TPM, for the Agent Service model.')
+param agentCapacity int
+
+@description('Name of the Foundry project that hosts the Agent Service.')
+param projectName string
+
 @description('Subnet used for the private endpoint.')
 param privateLinkSubnetId string
 
@@ -48,7 +60,7 @@ param tags object = {}
 // private endpoint is the only reliable route from App Service. Declaring it
 // disabled up front makes the template honest about the end state rather
 // than describing a configuration that silently will not hold.
-resource account 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: accountName
   location: location
   tags: tags
@@ -70,7 +82,24 @@ resource account 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
     // Entra-only: local API keys are disabled so the managed identity is the
     // sole way in and there is no key to leak or rotate.
     disableLocalAuth: true
+    // Required for the Agent Service: agents, threads, and runs are project
+    // resources, and projects cannot be created on an account without this.
+    allowProjectManagement: true
   }
+}
+
+// Agents live on a project, not on the account. Note that the agent itself is
+// a data-plane object with no ARM type, so it cannot be declared here; the
+// app creates it on first use and reuses it by name.
+resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  parent: account
+  name: projectName
+  location: location
+  tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
 }
 
 // Known ordering hazard: on a *first* deployment ARM sometimes starts this
@@ -96,6 +125,28 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
   }
 }
 
+// Standard, not GlobalStandard: gpt-5.1 is only offered as a regional
+// deployment, and it draws on a separate quota pool (OpenAI.Standard.gpt-5.1).
+// Sequenced after the chat model because concurrent deployments on one account
+// intermittently fail with a conflict.
+resource agentModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: account
+  name: agentModelName
+  dependsOn: [modelDeployment]
+  sku: {
+    name: 'Standard'
+    capacity: agentCapacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: agentModelName
+      version: agentModelVersion
+    }
+    versionUpgradeOption: 'NoAutoUpgrade'
+  }
+}
+
 // Local auth is disabled above, so this assignment is the only way in. It
 // lives in this module (rather than the shared role-assignments one) because
 // the assignment name must embed the principal ID to survive the web app
@@ -110,6 +161,21 @@ resource openAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalId: principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', openAiUserRoleId)
+  }
+}
+
+// The OpenAI User role above covers chat completions but not the Agent Service
+// data plane (agents, threads, runs), which authorizes against Azure AI
+// Developer. Note there is no role literally named "Azure AI User".
+var aiDeveloperRoleId = '64702f94-c441-49e6-a78b-ef80e0188fee'
+
+resource aiDeveloper 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(account.id, principalId, aiDeveloperRoleId)
+  scope: account
+  properties: {
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', aiDeveloperRoleId)
   }
 }
 
@@ -170,8 +236,14 @@ resource cognitiveDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkL
   }
 }
 
+// Creating a project puts the parent account back into `Accepted`, and any
+// write that touches the account while it is there fails with
+// AccountProvisioningStateInvalid. The private endpoint is such a write, and
+// ARM will happily start it in parallel with the project, so the ordering has
+// to be stated rather than inferred from the `parent` graph.
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
   name: 'pe-${accountName}'
+  dependsOn: [project, agentModelDeployment]
   location: location
   tags: tags
   properties: {
@@ -225,3 +297,5 @@ output accountId string = account.id
 output endpoint string = 'https://${accountName}.openai.azure.com'
 output deploymentName string = modelDeployment.name
 output privateDnsZoneGroupId string = privateDnsZoneGroup.id
+output projectEndpoint string = 'https://${accountName}.services.ai.azure.com/api/projects/${projectName}'
+output agentModelName string = agentModelDeployment.name
