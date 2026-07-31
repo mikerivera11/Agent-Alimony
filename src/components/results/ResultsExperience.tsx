@@ -10,6 +10,8 @@ import { buildPackageViewModel } from "@/domain/package";
 
 import { AlimonyOutcomeCard } from "./AlimonyOutcomeCard";
 import { ChildSupportOutcomeCard } from "./ChildSupportOutcomeCard";
+import { EquitableDistributionOutcomeCard } from "./EquitableDistributionOutcomeCard";
+import { LumpSumOutcomeCard } from "./LumpSumOutcomeCard";
 import { ConfirmedFactsPanel } from "./ConfirmedFactsPanel";
 import { DisclaimerBanner } from "./DisclaimerBanner";
 import { MissingItemsPanel } from "./MissingItemsPanel";
@@ -115,6 +117,8 @@ export function ResultsExperience() {
 
       <ChildSupportOutcomeCard outcome={viewModel.childSupport} />
       <AlimonyOutcomeCard outcome={viewModel.alimony} />
+      <EquitableDistributionOutcomeCard outcome={viewModel.equitableDistribution} />
+      <LumpSumOutcomeCard lumpSum={viewModel.lumpSum} />
 
       <Card className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold text-ink">Missing or unsupported items</h2>

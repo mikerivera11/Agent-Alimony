@@ -1,27 +1,34 @@
 import {
   mapReviewedDraftToAlimonyInput,
   mapReviewedDraftToChildSupportInput,
+  mapReviewedDraftToEquitableDistributionInput,
   type MappingIssue,
 } from "@/domain/integration";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import {
   calculateFloridaAlimony,
   calculateFloridaChildSupport,
+  calculateFloridaEquitableDistribution,
   FLORIDA_ALIMONY_METADATA,
   FLORIDA_ALIMONY_RULESET_ID,
   FLORIDA_ALIMONY_STATUTE_CITATION,
   FLORIDA_CHILD_SUPPORT_METADATA,
   FLORIDA_CHILD_SUPPORT_RULESET_ID,
   FLORIDA_CHILD_SUPPORT_SCHEDULE,
+  FLORIDA_EQUITABLE_DISTRIBUTION_METADATA,
+  FLORIDA_EQUITABLE_DISTRIBUTION_RULESET_ID,
+  FLORIDA_EQUITABLE_DISTRIBUTION_STATUTE_CITATION,
   needsInputOutcome,
   type AlimonyResult,
   type ChildSupportResult,
+  type EquitableDistributionResult,
   type NeedsInputOutcome,
   type RuleOutcome,
 } from "@/domain/rules";
 
 import { buildConfirmedFactEntries } from "./confirmedFacts";
 import { PACKAGE_DISCLAIMER } from "./disclaimer";
+import { buildPackageLumpSum } from "./lumpSum";
 import { buildPackageScenarios } from "./scenarios";
 import type { PackageViewModel, RulesetVerification } from "./types";
 
@@ -60,6 +67,7 @@ function dedupeAssumptions(assumptions: readonly string[]): string[] {
 export function buildPackageViewModel(reviewed: ReviewedIntakeDraft): PackageViewModel {
   const childSupportMapping = mapReviewedDraftToChildSupportInput(reviewed);
   const alimonyMapping = mapReviewedDraftToAlimonyInput(reviewed);
+  const equitableDistributionMapping = mapReviewedDraftToEquitableDistributionInput(reviewed);
 
   const childSupport: RuleOutcome<ChildSupportResult> =
     childSupportMapping.kind === "mapped"
@@ -79,22 +87,41 @@ export function buildPackageViewModel(reviewed: ReviewedIntakeDraft): PackageVie
           alimonyMapping.issues,
         );
 
-  const missingOrUnsupported: MappingIssue[] = [...childSupportMapping.issues, ...alimonyMapping.issues];
+  const equitableDistribution: RuleOutcome<EquitableDistributionResult> =
+    equitableDistributionMapping.kind === "mapped"
+      ? calculateFloridaEquitableDistribution(equitableDistributionMapping.value)
+      : toNeedsInputOutcome(
+          FLORIDA_EQUITABLE_DISTRIBUTION_RULESET_ID,
+          "Equitable distribution could not be calculated from the confirmed facts currently on file.",
+          equitableDistributionMapping.issues,
+        );
+
+  const lumpSum = buildPackageLumpSum(reviewed, alimony, equitableDistribution);
+
+  const missingOrUnsupported: MappingIssue[] = [
+    ...childSupportMapping.issues,
+    ...alimonyMapping.issues,
+    ...equitableDistributionMapping.issues,
+  ];
 
   const assumptions = dedupeAssumptions([
     ...FLORIDA_CHILD_SUPPORT_METADATA.assumptions,
     ...FLORIDA_ALIMONY_METADATA.assumptions,
+    ...FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.assumptions,
     ...(childSupport.kind === "calculated" ? childSupport.assumptions : []),
     ...(alimony.kind === "calculated" ? alimony.assumptions : []),
+    ...(equitableDistribution.kind === "calculated" ? equitableDistribution.assumptions : []),
+    ...(lumpSum.model ? lumpSum.model.assumptions : []),
     "Every intake dollar amount is converted to integer cents before any calculation, and every rounding step " +
       "is explicit and deterministic (round-half-up).",
   ]);
 
   const sourcesByCitation = new Map(
-    [...FLORIDA_CHILD_SUPPORT_METADATA.citations, ...FLORIDA_ALIMONY_METADATA.citations].map((citation) => [
-      citation.citation,
-      citation,
-    ]),
+    [
+      ...FLORIDA_CHILD_SUPPORT_METADATA.citations,
+      ...FLORIDA_ALIMONY_METADATA.citations,
+      ...FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.citations,
+    ].map((citation) => [citation.citation, citation]),
   );
 
   const verifications: RulesetVerification[] = [
@@ -116,6 +143,15 @@ export function buildPackageViewModel(reviewed: ReviewedIntakeDraft): PackageVie
       sourceVerifiedAt: "2026-07-30",
       sourceUrl: FLORIDA_ALIMONY_STATUTE_CITATION.url,
     },
+    {
+      rulesetId: FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.rulesetId,
+      jurisdiction: FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.jurisdiction,
+      topic: FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.topic,
+      statutoryCompilation: FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.statutoryCompilation,
+      effectiveDate: FLORIDA_EQUITABLE_DISTRIBUTION_METADATA.effectiveDate,
+      sourceVerifiedAt: "2026-07-30",
+      sourceUrl: FLORIDA_EQUITABLE_DISTRIBUTION_STATUTE_CITATION.url,
+    },
   ];
 
   return {
@@ -128,8 +164,10 @@ export function buildPackageViewModel(reviewed: ReviewedIntakeDraft): PackageVie
     sources: Array.from(sourcesByCitation.values()),
     childSupport,
     alimony,
+    equitableDistribution,
+    lumpSum,
     assumptions,
     verifications,
-    scenarios: buildPackageScenarios(childSupport, alimony),
+    scenarios: buildPackageScenarios(childSupport, alimony, equitableDistribution),
   };
 }

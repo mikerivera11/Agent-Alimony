@@ -226,8 +226,32 @@ export function buildConfirmedFactEntries(reviewed: ReviewedIntakeDraft): Confir
     householdExpenses.otherMonthlyExpenses;
   push("householdExpenses", "Household expenses", "Total reported monthly household expenses", money(totalHouseholdExpenses));
 
-  push("assetsDebts", "Assets & debts", "Marital assets (estimated value)", money(assetsDebts.maritalAssetsEstimatedValue));
-  push("assetsDebts", "Assets & debts", "Marital debts (estimated value)", money(assetsDebts.maritalDebtsEstimatedValue));
+  const maritalItems = assetsDebts.items.filter(
+    (item) => item.classification === "marital" || item.classification === "presumedMarital",
+  );
+  const maritalAssetTotal = maritalItems
+    .filter((item) => item.type === "asset")
+    .reduce((sum, item) => sum + item.value, 0);
+  const maritalDebtTotal = maritalItems
+    .filter((item) => item.type === "liability")
+    .reduce((sum, item) => sum + item.value, 0);
+  const nonmaritalCount = assetsDebts.items.filter((item) => item.classification === "nonmarital").length;
+  const excludedCount = assetsDebts.items.filter((item) => item.excludedByWrittenAgreement).length;
+
+  push("assetsDebts", "Assets & debts", "Itemized assets and debts entered", String(assetsDebts.items.length));
+  push("assetsDebts", "Assets & debts", "Marital assets (sum of itemized values)", money(maritalAssetTotal));
+  push("assetsDebts", "Assets & debts", "Marital debts (sum of itemized values)", money(maritalDebtTotal));
+  if (nonmaritalCount > 0) {
+    push("assetsDebts", "Assets & debts", "Items marked separate (nonmarital) property", String(nonmaritalCount));
+  }
+  if (excludedCount > 0) {
+    push(
+      "assetsDebts",
+      "Assets & debts",
+      "Items flagged excluded by written agreement",
+      `${excludedCount} (written agreement ${assetsDebts.writtenAgreementConfirmed ? "confirmed" : "not confirmed"})`,
+    );
+  }
   push("assetsDebts", "Assets & debts", "Other support obligations", yesNo(assetsDebts.hasOtherSupportObligations));
 
   push("alimonyFactors", "Alimony factors", "Requested alimony type", alimonyFactors.requestedAlimonyType);

@@ -3,4 +3,5 @@ export * from "./disclaimer";
 export * from "./formatting";
 export * from "./confirmedFacts";
 export * from "./scenarios";
+export * from "./lumpSum";
 export * from "./buildPackageViewModel";

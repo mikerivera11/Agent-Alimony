@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+// The equitable-distribution enums live with the §61.075 ruleset's types.
+// Importing them directly (not via the rules barrel) keeps the intake schema
+// free of the rules engine's registration side effects while guaranteeing the
+// intake list uses the exact same categories, classifications, owners, and
+// nonmarital bases the ruleset understands.
+import {
+  ED_CATEGORIES,
+  ED_CLASSIFICATIONS,
+  ED_ITEM_TYPES,
+  ED_NONMARITAL_BASES,
+  ED_OWNERS,
+} from "@/domain/rules/florida/equitableDistribution/types";
+
 import {
   countSchema,
   isoDateSchema,
@@ -259,12 +272,78 @@ export type HouseholdExpenses = z.infer<typeof householdExpensesSchema>;
 
 // 10. Assets, debts, and support obligations -----------------------------------
 
+/**
+ * One itemized asset or liability the user owns or owes. Values are entered in
+ * whole/fractional dollars here (the wizard collects dollars everywhere); the
+ * integration mapper converts each to integer cents before it reaches the
+ * §61.075 ruleset. A liability is entered as its own `type: "liability"` with a
+ * positive magnitude — never as a negative asset — to match the ruleset.
+ */
+export const assetDebtItemSchema = z
+  .object({
+    id: z.string().min(1),
+    label: requiredShortTextSchema,
+    category: z.enum(ED_CATEGORIES),
+    type: z.enum(ED_ITEM_TYPES),
+    /** Non-negative dollar amount. Blank is treated as $0. */
+    value: moneySchema,
+    classification: z.enum(ED_CLASSIFICATIONS),
+    /** Only meaningful when `classification === "nonmarital"`. */
+    nonmaritalBasis: z.enum(ED_NONMARITAL_BASES).optional(),
+    owner: z.enum(ED_OWNERS),
+    /**
+     * The parties agree in a written agreement to exclude this item from the
+     * marital estate (Fla. Stat. §61.075(6)(b)4). Only honored downstream when
+     * the step-level `writtenAgreementConfirmed` flag is also true.
+     */
+    excludedByWrittenAgreement: z.boolean().default(false),
+  })
+  .superRefine((item, ctx) => {
+    if (item.classification === "nonmarital" && !item.nonmaritalBasis) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["nonmaritalBasis"],
+        message: "Choose why this item is separate (nonmarital) property",
+      });
+    }
+    // Separate (nonmarital) property is already set apart, so it cannot also be
+    // "excluded from the marital estate" — mirrors the ruleset's own rule.
+    if (item.excludedByWrittenAgreement && item.classification === "nonmarital") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["excludedByWrittenAgreement"],
+        message: "Separate property is already set aside — it can't also be excluded by agreement",
+      });
+    }
+  });
+
+export type AssetDebtItem = z.infer<typeof assetDebtItemSchema>;
+
 export const assetsDebtsSchema = z
   .object({
+    /** Itemized assets and liabilities used for the §61.075 equitable-distribution estimate. */
+    items: z.array(assetDebtItemSchema).default([]),
+    /**
+     * Whether a valid written agreement of the parties actually exists to
+     * support any items flagged `excludedByWrittenAgreement`. Without it, the
+     * ruleset does not honor the exclusions and raises a blocking flag.
+     * §61.075(6)(b)4.
+     */
+    writtenAgreementConfirmed: z.boolean().default(false),
+    /** A party asks the court for an UNEQUAL (non-50/50) distribution. */
+    unequalDistributionRequested: z.boolean().default(false),
+    /** A claim of intentional dissipation/waste of marital assets is present. §61.075(1)(i). */
+    dissipationClaimPresent: z.boolean().default(false),
+    /** A claim that marital funds paid down a mortgage on nonmarital real property. §61.075(6)(a)1.c. */
+    nonmaritalMortgagePaydownClaimPresent: z.boolean().default(false),
+    // --- Legacy summary fields (optional; superseded by the itemized list) ---
+    // Kept optional so older saved drafts still validate and so any code that
+    // still reads a rough total keeps working. New drafts derive totals from
+    // `items` instead of asking for these.
     maritalAssetsSummary: longTextSchema.optional(),
-    maritalAssetsEstimatedValue: moneySchema,
+    maritalAssetsEstimatedValue: moneySchema.optional(),
     maritalDebtsSummary: longTextSchema.optional(),
-    maritalDebtsEstimatedValue: moneySchema,
+    maritalDebtsEstimatedValue: moneySchema.optional(),
     hasOtherSupportObligations: yesNoSchema,
     otherSupportObligationsDetails: shortTextSchema.optional(),
     hasHiddenOrUnknownAssets: yesNoSchema,
@@ -278,6 +357,17 @@ export const assetsDebtsSchema = z
         message: "Briefly describe the other support obligation",
       });
     }
+    const seen = new Set<string>();
+    value.items.forEach((item, index) => {
+      if (seen.has(item.id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["items", index, "id"],
+          message: "Each item needs a unique id",
+        });
+      }
+      seen.add(item.id);
+    });
   });
 
 export type AssetsDebts = z.infer<typeof assetsDebtsSchema>;

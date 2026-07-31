@@ -5,6 +5,8 @@ export * from "./FormulaTraceTable";
 export * from "./RuleOutcomeStatus";
 export * from "./ChildSupportOutcomeCard";
 export * from "./AlimonyOutcomeCard";
+export * from "./EquitableDistributionOutcomeCard";
+export * from "./LumpSumOutcomeCard";
 export * from "./ScenariosPanel";
 export * from "./SourcesPanel";
 export * from "./ResultsEmptyState";

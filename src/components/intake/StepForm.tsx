@@ -28,6 +28,7 @@ export function StepForm({ stepId, defaultValues, onSubmit, onBack, showBack, is
     handleSubmit,
     formState: { errors, isSubmitting },
     control,
+    setValue,
   } = useForm<Record<string, unknown>>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema shape varies per topic
     resolver: zodResolver(config.schema as any),
@@ -42,7 +43,7 @@ export function StepForm({ stepId, defaultValues, onSubmit, onBack, showBack, is
         onSubmit={handleSubmit((values) => onSubmit(stepId, values))}
         className="flex flex-col gap-6"
       >
-        <Fields register={register} errors={errors} control={control} />
+        <Fields register={register} errors={errors} control={control} setValue={setValue} />
         <StepNavButtons
           onBack={onBack}
           showBack={showBack}

@@ -72,4 +72,40 @@ describe("buildPackageViewModel", () => {
       expect(verification.effectiveDate).toBeTruthy();
     }
   });
+
+  it("calculates an equitable-distribution outcome with both exclusion scenarios", () => {
+    const viewModel = buildPackageViewModel(demoReviewedDraft());
+    expect(viewModel.equitableDistribution.kind).toBe("calculated");
+    if (viewModel.equitableDistribution.kind !== "calculated") return;
+    const result = viewModel.equitableDistribution.result;
+    expect(result.distributionWithExclusions).toBeDefined();
+    expect(result.baselineWithoutExclusions).toBeDefined();
+    // The demo excludes the retirement account by a confirmed written
+    // agreement, so the with/without-exclusion estates must differ.
+    expect(result.distributionWithExclusions.netMaritalEstateCents).not.toBe(
+      result.baselineWithoutExclusions.netMaritalEstateCents,
+    );
+    expect(result.nonmaritalSetAside.items.length).toBeGreaterThan(0);
+    // Excluding a retirement asset must surface the QDRO warning.
+    expect(viewModel.equitableDistribution.warnings.some((w) => w.flagId.startsWith("retirementExclusion"))).toBe(
+      true,
+    );
+  });
+
+  it("includes §61.075 as a source citation", () => {
+    const viewModel = buildPackageViewModel(demoReviewedDraft());
+    expect(viewModel.sources.map((s) => s.citation)).toContain("Fla. Stat. §61.075");
+  });
+
+  it("builds an illustrative lump-sum model with a sensitivity band and disclosures", () => {
+    const viewModel = buildPackageViewModel(demoReviewedDraft());
+    expect(viewModel.lumpSum.available).toBe(true);
+    expect(viewModel.lumpSum.model).not.toBeNull();
+    if (!viewModel.lumpSum.model) return;
+    expect(viewModel.lumpSum.model.range.length).toBeGreaterThan(1);
+    expect(viewModel.lumpSum.model.warnings.length).toBeGreaterThan(0);
+    expect(viewModel.lumpSum.model.assumptions.some((a) => a.toLowerCase().includes("not set by florida law"))).toBe(
+      true,
+    );
+  });
 });

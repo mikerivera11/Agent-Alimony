@@ -10,7 +10,7 @@ import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from "pdf-lib";
 
 import { formatCentsAsDollars } from "@/domain/package";
 import type { PackageViewModel, ConfirmedFactEntry } from "@/domain/package";
-import type { FormulaStep, MissingFact, RuleFlag, StatutoryCitation } from "@/domain/rules";
+import type { FormulaStep, MissingFact, RuleFlag, StatutoryCitation, EquitableDistributionResult } from "@/domain/rules";
 
 const PAGE_WIDTH = 612; // US Letter, points
 const PAGE_HEIGHT = 792;
@@ -231,6 +231,120 @@ function renderAlimonySection(writer: PdfWriter, viewModel: PackageViewModel): v
   }
 }
 
+function edSpouseLabel(result: EquitableDistributionResult, spouse: "a" | "b" | null): string {
+  if (spouse === "a") return result.partyALabel;
+  if (spouse === "b") return result.partyBLabel;
+  return "n/a";
+}
+
+function renderEquitableDistributionSection(writer: PdfWriter, viewModel: PackageViewModel): void {
+  writer.heading("Property & debt division (Fla. Stat. §61.075)");
+  const outcome = viewModel.equitableDistribution;
+  if (outcome.kind === "calculated") {
+    const result = outcome.result;
+    const withEx = result.distributionWithExclusions;
+    const withoutEx = result.baselineWithoutExclusions;
+
+    const payment = withEx.equalizingPayment;
+    if (payment.fromSpouse === null || payment.amountCents === 0) {
+      writer.bullet("Equalizing payment: none needed — holdings already balance.");
+    } else {
+      writer.bullet(
+        `Equalizing payment (with exclusions): ${edSpouseLabel(result, payment.fromSpouse)} pays ${edSpouseLabel(
+          result,
+          payment.toSpouse,
+        )} ${formatCentsAsDollars(payment.amountCents)}.`,
+      );
+    }
+
+    writer.subheading("Separate (nonmarital) property set aside — Fla. Stat. §61.075(6)(b)");
+    if (result.nonmaritalSetAside.items.length === 0) {
+      writer.bullet("No items set aside as separate property.", 4);
+    } else {
+      for (const item of result.nonmaritalSetAside.items) {
+        writer.bullet(
+          `${item.label}: ${formatCentsAsDollars(item.valueCents)} — ${item.basisCitation}`,
+          4,
+        );
+      }
+    }
+    writer.bullet(`${result.partyALabel} keeps (net): ${formatCentsAsDollars(result.nonmaritalSetAside.aNetCents)}`, 4);
+    writer.bullet(`${result.partyBLabel} keeps (net): ${formatCentsAsDollars(result.nonmaritalSetAside.bNetCents)}`, 4);
+
+    writer.subheading("Marital estate — with vs. without written-agreement exclusions");
+    writer.bullet(
+      `With exclusions: net estate ${formatCentsAsDollars(withEx.netMaritalEstateCents)}, equalizing payment ${formatCentsAsDollars(withEx.equalizingPayment.amountCents)}.`,
+      4,
+    );
+    writer.bullet(
+      `Without exclusions: net estate ${formatCentsAsDollars(withoutEx.netMaritalEstateCents)}, equalizing payment ${formatCentsAsDollars(withoutEx.equalizingPayment.amountCents)}.`,
+      4,
+    );
+
+    if (result.exclusions.length > 0) {
+      writer.subheading("Items requested to be excluded by written agreement");
+      for (const exclusion of result.exclusions) {
+        writer.bullet(
+          `${exclusion.label} (${formatCentsAsDollars(exclusion.valueCents)}): ${exclusion.honored ? "excluded" : "kept in estate"} — ${exclusion.reason}`,
+          4,
+        );
+      }
+    }
+
+    if (outcome.warnings.length > 0) {
+      writer.subheading("Warnings");
+      renderFlags(writer, outcome.warnings);
+    }
+    renderFormulaTrace(writer, outcome.formulaTrace);
+  } else if (outcome.kind === "needsInput") {
+    writer.paragraph(outcome.message);
+    renderMissingFacts(writer, outcome.missingFacts);
+  } else if (outcome.kind === "notImplemented") {
+    writer.paragraph(outcome.reason);
+  } else {
+    writer.paragraph(outcome.reason);
+    renderFlags(writer, outcome.flags);
+  }
+}
+
+function renderLumpSumSection(writer: PdfWriter, viewModel: PackageViewModel): void {
+  writer.heading("Lump-sum settlement (optional, illustrative)");
+  const lumpSum = viewModel.lumpSum;
+  if (!lumpSum.available || lumpSum.model === null) {
+    writer.paragraph(lumpSum.reason ?? "A lump-sum illustration is not available for this case.");
+    return;
+  }
+
+  writer.paragraph(
+    "No Florida statute sets a discount rate or a present-value formula. The rate is the parties' own financial assumption, so the figures below are shown as a range, never as a single correct number.",
+  );
+  const model = lumpSum.model;
+  writer.bullet(
+    `Illustrative rate ${(lumpSum.illustrativeRateBps / 100).toString()}% — present value ${formatCentsAsDollars(model.selected.presentValueCents)} (converts ${formatCentsAsDollars(lumpSum.monthlyAmountCents)}/month for ${lumpSum.numberOfMonths} months).`,
+  );
+
+  writer.subheading("Sensitivity band");
+  for (const scenario of model.range) {
+    writer.bullet(
+      `${(scenario.annualDiscountRateBps / 100).toString()}%: ${formatCentsAsDollars(scenario.presentValueCents)}`,
+      4,
+    );
+  }
+
+  if (model.assumptions.length > 0) {
+    writer.subheading("Assumptions");
+    for (const assumption of model.assumptions) {
+      writer.bullet(assumption, 4);
+    }
+  }
+  if (model.warnings.length > 0) {
+    writer.subheading("Warnings");
+    for (const warning of model.warnings) {
+      writer.bullet(warning, 4);
+    }
+  }
+}
+
 function renderCitations(writer: PdfWriter, citations: readonly StatutoryCitation[]): void {
   for (const citation of citations) {
     writer.bullet(`${citation.citation}${citation.title ? ` — ${citation.title}` : ""}${citation.url ? ` (${citation.url})` : ""}`);
@@ -292,6 +406,8 @@ async function finishDocument(doc: PDFDocument, writer: PdfWriter, viewModel: Pa
 
   renderChildSupportSection(writer, viewModel);
   renderAlimonySection(writer, viewModel);
+  renderEquitableDistributionSection(writer, viewModel);
+  renderLumpSumSection(writer, viewModel);
 
   writer.heading("Scenarios (illustrative, not a recommendation)");
   if (viewModel.scenarios.length === 0) {

@@ -71,6 +71,58 @@ function buildEntries(stepId: IntakeStepId, data: Record<string, unknown>): Entr
     return entries;
   }
 
+  if (stepId === "assetsDebts") {
+    const items = (data.items as
+      | { label?: string; type?: string; value?: number; classification?: string; excludedByWrittenAgreement?: boolean }[]
+      | undefined) ?? [];
+    const entries: Entry[] = [];
+    if (items.length === 0) {
+      entries.push({ label: "Assets & debts", value: "No items added yet" });
+    } else {
+      items.forEach((item, index) => {
+        const amount = typeof item.value === "number" ? currencyFormatter.format(item.value) : "unknown";
+        const kind = item.type === "liability" ? "debt" : "asset";
+        const excluded = item.excludedByWrittenAgreement ? ", excluded by agreement" : "";
+        entries.push({
+          label: `Item ${index + 1}`,
+          value: `${item.label || "Untitled"} — ${amount} ${kind} (${item.classification ?? "unclassified"}${excluded})`,
+        });
+      });
+    }
+    entries.push({
+      label: "Written agreement confirmed",
+      value: formatPrimitive("writtenAgreementConfirmed", data.writtenAgreementConfirmed),
+    });
+    entries.push({
+      label: "Unequal distribution requested",
+      value: formatPrimitive("unequalDistributionRequested", data.unequalDistributionRequested),
+    });
+    entries.push({
+      label: "Dissipation claim present",
+      value: formatPrimitive("dissipationClaimPresent", data.dissipationClaimPresent),
+    });
+    entries.push({
+      label: "Nonmarital mortgage paydown claim present",
+      value: formatPrimitive("nonmaritalMortgagePaydownClaimPresent", data.nonmaritalMortgagePaydownClaimPresent),
+    });
+    entries.push({
+      label: "Other support obligations",
+      value: formatPrimitive("hasOtherSupportObligations", data.hasOtherSupportObligations),
+    });
+    if (data.otherSupportObligationsDetails) {
+      entries.push({ label: "Other support details", value: String(data.otherSupportObligationsDetails) });
+    }
+    entries.push({
+      label: "Suspects hidden or unknown assets",
+      value: formatPrimitive("hasHiddenOrUnknownAssets", data.hasHiddenOrUnknownAssets),
+    });
+    entries.push({
+      label: "Complex business interests",
+      value: formatPrimitive("hasComplexBusinessInterests", data.hasComplexBusinessInterests),
+    });
+    return entries;
+  }
+
   return Object.entries(data)
     .filter(([key]) => key !== "children")
     .map(([key, value]) => ({ label: humanizeKey(key), value: formatPrimitive(key, value) }));
