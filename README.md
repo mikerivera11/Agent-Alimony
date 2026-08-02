@@ -512,8 +512,26 @@ http://localhost:3000/api/auth/google/callback
 https://<your-app>.azurewebsites.net/api/auth/google/callback
 ```
 
-Then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. In Azure, put the
-secret in Key Vault and reference it from app settings — never in the repo.
+Then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Keep both out of the
+repo; `.env.local` is gitignored and is the right home for local development.
+
+On the deployed app the client ID and secret are **App Service settings**, not
+Key Vault references — unlike `SESSION_SIGNING_SECRET`, which is a reference.
+That inconsistency is deliberate and worth recording. The production vault has
+`publicNetworkAccess: Disabled` and is pinned there: setting it to `Enabled`
+returns success and silently leaves it `Disabled`, so an Azure Policy is
+enforcing it. The vault is reachable only over its private endpoint, and the
+Kudu container — the one place inside the VNet where commands can be run — has
+no managed identity (`IDENTITY_ENDPOINT` is unset), so there is no path from a
+workstation or from Kudu to write a secret.
+
+App settings are encrypted at rest and readable only with control-plane RBAC on
+the app, which is the same set of people who could read a Key Vault reference,
+so this is a modest step down rather than an exposure. What is lost is the
+vault's separate audit trail and rotation story. To close it, write the secret
+from somewhere inside the VNet with an identity that holds **Key Vault Secrets
+Officer**, then swap the app setting to
+`@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/google-client-secret)`.
 
 **When either is unset the feature disappears cleanly**: the header renders no
 sign-in control and `/api/auth/google/start` returns 501. Offering a button
@@ -534,6 +552,7 @@ that leads to an error would be worse than offering none.
 - Server-side ownership checks and optimistic draft concurrency in repositories
 - Strict PDF API payload; all calculation figures are regenerated server-side
 - Managed identity for Azure Blob and Key Vault access
+- The Google client secret is an App Service setting rather than a Key Vault reference, because policy pins the vault private and no in-VNet identity can write to it (see "Google sign-in setup")
 
 ## Azure target
 
