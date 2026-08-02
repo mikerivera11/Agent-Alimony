@@ -314,6 +314,59 @@ export const KNOWLEDGE_BASE: readonly KnowledgeEntry[] = [
     ],
   },
   {
+    id: "variable-income",
+    title: "How are bonuses, sales commissions, and stock counted?",
+    keywords: [
+      "bonus",
+      "bonuses",
+      "commission",
+      "commissions",
+      "sales commission",
+      "stock",
+      "stocks",
+      "rsu",
+      "rsus",
+      "equity",
+      "vesting",
+      "vest",
+      "capital gains",
+      "dividends",
+      "overtime",
+      "variable income",
+      "fluctuating income",
+      "one-time",
+      "nonrecurring",
+    ],
+    answer:
+      "Florida uses one definition of gross income for **both** child support and alimony. The alimony statute " +
+      "says net income is figured \u201cin conformity with s. 61.30(2) and (3)\u201d, so anything that counts as " +
+      "income for child support also counts toward the alimony calculation.\n\n" +
+      "**Counted as income:**\n\n" +
+      "- **Bonuses, sales commissions, allowances, overtime, and tips.** These are listed in the statute right " +
+      "alongside salary \u2014 they are income, not extras.\n" +
+      "- **Stock or equity you receive for working**, such as RSUs, generally as it vests. It is pay that happens " +
+      "to be delivered in shares.\n" +
+      "- **Interest and dividends** on savings and investments.\n\n" +
+      "**The important exception \u2014 selling things:** gains from selling stock or property count *unless the " +
+      "gain is nonrecurring*. So if you routinely sell vested shares, that is income. If you sold something once " +
+      "and do not expect to repeat it, the statute does not count it as income. Note that even then, a court may " +
+      "order support paid out of nonrecurring income or assets if recurring income cannot meet the child\u2019s " +
+      "needs.\n\n" +
+      "**How lumpy pay becomes a monthly figure:** income is determined on a monthly basis, but the statute does " +
+      "**not** prescribe a method for averaging pay that changes year to year. Dividing an annual bonus by 12 is " +
+      "a reasonable starting point and is what this app does if you use the yearly-amount helper, but it is " +
+      "arithmetic rather than a rule \u2014 a court may use a different period, often a multi-year average, " +
+      "especially where commissions swing widely. If a large share of your income is variable, that choice can " +
+      "move the number significantly and is worth discussing with an attorney.",
+    citations: [
+      { citation: "Fla. Stat. \u00a761.30(2)(a)2.", title: "Bonuses, commissions, allowances, overtime, and tips", url: `${FL_SENATE}/61.30` },
+      { citation: "Fla. Stat. \u00a761.30(2)(a)10.", title: "Interest and dividends", url: `${FL_SENATE}/61.30` },
+      { citation: "Fla. Stat. \u00a761.30(2)(a)14.", title: "Gains from dealings in property, unless nonrecurring", url: `${FL_SENATE}/61.30` },
+      { citation: "Fla. Stat. \u00a761.30(13)", title: "Support may be paid from nonrecurring income or assets", url: `${FL_SENATE}/61.30` },
+      { citation: "Fla. Stat. \u00a761.08(8)(c)", title: "Alimony net income figured in conformity with s. 61.30(2) and (3)", url: `${FL_SENATE}/61.08` },
+    ],
+  },
+  {
     id: "child-support-overnights",
     title: "How do overnights and time-sharing change child support?",
     keywords: [

@@ -1,3 +1,4 @@
+import { sumGrossIncomeDollars } from "@/domain/integration";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 
 import type { ConfirmedFactEntry } from "./types";
@@ -91,28 +92,36 @@ export function buildConfirmedFactEntries(reviewed: ReviewedIntakeDraft): Confir
     push("parentingTime", "Parenting time", "Schedule status", parentingTime.scheduleStatus);
   }
 
-  const selfGross =
-    income.self.wages +
-    income.self.selfEmploymentIncome +
-    income.self.bonusesAndCommissions +
-    income.self.investmentIncome +
-    income.self.rentalIncome +
-    income.self.retirementOrPensionIncome +
-    income.self.unemploymentBenefits +
-    income.self.disabilityBenefits +
-    income.self.otherIncome;
-  const spouseGross =
-    income.spouse.wages +
-    income.spouse.selfEmploymentIncome +
-    income.spouse.bonusesAndCommissions +
-    income.spouse.investmentIncome +
-    income.spouse.rentalIncome +
-    income.spouse.retirementOrPensionIncome +
-    income.spouse.unemploymentBenefits +
-    income.spouse.disabilityBenefits +
-    income.spouse.otherIncome;
+  // Uses the same gross-income definition the calculators use, rather than
+  // re-adding the categories here. A second copy of this sum could drift from
+  // §61.30(2)(a) and make the packet disagree with its own figures.
+  const selfGross = sumGrossIncomeDollars(income.self);
+  const spouseGross = sumGrossIncomeDollars(income.spouse);
+
   push("income", "Gross income", "Your total monthly gross income", money(selfGross));
   push("income", "Gross income", "Your spouse's total monthly gross income", money(spouseGross));
+
+  // Variable pay is broken out separately: these are the categories most often
+  // missed or misread, and a reviewer needs to see what was counted.
+  for (const [who, person] of [["Your", income.self], ["Your spouse's", income.spouse]] as const) {
+    if (person.bonusesAndCommissions > 0) {
+      push("income", "Gross income", `${who} bonuses and commissions (counted, §61.30(2)(a)2.)`, money(person.bonusesAndCommissions));
+    }
+    if (person.equityCompensation > 0) {
+      push("income", "Gross income", `${who} vesting equity/RSU compensation (counted, §61.30(2)(a)2.)`, money(person.equityCompensation));
+    }
+    if (person.recurringCapitalGains > 0) {
+      push("income", "Gross income", `${who} recurring gains from property (counted, §61.30(2)(a)14.)`, money(person.recurringCapitalGains));
+    }
+    if (person.nonrecurringGains > 0) {
+      push(
+        "income",
+        "Gross income",
+        `${who} nonrecurring gains (NOT counted as income, §61.30(2)(a)14.)`,
+        money(person.nonrecurringGains),
+      );
+    }
+  }
   if (income.incomeNotes) {
     push("income", "Gross income", "Income notes", income.incomeNotes);
   }

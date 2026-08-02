@@ -28,6 +28,17 @@ export const moneySchema = z.coerce
   .nonnegative("Enter 0 or a positive amount")
   .max(100_000_000, "That amount looks too large — double-check it");
 
+/**
+ * A money field added after drafts were already in the wild.
+ *
+ * Drafts are stored as raw JSON in the browser and are never migrated, so a
+ * draft saved before a field existed simply has no key for it. `moneySchema`
+ * coerces `undefined` to `NaN` and rejects it, which would silently mark a
+ * completed step incomplete and — worse — risk `NaN` reaching a money sum.
+ * Defaulting to 0 keeps old drafts valid and keeps the arithmetic total.
+ */
+export const addedMoneySchema = moneySchema.default(0);
+
 /** Whole-number count, such as overnights per year. Blank is treated as 0. */
 export const countSchema = z.coerce
   .number({ message: "Enter a whole number, or 0 if none" })

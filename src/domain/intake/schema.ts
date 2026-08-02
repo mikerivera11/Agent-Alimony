@@ -17,6 +17,7 @@ import {
   countSchema,
   isoDateSchema,
   longTextSchema,
+  addedMoneySchema,
   moneySchema,
   optionalIsoDateSchema,
   requiredShortTextSchema,
@@ -214,11 +215,37 @@ export type ParentingPlan = z.infer<typeof parentingPlanSchema>;
 
 // 6. Gross income ---------------------------------------------------------
 
+/**
+ * Gross income categories, tracking Fla. Stat. §61.30(2)(a).
+ *
+ * Variable pay is split into several fields rather than collected as one
+ * "investment income" figure because §61.30(2)(a) does not treat these alike:
+ * bonuses and commissions are income under (2)(a)2, interest and dividends
+ * under (2)(a)10, but gains from dealings in property under (2)(a)14 count
+ * *only if they recur*. Collapsing them into one box silently counts a
+ * one-time stock sale that the statute excludes.
+ *
+ * Every figure is monthly because §61.30(2) requires income to be determined
+ * on a monthly basis. Converting lumpy annual pay to a monthly figure is an
+ * input aid in the UI, not a rule — see `AnnualisedMoneyField`.
+ */
 const personIncomeSchema = z.object({
   wages: moneySchema,
   selfEmploymentIncome: moneySchema,
   bonusesAndCommissions: moneySchema,
+  /** RSUs and other equity that vests as compensation for work. §61.30(2)(a)2. */
+  equityCompensation: addedMoneySchema,
+  /** Interest and dividends. §61.30(2)(a)10. */
   investmentIncome: moneySchema,
+  /** Gains from selling property/stock that recur. §61.30(2)(a)14. */
+  recurringCapitalGains: addedMoneySchema,
+  /**
+   * Gains that do *not* recur. Deliberately excluded from gross income by
+   * §61.30(2)(a)14, but still collected: under §61.30(13) a court may order
+   * support paid out of nonrecurring income where recurring income cannot
+   * meet the child's needs.
+   */
+  nonrecurringGains: addedMoneySchema,
   rentalIncome: moneySchema,
   retirementOrPensionIncome: moneySchema,
   unemploymentBenefits: moneySchema,

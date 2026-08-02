@@ -4,9 +4,9 @@
  * Intake stores whole/fractional-dollar monthly amounts; the rules engine
  * requires integer cents, so every dollar figure is converted with
  * `dollarsToCents`. This mapper deliberately:
- *  - sums every gross-income category intake collects (wages, self-employment,
- *    bonuses/commissions, investment, rental, retirement/pension,
- *    unemployment, disability, other) into a single monthly gross figure;
+ *  - sums the gross-income categories §61.30(2)(a) counts into a single
+ *    monthly gross figure, and excludes nonrecurring gains, which
+ *    §61.30(2)(a)14 does not count;
  *  - maps only the statutory deductions §61.30(3)(a),(b),(d),(e) list
  *    (income tax withholding, FICA/self-employment tax, mandatory
  *    retirement, self-only health insurance) and never counts union dues,
@@ -29,12 +29,31 @@ import { dollarsToCents, mapped, unmapped, type MappingIssue, type MappingResult
 const DEFAULT_ANNUAL_PERIOD_NIGHTS = 365;
 const LEAP_YEAR_PERIOD_NIGHTS = 366;
 
+/**
+ * Monthly gross income under Fla. Stat. §61.30(2)(a).
+ *
+ * This one function is the single definition of gross income for the whole
+ * app: child support reads it, and §61.08(8)(c) directs that alimony net
+ * income "shall be calculated in conformity with s. 61.30(2) and (3)", so the
+ * alimony 35% cap and the reasonable-need estimate read it too. Adding a
+ * category here therefore changes both calculations at once, which is the
+ * point — they are not permitted to disagree about what income is.
+ *
+ * `nonrecurringGains` is deliberately absent from this sum. §61.30(2)(a)14
+ * counts "[g]ains derived from dealings in property, unless the gain is
+ * nonrecurring", so a one-time sale is not gross income. It is still
+ * collected and reported, because §61.30(13) lets a court order support paid
+ * out of nonrecurring income where recurring income cannot meet the child's
+ * needs — but that is a judicial decision, not a line in this sum.
+ */
 export function sumGrossIncomeDollars(person: PersonIncome): number {
   return (
     person.wages +
     person.selfEmploymentIncome +
     person.bonusesAndCommissions +
+    person.equityCompensation +
     person.investmentIncome +
+    person.recurringCapitalGains +
     person.rentalIncome +
     person.retirementOrPensionIncome +
     person.unemploymentBenefits +

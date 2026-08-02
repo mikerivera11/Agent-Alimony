@@ -10,3 +10,4 @@ export * from "./RadioGroupField";
 export * from "./YesNoField";
 export * from "./SelectField";
 export * from "./CheckboxField";
+export * from "./AnnualisedMoneyField";
