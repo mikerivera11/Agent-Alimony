@@ -55,11 +55,29 @@ param virtualNetworkId string
 
 param tags object = {}
 
-// Tenant policy forces publicNetworkAccess to Disabled on several resource
-// types minutes after creation and reverts any attempt to re-enable it, so a
-// private endpoint is the only reliable route from App Service. Declaring it
-// disabled up front makes the template honest about the end state rather
-// than describing a configuration that silently will not hold.
+@description('Network posture for the Foundry account data plane. Disabled means the private endpoint is the only route in.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param foundryPublicNetworkAccess string = 'Disabled'
+
+@description('Source IPs allowed to reach the data plane when public access is Enabled. Ignored when defaultAction is Allow.')
+param foundryAllowedIpRules array = []
+
+@description('Set to Allow only to let the AI Foundry portal reach the data plane; see README, "Viewing the agent in AI Foundry".')
+@allowed([
+  'Allow'
+  'Deny'
+])
+param foundryNetworkDefaultAction string = 'Deny'
+
+// The default posture is private: the private endpoint below is the only route
+// from App Service, and it is what the running app uses regardless of these
+// parameters. They exist because the AI Foundry portal cannot reach a data
+// plane behind a private endpoint, and reviewing the agent there is a real
+// operational need. Expressing that as parameters keeps the choice in the
+// template rather than as a portal edit the next deployment silently reverts.
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: accountName
   location: location
@@ -73,11 +91,11 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   }
   properties: {
     customSubDomainName: accountName
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: foundryPublicNetworkAccess
     networkAcls: {
-      defaultAction: 'Deny'
+      defaultAction: foundryNetworkDefaultAction
       virtualNetworkRules: []
-      ipRules: []
+      ipRules: [for ip in foundryAllowedIpRules: { value: ip }]
     }
     // Entra-only: local API keys are disabled so the managed identity is the
     // sole way in and there is no key to leak or rotate.

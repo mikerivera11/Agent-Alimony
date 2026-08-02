@@ -4,9 +4,7 @@
  * The difference from `foundry-adapter.ts` is not the model, it is who decides
  * what to retrieve. That adapter pre-fetches grounding and hands the model a
  * single prompt; this one registers a `search_florida_law` tool and lets the
- * agent decide when to call it, on a server-side thread that carries the
- * conversation. That is what makes follow-ups like "and what if there were
- * three children?" work without the client replaying the whole history.
+ * agent decide when to call it, and how many times, before answering.
  *
  * The safety story is unchanged, and deliberately so. The tool is the *only*
  * way legal material enters the conversation, and it runs the same
@@ -14,6 +12,25 @@
  * repository, over a corpus committed to it and covered by tests. An agent
  * that answers without calling the tool is answering from training data, so
  * that case is detected and refused rather than shown.
+ *
+ * ## Why this targets the v2 Agents API rather than `/assistants`
+ *
+ * The original implementation used the Assistants-style API: create a thread,
+ * add a message, start a run, poll it, submit tool outputs. Foundry now labels
+ * agents created that way **"Classic agents"** in the portal and describes the
+ * API as superseded. This adapter therefore targets the current API:
+ *
+ * - agents are managed at `/agents?api-version=v1` and are **versioned**,
+ * - agents are referenced **by name**, not by an opaque `asst_…` id,
+ * - a run is one synchronous `POST /openai/v1/responses` call rather than a
+ *   thread plus a polling loop, which removes the polling entirely.
+ *
+ * Conversation history is replayed into each request instead of being held on
+ * a server-side thread. That is the same decision the thread-based version
+ * made and for the same reason: a stored thread would outlive the request and
+ * become conversation content retained outside this app's own retention rules.
+ * The `previous_response_id` returned by a call is used only to continue a
+ * single in-flight tool loop, never across user turns.
  *
  * Model choice is a constraint, not a preference. The Agent Service always
  * sends `top_p`, which gpt-5.5 and the whole gpt-5.6 family reject with
@@ -49,7 +66,6 @@ const AGENT_TOKEN_SCOPE = "https://ai.azure.com/.default";
 
 /** Whole-conversation budget. A run is several HTTP round trips, not one. */
 const RUN_TIMEOUT_MS = 60_000;
-const POLL_INTERVAL_MS = 700;
 
 /**
  * A run alternates between "thinking" and "waiting for tool output". This caps
@@ -59,41 +75,74 @@ const MAX_TOOL_ROUNDS = 4;
 
 const SEARCH_TOOL = "search_florida_law";
 
-const TOOL_DEFINITIONS = [
+/**
+ * Exported so `scripts/create-foundry-agent.ts` registers the *same* tool the
+ * adapter expects to be called back on. A second copy in the script would be a
+ * silent drift risk: the agent visible in the portal could advertise a tool the
+ * running code never answers.
+ *
+ * Note the shape differs from the Assistants API, which nested these under a
+ * `function` object. The v2 Agents API takes the fields flattened.
+ */
+export const TOOL_DEFINITIONS = [
   {
     type: "function",
-    function: {
-      name: SEARCH_TOOL,
-      description:
-        "Search verified Florida Chapter 61 statutory text and plain-language explanations. " +
-        "You MUST call this before answering any question about Florida family law, and you may " +
-        "only state what it returns. It is the sole source of legal content.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The legal question or topic to look up, in plain language.",
-          },
+    name: SEARCH_TOOL,
+    description:
+      "Search verified Florida Chapter 61 statutory text and plain-language explanations. " +
+      "You MUST call this before answering any question about Florida family law, and you may " +
+      "only state what it returns. It is the sole source of legal content.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "The legal question or topic to look up, in plain language.",
         },
-        required: ["query"],
       },
+      required: ["query"],
     },
   },
 ] as const;
 
-interface ToolCall {
-  readonly id: string;
-  readonly function: { readonly name: string; readonly arguments: string };
+/** A tool call the agent asked for, as it appears in a response's output list. */
+interface FunctionCall {
+  readonly type: "function_call";
+  readonly call_id: string;
+  readonly name: string;
+  readonly arguments: string;
 }
 
-interface Run {
+interface MessageOutput {
+  readonly type: "message";
+  readonly content?: readonly { readonly text?: string }[];
+}
+
+type OutputItem = FunctionCall | MessageOutput | { readonly type: string };
+
+interface AgentResponse {
   readonly id: string;
-  readonly status: string;
-  readonly last_error?: { readonly code?: string; readonly message?: string } | null;
-  readonly required_action?: {
-    readonly submit_tool_outputs?: { readonly tool_calls?: readonly ToolCall[] };
-  } | null;
+  readonly status?: string;
+  readonly error?: { readonly code?: string; readonly message?: string } | null;
+  readonly output?: readonly OutputItem[];
+}
+
+/**
+ * The agent is looked up by name, so the bootstrap script and the adapter must
+ * derive it identically or the app would create a second, duplicate agent
+ * alongside the one the user sees in the portal.
+ *
+ * The v2 API constrains names to alphanumerics and interior hyphens, up to 63
+ * characters — so a model id like `gpt-5.1` cannot be interpolated verbatim.
+ * Every other run of characters is collapsed to a hyphen rather than dropped,
+ * so two different models cannot collide on one name.
+ */
+export function agentNameFor(model: string): string {
+  const slug = `florida-support-guide-${model}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug.slice(0, 63).replace(/-+$/, "");
 }
 
 export class FoundryAgentAssistantAdapter implements AssistantAdapter {
@@ -103,7 +152,7 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
   /** Degrades to the chat-completions adapter, which degrades to local. */
   private readonly fallback = new FoundryAssistantAdapter();
   private credential: TokenCredential | undefined;
-  private agentIdPromise: Promise<string> | undefined;
+  private agentNamePromise: Promise<string> | undefined;
 
   async answer(request: AssistantRequest): Promise<AssistantAnswer> {
     const escalations = detectEscalationSignals(request.question);
@@ -201,8 +250,7 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
     };
   }
 
-  private async request<T>(path: string, init: RequestInit, signal: AbortSignal): Promise<T> {
-    const { endpoint, apiVersion } = this.config();
+  private async request<T>(url: string, init: RequestInit, signal: AbortSignal): Promise<T> {
     const token = await this.getCredential().getToken(AGENT_TOKEN_SCOPE, { abortSignal: signal });
     if (!token) {
       throw new AssistantProviderUnavailableError(
@@ -211,7 +259,7 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
       );
     }
 
-    const response = await fetch(`${endpoint}${path}?api-version=${encodeURIComponent(apiVersion)}`, {
+    const response = await fetch(url, {
       ...init,
       signal,
       headers: {
@@ -223,9 +271,10 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
 
     if (!response.ok) {
       // The body is not included: it can echo the person's question, which may
-      // contain sensitive financial detail.
+      // contain sensitive financial detail. Only the path is reported, and the
+      // query string is stripped so nothing user-derived can reach a log.
       throw new AssistantProviderUnavailableError(
-        `Azure AI Foundry Agent Service returned status ${response.status} for ${path}.`,
+        `Azure AI Foundry Agent Service returned status ${response.status} for ${new URL(url).pathname}.`,
       );
     }
     return (await response.json()) as T;
@@ -236,42 +285,48 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
    * created by Bicep. This creates one on first use and reuses it by name
    * afterwards, which keeps deployment to a single `git push` and avoids a
    * bootstrap step that could be skipped.
+   *
+   * It resolves to the agent *name*: the v2 API references agents by name and
+   * version rather than by an opaque id.
    */
   private async ensureAgent(signal: AbortSignal): Promise<string> {
-    this.agentIdPromise ??= (async () => {
-      const { model } = this.config();
-      const name = `florida-support-guide-${model}`;
+    this.agentNamePromise ??= (async () => {
+      const { endpoint, model, apiVersion } = this.config();
+      const name = agentNameFor(model);
+      const url = `${endpoint}/agents?api-version=${encodeURIComponent(apiVersion)}`;
 
-      const existing = await this.request<{ data?: readonly { id: string; name?: string }[] }>(
-        "/assistants",
+      const existing = await this.request<{ data?: readonly { name?: string }[] }>(
+        url,
         { method: "GET" },
         signal,
       );
-      const found = existing.data?.find((agent) => agent.name === name);
-      if (found) return found.id;
+      if (existing.data?.some((agent) => agent.name === name)) return name;
 
-      const created = await this.request<{ id: string }>(
-        "/assistants",
+      await this.request(
+        url,
         {
           method: "POST",
           body: JSON.stringify({
-            model,
             name,
-            instructions: AGENT_INSTRUCTIONS,
-            tools: TOOL_DEFINITIONS,
+            definition: {
+              kind: "prompt",
+              model,
+              instructions: AGENT_INSTRUCTIONS,
+              tools: TOOL_DEFINITIONS,
+            },
           }),
         },
         signal,
       );
-      return created.id;
+      return name;
     })().catch((error: unknown) => {
       // Never cache a failure: a transient error at startup would otherwise
       // disable the agent for the process lifetime.
-      this.agentIdPromise = undefined;
+      this.agentNamePromise = undefined;
       throw error;
     });
 
-    return this.agentIdPromise;
+    return this.agentNamePromise;
   }
 
   /**
@@ -285,81 +340,83 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
 
     try {
       const signal = controller.signal;
-      const agentId = await this.ensureAgent(signal);
+      const { endpoint } = this.config();
+      const name = await this.ensureAgent(signal);
+      // The Responses endpoint is versionless and sits under a different path
+      // prefix from agent management, which is why URLs are built per call.
+      const url = `${endpoint}/openai/v1/responses`;
+      const agentReference = { type: "agent_reference", name };
 
-      // Prior turns are replayed into a fresh thread rather than a thread being
-      // held per user. Server-side threads would outlive the request and become
-      // conversation content stored outside this app's own retention rules,
-      // which its privacy posture does not allow.
-      const thread = await this.request<{ id: string }>(
-        "/threads",
+      // Prior turns are replayed rather than held on a server-side thread, so
+      // no conversation content is retained by Foundry between requests.
+      let input: unknown[] = [
+        ...request.history.map((message) => ({
+          type: "message",
+          role: message.role === "user" ? "user" : "assistant",
+          content:
+            message.role === "user" ? encloseUntrustedText(message.content) : message.content,
+        })),
         {
-          method: "POST",
-          body: JSON.stringify({
-            messages: request.history.map((message) => ({
-              role: message.role === "user" ? "user" : "assistant",
-              content:
-                message.role === "user" ? encloseUntrustedText(message.content) : message.content,
-            })),
-          }),
+          type: "message",
+          role: "user",
+          content: encloseUntrustedText(request.question),
         },
-        signal,
-      );
+      ];
 
-      await this.request(
-        `/threads/${thread.id}/messages`,
-        {
-          method: "POST",
-          body: JSON.stringify({ role: "user", content: encloseUntrustedText(request.question) }),
-        },
-        signal,
-      );
-
-      let run = await this.request<Run>(
-        `/threads/${thread.id}/runs`,
-        { method: "POST", body: JSON.stringify({ assistant_id: agentId }) },
+      let response = await this.request<AgentResponse>(
+        url,
+        { method: "POST", body: JSON.stringify({ agent_reference: agentReference, input }) },
         signal,
       );
 
       let searched = false;
 
       for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
-        run = await this.pollRun(thread.id, run.id, signal);
+        const calls = (response.output ?? []).filter(
+          (item): item is FunctionCall => item.type === "function_call",
+        );
+        if (calls.length === 0) break;
 
-        if (run.status !== "requires_action") break;
-
-        const calls = run.required_action?.submit_tool_outputs?.tool_calls ?? [];
-        const outputs = calls.map((call) => {
-          if (call.function.name !== SEARCH_TOOL) {
-            return { tool_call_id: call.id, output: JSON.stringify({ error: "Unknown tool." }) };
+        input = calls.map((call) => {
+          if (call.name !== SEARCH_TOOL) {
+            return {
+              type: "function_call_output",
+              call_id: call.call_id,
+              output: JSON.stringify({ error: "Unknown tool." }),
+            };
           }
           searched = true;
           return {
-            tool_call_id: call.id,
-            output: JSON.stringify(this.search(call.function.arguments, request)),
+            type: "function_call_output",
+            call_id: call.call_id,
+            output: JSON.stringify(this.search(call.arguments, request)),
           };
         });
 
-        run = await this.request<Run>(
-          `/threads/${thread.id}/runs/${run.id}/submit_tool_outputs`,
-          { method: "POST", body: JSON.stringify({ tool_outputs: outputs }) },
+        response = await this.request<AgentResponse>(
+          url,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              agent_reference: agentReference,
+              previous_response_id: response.id,
+              input,
+            }),
+          },
           signal,
         );
       }
 
-      if (run.status !== "completed") {
+      if (response.error) {
         throw new AssistantProviderUnavailableError(
-          `Agent run ended with status ${run.status}${run.last_error?.code ? ` (${run.last_error.code})` : ""}.`,
+          `Agent run failed${response.error.code ? ` (${response.error.code})` : ""}.`,
         );
       }
 
-      const messages = await this.request<{
-        data?: readonly { role: string; content?: readonly { text?: { value?: string } }[] }[];
-      }>(`/threads/${thread.id}/messages`, { method: "GET" }, signal);
-
-      const text = messages.data
-        ?.find((message) => message.role === "assistant")
-        ?.content?.map((part) => part.text?.value ?? "")
+      const text = (response.output ?? [])
+        .filter((item): item is MessageOutput => item.type === "message")
+        .flatMap((message) => message.content ?? [])
+        .map((part) => part.text ?? "")
         .join("")
         .trim();
 
@@ -370,18 +427,6 @@ export class FoundryAgentAssistantAdapter implements AssistantAdapter {
       return { text, searched };
     } finally {
       clearTimeout(timeout);
-    }
-  }
-
-  private async pollRun(threadId: string, runId: string, signal: AbortSignal): Promise<Run> {
-    for (;;) {
-      const run = await this.request<Run>(
-        `/threads/${threadId}/runs/${runId}`,
-        { method: "GET" },
-        signal,
-      );
-      if (run.status !== "queued" && run.status !== "in_progress") return run;
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
   }
 

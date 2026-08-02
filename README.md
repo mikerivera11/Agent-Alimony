@@ -194,25 +194,131 @@ Three things about that module are load-bearing rather than incidental:
 
 Enabling the model does not move any legal substance out of this repository. Retrieval still runs in application code against the committed corpus; the model only ever sees passages retrieval already selected, and its output is still scanned for dollar figures and discarded if any appear. Every failure path — unreachable account, missing role assignment, rejected API version — falls back to the local adapter with a visible note, so a misconfiguration degrades phrasing rather than breaking the assistant or changing an answer.
 
+### Viewing the agent in AI Foundry
+
+Two separate things stop the portal's Agents page from showing anything, and
+fixing only one of them still leaves it empty. Both are described here because
+the first is easy to mistake for the second.
+
+**1. There has to be an agent.** Agents are data-plane objects with no ARM
+representation, so Bicep cannot create them; `agent-adapter.ts` creates one
+lazily on first use instead. But that code only runs when
+`ASSISTANT_PROVIDER=agent`. While the provider is `foundry` — which is the
+current setting, because the agent data plane returned 401 to the web app's
+managed identity — the Agent Service is never called, no agent is ever created,
+and the project's agent list is genuinely empty. A reachable portal will
+faithfully show you nothing.
+
+Create it explicitly:
+
+```bash
+export AZURE_FOUNDRY_PROJECT_ENDPOINT="https://<account>.services.ai.azure.com/api/projects/<project>"
+export AZURE_FOUNDRY_AGENT_MODEL=gpt-5.1
+npm run foundry:agent
+```
+
+The script imports `AGENT_INSTRUCTIONS` and the tool definition from
+`agent-adapter.ts` rather than restating them, and derives the agent name from
+the same `agentNameFor()` the adapter uses to look it up. That matters: a second
+copy of either would let the agent you see in the portal drift from the agent
+the application actually talks to, or cause the app to create a duplicate
+alongside it. Re-running the script is safe — it returns the existing agent.
+
+**2. The portal has to be able to reach the data plane.** The account is created
+with `publicNetworkAccess: 'Disabled'` and `networkAcls.defaultAction: 'Deny'`,
+so the only route in is the private endpoint, and the blade reports:
+
+> Error loading your agents. Public access is disabled. Please configure private endpoint.
+
+That is the configuration working as intended, not a failed deployment — the
+running app reaches the same account fine over the private endpoint. Note that
+allowlisting your own workstation IP is **not** sufficient: the portal appears to
+call the data plane from its own backend rather than from your browser, so the
+request does not arrive from your IP. Opening it up therefore means:
+
+```bash
+az resource update --ids $(az cognitiveservices account show \
+  -n ai-fsg-prod-tensozsvpq7m -g fsg-prod-rg --query id -o tsv) \
+  --set properties.publicNetworkAccess=Enabled \
+        properties.networkAcls.defaultAction=Allow
+```
+
+Reverse it with `defaultAction=Deny` and `publicNetworkAccess=Disabled` when
+finished. The private endpoint keeps working throughout, so the app is
+unaffected either way.
+
+This widens network exposure on a resource used by an app that handles financial
+data, so it is worth being precise about what it does and does not do. The
+account sets `disableLocalAuth: true`, meaning API keys do not exist for it and
+every request must carry an Entra ID token from a principal holding a role on
+the account. Network reachability is therefore not the only control — but it was
+a control, and this removes it. Prefer turning it back off once you are done
+looking.
+
+`infra/modules/foundry.bicep` exposes `foundryPublicNetworkAccess` and
+`foundryAllowedIpRules` so this choice is expressed in the template instead of
+being a manual change that the next `az deployment sub create` silently reverts.
+
 ### The agent tier
 
-`foundry` pre-fetches passages and hands the model one prompt, so a follow-up question arrives with no memory of the last answer and retrieval is fixed before the model has seen anything. The `agent` provider instead registers one tool, `search_florida_law`, and lets the agent decide when to call it and what to search for, on a Foundry thread that carries the conversation.
+`foundry` pre-fetches passages and hands the model one prompt, so a follow-up question arrives with no memory of the last answer and retrieval is fixed before the model has seen anything. The `agent` provider instead registers one tool, `search_florida_law`, and lets the agent decide when to call it and what to search for.
 
 That inverts where grounding comes from, so it is worth being precise about what did **not** change. The tool runs the same `gatherGrounding` over the same committed corpus, so the agent cannot reach material the other adapters could not. Retrieval still happens in application code, in this repository, under test. Passages are currency-redacted *before* the agent reads them, so the "never states a dollar figure" guarantee does not rest on the agent's restraint.
 
 What did change is that grounding is no longer structurally guaranteed. A model free to skip retrieval will sometimes skip it, and what comes back then is recalled training data wearing this app's citations. So the run is inspected rather than trusted: **an answer produced without a tool call is discarded** and the question is re-answered by the fallback with a visible note. Unknown tool names are refused rather than guessed at, and a search that matches nothing returns an explicit instruction to decline instead of an empty result the agent might fill from memory.
 
-Threads are created per request and prior turns replayed into them, rather than one long-lived server-side thread per user. A persistent thread would be conversation content living outside this app's own retention rules.
+**This targets Foundry's current (v2) Agents API, not `/assistants`.** Agents created through the older Assistants-style API are shown in the portal under "Classic agents" and the API is described there as superseded. The differences that matter to this code are that agents are versioned and referenced **by name** rather than by an opaque `asst_…` id, and that a run is a single synchronous `POST /openai/v1/responses` instead of a thread plus a polling loop — which removed the poller outright. One sharp edge: the v2 API rejects agent names containing anything but alphanumerics and interior hyphens, so a model id like `gpt-5.1` cannot be interpolated verbatim; `agentNameFor()` slugifies it and is covered by tests, because the real service enforces this only at create time.
+
+Conversation history is replayed into every request rather than held on a server-side thread. That was true of the thread-based version too, and for the same reason: a stored thread would be conversation content living outside this app's own retention rules. `previous_response_id` is used only to continue a single in-flight tool loop, never across user turns.
 
 **The agent runs gpt-5.1, not gpt-5.6-sol, and that is a constraint rather than a preference.** The Agent Service always sends `top_p`, which gpt-5.5 and the whole gpt-5.6 family reject outright; this was verified against a live resource across five API versions and cannot be configured away by setting the parameter explicitly. gpt-5.1 accepts it. The chat-completions tier keeps the newer model, and since substance comes from the corpus either way, the difference is phrasing. gpt-5.1 is also a regional `Standard` deployment drawing on a separate quota pool, not `GlobalStandard`.
 
-The agent itself is created by the app on first use and reused by name. Agents are data-plane objects with no ARM type, so Bicep cannot declare one; doing it in code keeps release to a single `git push` rather than a bootstrap step that can be skipped.
+The agent itself is created by the app on first use and reused by name. Agents are data-plane objects with no ARM type, so Bicep cannot declare one; doing it in code keeps release to a single `git push` rather than a bootstrap step that can be skipped. `npm run foundry:agent` performs the same bootstrap on demand — see "Viewing the agent in AI Foundry" for why that is needed to see anything in the portal.
 
 **Not yet built: calculator tools.** The obvious next step is letting the agent call the deterministic rulesets so it can answer "what would my support be". It is not built because it runs into a real boundary rather than a missing afternoon: every calculation accepts only a `ConfirmedFact`, whose source must be `user-entered`, `user-confirmed-extraction`, or `document-confirmed`. Numbers a model parses out of a chat message are none of those, and passing them as `user-entered` would quietly defeat the confirmation boundary the whole application is built on. The options — calculate only from saved intake data, add a distinct conversational-scenario provenance whose results are labelled and never persisted, or use saved data as a base with echoed-back overrides — are a product decision, not an implementation detail.
 
 > **First deployment needs one re-run.** ARM sometimes starts the model deployment while the parent Cognitive Services account is still in `Accepted` and fails with `AccountProvisioningStateInvalid`. The `parent` relationship is the strongest ordering Bicep can express, so there is no template fix; wait for the account to report `Succeeded` and re-run. Subsequent deployments are unaffected.
 >
 > The same error has a second, permanent cause worth distinguishing: **creating or updating the project returns the account to `Accepted`**, and any write touching the account while it is there fails. That one does not resolve on a re-run, because ARM starts the private endpoint in parallel with the project every time. It is fixed in the template with an explicit `dependsOn`, since the `parent` graph does not imply that ordering.
+
+## How income is counted
+
+One function, `sumGrossIncomeDollars`, is the whole app's definition of gross
+income. Child support reads it, and so do the alimony 35% cap and the
+reasonable-need estimate — because §61.08(8)(c) says alimony net income
+"shall be calculated in conformity with s. 61.30(2) and (3)". They are not
+permitted to disagree about what income is, so there is deliberately only one
+place to change it.
+
+Variable pay is collected in separate fields because §61.30(2)(a) does not
+treat it alike:
+
+| Intake field | Treatment | Authority |
+| --- | --- | --- |
+| Bonuses and sales commissions | Counted | §61.30(2)(a)2. |
+| Stock/equity vesting as pay (RSUs) | Counted | §61.30(2)(a)2. |
+| Interest and dividends | Counted | §61.30(2)(a)10. |
+| Recurring gains from selling property | Counted | §61.30(2)(a)14. |
+| **One-time (nonrecurring) gains** | **Not counted as income** | §61.30(2)(a)14. |
+
+The last row is the reason these are separate fields rather than one
+"investment income" box. A single box invites a one-time stock sale to be
+entered as income, which §61.30(2)(a)14 excludes. Nonrecurring gains are still
+recorded and shown in the package, because §61.30(13) lets a court order
+support paid from nonrecurring income where recurring income cannot meet the
+child's needs — but that is a judicial decision, not a line in the sum.
+
+**Averaging is not implemented as a rule.** §61.30(2) requires income to be
+determined monthly but prescribes no method for averaging pay that varies year
+to year. The intake offers a helper that divides a yearly figure by 12 and says
+plainly that this is arithmetic, not law, and that a court may use a different
+period. Encoding ÷12 as *the* rule would invent one the statute does not
+contain.
+
+New income fields use `addedMoneySchema` (`.default(0)`). Drafts live in browser
+localStorage as raw JSON and are never migrated, so a draft saved before a field
+existed has no key for it; without the default it would fail validation and, if
+it slipped through, reach the money sum as `NaN`.
 
 ## Court form worksheets
 

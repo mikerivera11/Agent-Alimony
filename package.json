@@ -16,7 +16,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "sources:florida": "tsx scripts/sync-florida-guidelines.ts",
-    "sources:statutes": "tsx scripts/sync-florida-statutes.ts"
+    "sources:statutes": "tsx scripts/sync-florida-statutes.ts",
+    "foundry:agent": "tsx scripts/create-foundry-agent.ts"
   },
   "engines": {
     "node": ">=24 <25"

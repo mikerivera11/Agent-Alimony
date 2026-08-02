@@ -51,7 +51,9 @@ const serverEnvSchema = z.object({
    *  the Agent Service always sends `top_p`, which the gpt-5.5/5.6 reasoning models
    *  reject outright, so the agent needs a model that accepts it. */
   AZURE_FOUNDRY_AGENT_MODEL: optionalString(),
-  AZURE_FOUNDRY_AGENT_API_VERSION: emptyStringAsUndefined(z.string().default("2025-05-01")),
+  // "v1" is the current Agents API. The older date-stamped versions address the
+  // superseded Assistants API, which Foundry now labels "Classic agents".
+  AZURE_FOUNDRY_AGENT_API_VERSION: emptyStringAsUndefined(z.string().default("v1")),
   MAX_UPLOAD_BYTES: emptyStringAsUndefined(z.coerce.number().int().positive().default(10 * 1024 * 1024)),
 });
 

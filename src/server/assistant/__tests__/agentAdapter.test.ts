@@ -38,33 +38,33 @@ vi.mock("@/lib/env", () => ({
   }),
 }));
 
-const { FoundryAgentAssistantAdapter } = await import("../agent-adapter");
+const { FoundryAgentAssistantAdapter, agentNameFor } = await import("../agent-adapter");
 
 /** A question the committed corpus definitely grounds. */
 const GROUNDED_QUESTION = "How does Florida decide what counts as gross income for child support?";
 
 interface FakeRun {
-  /** Tool calls to demand before finishing. One entry per `requires_action` round. */
+  /** Tool calls to demand before finishing. One entry per tool round. */
   readonly toolRounds?: readonly (readonly { name: string; args: string }[])[];
-  readonly finalStatus?: string;
+  /** Set to make the final response report a failure instead of an answer. */
+  readonly fails?: boolean;
   readonly answer?: string;
 }
 
 /** Records what the fake data plane was asked to do, for assertions. */
 interface Recorder {
   toolQueries: string[];
-  toolOutputs: unknown[];
   createdAgent: boolean;
   chatFallbackCalled: boolean;
 }
 
+/**
+ * Speaks the v2 Agents protocol: agents are managed under `/agents` and a run
+ * is a sequence of `POST /openai/v1/responses` calls, each carrying the tool
+ * output for the calls the previous one asked for.
+ */
 function installFakeFoundry(run: FakeRun): Recorder {
-  const recorder: Recorder = {
-    toolQueries: [],
-    toolOutputs: [],
-    createdAgent: false,
-    chatFallbackCalled: false,
-  };
+  const recorder: Recorder = { toolQueries: [], createdAgent: false, chatFallbackCalled: false };
   let round = 0;
   const rounds = run.toolRounds ?? [];
 
@@ -82,62 +82,43 @@ function installFakeFoundry(run: FakeRun): Recorder {
         return json({ choices: [{ message: { content: "Fallback answer about gross income." } }] });
       }
 
-      if (href.includes("/assistants") && method === "GET") return json({ data: [] });
-      if (href.includes("/assistants") && method === "POST") {
+      if (href.includes("/agents")) {
+        if (method === "GET") return json({ data: [] });
         recorder.createdAgent = true;
-        return json({ id: "agent-1" });
+        return json({ name: "florida-support-guide-gpt-5-1" });
       }
-      if (href.includes("/threads") && !href.includes("/runs") && !href.includes("/messages")) {
-        return json({ id: "thread-1" });
-      }
-      if (href.includes("/messages") && method === "POST") return json({ id: "msg-1" });
 
-      if (href.includes("/messages") && method === "GET") {
+      if (href.includes("/responses") && method === "POST") {
+        const body = JSON.parse(String(init?.body)) as {
+          input?: readonly { type?: string; output?: string }[];
+        };
+        for (const item of body.input ?? []) {
+          if (item.type === "function_call_output" && typeof item.output === "string") {
+            recorder.toolQueries.push(item.output);
+          }
+        }
+
+        if (round < rounds.length) {
+          const calls = rounds[round].map((call, index) => ({
+            type: "function_call",
+            call_id: `call-${round}-${index}`,
+            name: call.name,
+            arguments: call.args,
+          }));
+          round += 1;
+          return json({ id: `resp-${round}`, output: calls });
+        }
+
+        if (run.fails) return json({ id: "resp-final", error: { code: "server_error" } });
         return json({
-          data: [{ role: "assistant", content: [{ text: { value: run.answer ?? "" } }] }],
+          id: "resp-final",
+          output: [{ type: "message", content: [{ text: run.answer ?? "" }] }],
         });
       }
-
-      if (href.includes("/submit_tool_outputs")) {
-        recorder.toolOutputs.push(JSON.parse(String(init?.body)));
-        round += 1;
-        return json(runState());
-      }
-
-      if (href.includes("/runs")) return json(runState());
 
       throw new Error(`Unexpected request: ${method} ${href}`);
     }),
   );
-
-  function runState() {
-    if (round < rounds.length) {
-      return {
-        id: "run-1",
-        status: "requires_action",
-        required_action: {
-          submit_tool_outputs: {
-            tool_calls: rounds[round].map((call, index) => ({
-              id: `call-${round}-${index}`,
-              function: { name: call.name, arguments: call.args },
-            })),
-          },
-        },
-      };
-    }
-    return { id: "run-1", status: run.finalStatus ?? "completed" };
-  }
-
-  // `search` runs in-process, so queries are captured by wrapping the body the
-  // adapter submits back rather than by intercepting a network call.
-  const originalPush = recorder.toolOutputs.push.bind(recorder.toolOutputs);
-  recorder.toolOutputs.push = (...items: unknown[]) => {
-    for (const item of items) {
-      const outputs = (item as { tool_outputs?: { output: string }[] }).tool_outputs ?? [];
-      for (const output of outputs) recorder.toolQueries.push(output.output);
-    }
-    return originalPush(...items);
-  };
 
   return recorder;
 }
@@ -149,6 +130,26 @@ function ask(question: string) {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+});
+
+// The v2 API rejects names containing anything but alphanumerics and interior
+// hyphens, which the real service enforced only at create time. A model id such
+// as `gpt-5.1` contains a dot, so this is not a hypothetical constraint.
+describe("agentNameFor", () => {
+  it("produces a name the v2 API accepts", () => {
+    for (const model of ["gpt-5.1", "gpt-4o-mini", "GPT_5.6-Sol", "a".repeat(80)]) {
+      expect(agentNameFor(model)).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+      expect(agentNameFor(model).length).toBeLessThanOrEqual(63);
+    }
+  });
+
+  it("keeps different models on different names", () => {
+    expect(agentNameFor("gpt-5.1")).not.toEqual(agentNameFor("gpt-5.2"));
+  });
+
+  it("is stable, because the agent is looked up by this name", () => {
+    expect(agentNameFor("gpt-5.1")).toBe("florida-support-guide-gpt-5-1");
+  });
 });
 
 describe("FoundryAgentAssistantAdapter", () => {
@@ -233,7 +234,7 @@ describe("FoundryAgentAssistantAdapter", () => {
   it("falls back rather than surfacing a failed run", async () => {
     const recorder = installFakeFoundry({
       toolRounds: [[{ name: "search_florida_law", args: JSON.stringify({ query: "gross income" }) }]],
-      finalStatus: "failed",
+      fails: true,
     });
 
     const answer = await ask(GROUNDED_QUESTION);
