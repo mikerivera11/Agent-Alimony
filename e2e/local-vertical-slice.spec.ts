@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { seedCompleteDraft } from "./seedDraft";
+import { advanceGuidedIntakeToReview, advanceGuidedIntakeToStep, seedCompleteDraft } from "./seedDraft";
 
 test("completes the intake, calculates results, downloads a package, and reviews extraction proposals", async ({
   page,
@@ -8,10 +8,7 @@ test("completes the intake, calculates results, downloads a package, and reviews
   await seedCompleteDraft(page);
   await page.goto("/intake");
 
-  for (let step = 0; step < 12; step += 1) {
-    await page.getByRole("button", { name: "Save and continue" }).click();
-  }
-  await page.getByRole("button", { name: "Save and go to review" }).click();
+  await advanceGuidedIntakeToReview(page);
 
   await expect(page.getByRole("heading", { name: "Review your answers" })).toBeVisible();
   await page.getByRole("button", { name: "Confirm and finish" }).click();
@@ -40,10 +37,7 @@ test("keeps an excluded asset in the estate until a written agreement is confirm
   await seedCompleteDraft(page);
   await page.goto("/intake");
 
-  // Walk to the assets and debts step.
-  for (let step = 0; step < 9; step += 1) {
-    await page.getByRole("button", { name: "Save and continue" }).click();
-  }
+  await advanceGuidedIntakeToStep(page, "assetsDebts");
   await expect(page.getByRole("heading", { level: 1, name: "Assets, debts, and support obligations" })).toBeVisible();
 
   // The demo ships the fictional 401(k) already marked to be left out, with the

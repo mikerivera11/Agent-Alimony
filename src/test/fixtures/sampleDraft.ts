@@ -1,4 +1,4 @@
-import { createEmptyDraft, type IntakeDraft } from "@/domain/intake";
+import { createEmptyDraft, getApplicableStepIds, type IntakeDraft } from "@/domain/intake";
 
 /**
  * A fully filled-in, fictional draft used **only by tests**.
@@ -10,21 +10,6 @@ import { createEmptyDraft, type IntakeDraft } from "@/domain/intake";
  */
 export function createSampleDraft(): IntakeDraft {
   const draft = createEmptyDraft();
-  draft.completedStepIds = [
-    "caseBasics",
-    "marriage",
-    "spouses",
-    "children",
-    "parentingTime",
-    "income",
-    "deductions",
-    "childCosts",
-    "householdExpenses",
-    "assetsDebts",
-    "alimonyFactors",
-    "safetyComplexity",
-    "documentReadiness",
-  ];
   draft.data = {
     caseBasics: {
       county: "Sample County (fictional)",
@@ -241,5 +226,9 @@ export function createSampleDraft(): IntakeDraft {
       acknowledgesSevenDayRetention: true,
     },
   };
+  // Derived rather than listed, so adding an intake step cannot leave this
+  // fixture quietly claiming a case is complete when a whole section is
+  // untouched. The hand-written list had already gone stale once.
+  draft.completedStepIds = getApplicableStepIds(draft.data);
   return draft;
 }

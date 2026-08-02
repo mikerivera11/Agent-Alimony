@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { seedCompleteDraft } from "./seedDraft";
+import { advanceGuidedIntakeToReview, sampleDraftStepIds, seedCompleteDraft } from "./seedDraft";
 
 /** Every dollar figure rendered on the results page, in order. */
 async function resultsFigures(page: Page): Promise<string> {
@@ -19,10 +19,7 @@ test("the one-page layout produces exactly the same figures as the guided flow",
   // checking one of them.
   await seedCompleteDraft(page);
   await page.goto("/intake");
-  for (let step = 0; step < 12; step += 1) {
-    await page.getByRole("button", { name: "Save and continue" }).click();
-  }
-  await page.getByRole("button", { name: "Save and go to review" }).click();
+  await advanceGuidedIntakeToReview(page);
   await page.getByRole("button", { name: "Confirm and finish" }).click();
   await page.waitForURL(/\/results$/);
   await expect(page.getByRole("heading", { name: "Child support (estimate)" })).toBeVisible();
@@ -60,17 +57,24 @@ test("sections appear and disappear as the children answer changes", async ({ pa
   await page.goto("/intake");
   await chooseOnePage(page);
 
+  const applicableStepIds = sampleDraftStepIds();
+  const childOnlySections = ["parentingTime", "parentingPlan", "childCosts"];
+
   const sections = page.locator("section[id^='section-']");
-  await expect(sections).toHaveCount(13);
+  // The one-page layout must render every step the wizard would, so the
+  // expected count comes from the step model instead of a literal that goes
+  // stale the next time a section is added.
+  await expect(sections).toHaveCount(applicableStepIds.length);
   await expect(page.locator("#section-parentingTime")).toHaveCount(1);
 
   await page.locator("#section-children").getByLabel(/no/i).first().check();
 
   // Parenting time and child costs only apply when there are children, and on
   // one page that has to update as the answer changes rather than on save.
-  await expect(sections).toHaveCount(11);
-  await expect(page.locator("#section-parentingTime")).toHaveCount(0);
-  await expect(page.locator("#section-childCosts")).toHaveCount(0);
+  await expect(sections).toHaveCount(applicableStepIds.length - childOnlySections.length);
+  for (const id of childOnlySections) {
+    await expect(page.locator(`#section-${id}`)).toHaveCount(0);
+  }
 });
 
 test("answers carry across when switching layouts", async ({ page }) => {
