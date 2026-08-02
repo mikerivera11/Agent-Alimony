@@ -1,4 +1,5 @@
 import type { IntakeDraft } from "./draft";
+import { clearLocalCaseData } from "./localData";
 import { createLocalStorageIntakeDraftStorage, type IntakeDraftStorage } from "./storage";
 
 /**
@@ -20,6 +21,7 @@ import { createLocalStorageIntakeDraftStorage, type IntakeDraftStorage } from ".
  */
 
 const CASE_POINTER_KEY = "florida-support-guide.case-pointer.v1";
+const LOCAL_OWNER_KEY = "florida-support-guide.local-owner.v1";
 
 export type SyncStatus = "idle" | "saving" | "saved" | "offline" | "conflict";
 
@@ -47,6 +49,58 @@ function writePointer(pointer: CasePointer | null): void {
   } catch {
     // Losing the pointer costs a duplicate case at worst, never data.
   }
+}
+
+/**
+ * Drops the local mirror when it belongs to somebody else.
+ *
+ * On a shared computer the browser copy outlives the session, so without this
+ * the next person to sign in would be shown the previous person's income,
+ * assets, and debts — and would then save them into their own account.
+ *
+ * The one transition that must *not* clear anything is anonymous -> signed in.
+ * That is somebody signing in to keep the draft they were already working on,
+ * and the server has just claimed it for their account.
+ */
+async function reconcileLocalOwner(doFetch: typeof fetch): Promise<boolean> {
+  let current: string | null = null;
+  try {
+    const response = await doFetch("/api/auth/session", {
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return false;
+    const body = await json<{ userId?: string | null }>(response);
+    current = body?.userId ?? null;
+  } catch {
+    // Unknown identity. Clearing on a guess would destroy someone's work
+    // during a network blip, so the local copy is left alone.
+    return false;
+  }
+
+  let previous: string | null | undefined;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_OWNER_KEY);
+    previous = raw === null ? undefined : (JSON.parse(raw) as string | null);
+  } catch {
+    previous = undefined;
+  }
+
+  const firstRun = previous === undefined;
+  const claimingAnonymousDraft = previous === null && current !== null;
+  const sameOwner = previous === current;
+
+  const belongsToSomeoneElse = !firstRun && !claimingAnonymousDraft && !sameOwner;
+  if (belongsToSomeoneElse) {
+    clearLocalCaseData();
+  }
+
+  try {
+    window.localStorage.setItem(LOCAL_OWNER_KEY, JSON.stringify(current));
+  } catch {
+    // Not being able to record the owner only costs this check next time.
+  }
+
+  return belongsToSomeoneElse;
 }
 
 async function json<T>(response: Response): Promise<T | null> {
@@ -139,6 +193,11 @@ export function createSyncedIntakeDraftStorage(
 
   return {
     async load() {
+      if (await reconcileLocalOwner(doFetch)) {
+        // The mirror belonged to a different person. Everything below must
+        // start from the server, never from what is left on this device.
+        await local.clear();
+      }
       const localDraft = await local.load();
 
       try {

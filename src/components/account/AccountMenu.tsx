@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui";
+import { clearLocalCaseData } from "@/domain/intake/localData";
 
 /**
  * Header control for signing in and out.
@@ -48,9 +49,15 @@ export function AccountMenu() {
     setBusy(true);
     try {
       await fetch("/api/auth/signout", { method: "POST" });
-      window.location.reload();
     } finally {
+      // Cleared regardless of whether the request succeeded. On a shared
+      // computer, leaving someone's income and debts in localStorage because a
+      // network call failed would be the worst possible outcome — and the
+      // server copy is safe either way, so there is nothing to lose by wiping
+      // the local one.
+      clearLocalCaseData();
       setBusy(false);
+      window.location.assign("/");
     }
   }, []);
 

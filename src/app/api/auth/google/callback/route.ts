@@ -22,7 +22,7 @@ import {
   upsertGoogleUser,
 } from "@/server/auth/google";
 import { claimSessionCasesForUser } from "@/server/persistence/case-history";
-import { writeSessionCookie } from "@/server/session/route-session";
+import { readSession, writeSessionCookie } from "@/server/session/route-session";
 import { linkSessionToUser } from "@/server/session/service";
 
 export const runtime = "nodejs";
@@ -71,6 +71,19 @@ export async function GET(request: Request): Promise<Response> {
     return failure("failed");
   }
 
+  // The browser finishing the flow must be the same one that started it.
+  //
+  // Without this, an attacker could start a sign-in on their own machine and
+  // then get a victim to load the resulting callback URL. The victim's browser
+  // would be handed a token for the attacker's session, signed in as the
+  // attacker — and would then type their divorce finances into the attacker's
+  // account. `state` alone does not prevent that, because the attacker holds a
+  // perfectly valid `state`; only binding it to the session does.
+  const current = await readSession();
+  if (!current || current.id !== completed.sessionId) {
+    return failure("failed");
+  }
+
   const user = await upsertGoogleUser(completed.identity);
 
   // Anything started before signing in is adopted by the account, so a draft
@@ -83,7 +96,18 @@ export async function GET(request: Request): Promise<Response> {
   }
   await writeSessionCookie(issued.token, issued.session.expiresAt);
 
-  return NextResponse.redirect(appUrl(completed.redirectPath), {
+  // Second check on the resolved origin. `sanitiseRedirectPath` already does
+  // this, but an open redirect hanging off an authentication callback is worth
+  // failing closed on twice rather than relying on one function staying right.
+  const destination = appUrl(completed.redirectPath);
+  if (destination.origin !== new URL(getServerEnv().APP_BASE_URL).origin) {
+    return NextResponse.redirect(appUrl("/"), {
+      status: 302,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
+  return NextResponse.redirect(destination, {
     status: 302,
     headers: { "Cache-Control": "no-store" },
   });

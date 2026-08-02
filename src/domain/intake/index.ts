@@ -6,6 +6,7 @@ export * from "./missingData";
 export * from "./escalation";
 export * from "./storage";
 export * from "./syncedStorage";
+export * from "./localData";
 export * from "./reviewed";
 export * from "./mode";
 export * from "./assistantTopics";

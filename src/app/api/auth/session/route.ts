@@ -28,7 +28,7 @@ export async function GET(): Promise<Response> {
 
   if (!session?.userId) {
     return NextResponse.json(
-      { signedIn: false, googleConfigured },
+      { signedIn: false, googleConfigured, userId: null },
       { headers: NO_STORE },
     );
   }
@@ -42,6 +42,10 @@ export async function GET(): Promise<Response> {
     {
       signedIn: true,
       googleConfigured,
+      // The caller's own id. Returned so the browser can notice that a
+      // *different* person is now signed in and drop the local mirror rather
+      // than showing them the previous person's answers.
+      userId: session.userId,
       email: user?.email ?? null,
       displayName: user?.displayName ?? null,
     },

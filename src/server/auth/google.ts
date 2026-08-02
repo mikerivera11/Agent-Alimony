@@ -98,14 +98,41 @@ function sha256(value: string): Buffer {
 }
 
 /**
- * Only relative, single-slash paths are accepted. Returning to a caller-
+ * Only relative, same-origin paths are accepted. Returning to a caller-
  * supplied absolute URL would make this endpoint an open redirect, which is
  * the classic way an OAuth callback gets turned into a phishing primitive.
+ *
+ * Checking the leading characters is not enough, and this is the trap: the
+ * URL parser normalises backslashes to slashes for http(s), so `/\evil.com`
+ * looks relative to a naive check and resolves to `https://evil.com/`. The
+ * only reliable test is to resolve it and compare origins.
  */
 export function sanitiseRedirectPath(raw: string | null | undefined): string {
   if (!raw) return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
-  return raw;
+  if (!raw.startsWith("/")) return "/";
+
+  const base = getServerEnv().APP_BASE_URL;
+  const expectedOrigin = new URL(base).origin;
+
+  let path: string;
+  try {
+    const resolved = new URL(raw, base);
+    if (resolved.origin !== expectedOrigin) return "/";
+    path = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return "/";
+  }
+
+  // The resolved path must be re-checked, not trusted. `/..//evil.example`
+  // resolves same-origin but *normalises* to `//evil.example`, which is
+  // protocol-relative the moment it is used as a redirect target again. The
+  // invariant that actually matters is that the returned string still lands on
+  // this origin from any base, so that is what gets asserted.
+  if (new URL(path, "https://redirect-probe.invalid").origin !== "https://redirect-probe.invalid") {
+    return "/";
+  }
+
+  return path;
 }
 
 export interface StartedAuth {

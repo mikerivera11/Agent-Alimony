@@ -17,12 +17,26 @@ function installLocalStorage() {
   const store = new Map<string, string>();
   vi.stubGlobal("window", {
     localStorage: {
+      get length() {
+        return store.size;
+      },
+      key: (i: number) => [...store.keys()][i] ?? null,
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
     },
   });
   return store;
+}
+
+/** Wraps a fetch fake so it answers the identity probe `load()` now makes. */
+function withIdentity(userId: string | null, inner: typeof fetch): typeof fetch {
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input) === "/api/auth/session") {
+      return new Response(JSON.stringify({ userId }), { status: 200 });
+    }
+    return inner(input, init);
+  }) as unknown as typeof fetch;
 }
 
 beforeEach(() => {
@@ -171,5 +185,108 @@ describe("synced draft storage", () => {
     await vi.waitFor(() =>
       expect(store.get("florida-support-guide.case-pointer.v1")).toBeUndefined(),
     );
+  });
+});
+
+/**
+ * These are the shared-computer tests. The app holds people's income, assets,
+ * and debts during a divorce, and the browser copy outlives the server
+ * session — so the question "what does the next person to sit down see?" has
+ * to have a tested answer, not an assumed one.
+ */
+describe("shared browser safety", () => {
+  const OWNER_KEY = "florida-support-guide.local-owner.v1";
+  const DRAFT_KEY = "florida-support-guide.intake-draft.v1";
+  const POINTER_KEY = "florida-support-guide.case-pointer.v1";
+
+  function serverWithNoCases(): typeof fetch {
+    return (async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/cases") {
+        return new Response(JSON.stringify({ cases: [] }), { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    }) as unknown as typeof fetch;
+  }
+
+  it("does not show one person's answers to a different signed-in person", async () => {
+    const store = installLocalStorage();
+    store.set(OWNER_KEY, JSON.stringify("user-A"));
+    store.set(DRAFT_KEY, JSON.stringify(draft));
+    store.set(POINTER_KEY, JSON.stringify({ caseId: "case-A", revision: 3 }));
+
+    const local = createInMemoryIntakeDraftStorage();
+    await local.save(draft);
+
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      fetchImpl: withIdentity("user-B", serverWithNoCases()),
+    });
+
+    expect(await storage.load()).toBeNull();
+    // and nothing of A's is left behind for B to save into their own account
+    expect(store.get(DRAFT_KEY)).toBeUndefined();
+    expect(store.get(POINTER_KEY)).toBeUndefined();
+  });
+
+  it("does not leave a signed-in person's answers for a later anonymous visitor", async () => {
+    const store = installLocalStorage();
+    store.set(OWNER_KEY, JSON.stringify("user-A"));
+    store.set(DRAFT_KEY, JSON.stringify(draft));
+
+    const local = createInMemoryIntakeDraftStorage();
+    await local.save(draft);
+
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      fetchImpl: withIdentity(null, serverWithNoCases()),
+    });
+
+    expect(await storage.load()).toBeNull();
+    expect(store.get(DRAFT_KEY)).toBeUndefined();
+  });
+
+  it("keeps the draft when an anonymous person signs in to claim it", async () => {
+    const store = installLocalStorage();
+    store.set(OWNER_KEY, JSON.stringify(null));
+
+    const local = createInMemoryIntakeDraftStorage();
+    await local.save(draft);
+
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      fetchImpl: withIdentity("user-A", serverWithNoCases()),
+    });
+
+    // This is the whole point of signing in — the work in progress survives.
+    expect(await storage.load()).toEqual(draft);
+  });
+
+  it("keeps the draft across reloads for the same person", async () => {
+    const store = installLocalStorage();
+    store.set(OWNER_KEY, JSON.stringify("user-A"));
+
+    const local = createInMemoryIntakeDraftStorage();
+    await local.save(draft);
+
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      fetchImpl: withIdentity("user-A", serverWithNoCases()),
+    });
+
+    expect(await storage.load()).toEqual(draft);
+  });
+
+  it("does not discard anything when the identity probe fails", async () => {
+    installLocalStorage();
+    const local = createInMemoryIntakeDraftStorage();
+    await local.save(draft);
+
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      // A network blip must not be read as "a different person is here".
+      fetchImpl: (() => Promise.reject(new Error("offline"))) as unknown as typeof fetch,
+    });
+
+    expect(await storage.load()).toEqual(draft);
   });
 });

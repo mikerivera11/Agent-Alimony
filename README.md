@@ -427,6 +427,35 @@ Anything not matching is reported as **404, not 403**, so the API never
 confirms that someone else's case exists. Repository tests assert this against
 the compiled SQL rather than trusting the code to read correctly.
 
+### The shared-computer rule
+
+The draft is mirrored to `localStorage` so typing never waits on the network.
+That convenience has a sharp edge: the browser copy outlives the server
+session, so on a shared or public machine the question "what does the next
+person to sit down see?" has to have a *tested* answer.
+
+Two things enforce it:
+
+- **Signing out wipes the local mirror**, not just the cookie. It runs even if
+  the sign-out request fails, because leaving somebody's income and debts on a
+  library computer over a network blip is the worst available outcome and the
+  server copy is safe regardless.
+- **The mirror records whose it is.** On load the client compares the signed-in
+  user against that marker and discards the local copy if they differ. The one
+  transition that must *not* clear anything is anonymous → signed in: that is
+  someone signing in to keep the draft they were already working on, which the
+  server has just claimed for their account.
+
+The sweep is by key **prefix**, not an enumerated list. A list is correct the
+day it is written and quietly wrong the first time somebody adds a key without
+remembering it — and the cost of that mistake is disclosing a stranger's
+divorce finances. Resetting a layout preference along the way is a trivial
+price for a rule that cannot drift.
+
+Server-side ownership checks would stop the second person *writing to* the
+first person's row, but they cannot stop the browser *showing* it. That is why
+this lives on the client and is tested there.
+
 ### Why session expiry cannot delete an account's case
 
 `cases.session_id` is `ON DELETE SET NULL`, not `ON DELETE CASCADE`. The
@@ -459,7 +488,16 @@ Checked on every callback, each for a specific reason:
 | ID token signature against Google's JWKS | a forged token |
 | `iss` / `aud` | a token minted for a different application |
 | `nonce` | a token not bound to *this* request |
-| relative-path-only redirect | this endpoint becoming an open redirect |
+| origin-checked redirect (twice) | this endpoint becoming an open redirect |
+
+The redirect check is worth spelling out, because the obvious version of it is
+wrong. Testing that the path starts with `/` and not `//` is not enough: the
+URL parser normalises backslashes for http(s), so `/\evil.com` passes that test
+and resolves to `https://evil.com/`. Worse, `/..//evil.com` resolves
+*same-origin* and then normalises to `//evil.com`, which is protocol-relative
+the next time it is used. The only invariant that holds is that the returned
+string still lands on this origin from any base, so that is what is asserted —
+in `sanitiseRedirectPath`, again at the callback, and in tests.
 
 Identity is keyed on the OIDC `sub` claim, **not email**. Email addresses can
 be reassigned, and keying on one would eventually let a stranger inherit

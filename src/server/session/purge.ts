@@ -12,7 +12,7 @@
  * them asking to delete their data.
  */
 
-import { and, isNull, lt, or, sql } from "drizzle-orm";
+import { and, isNull, lt, sql } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import { browserSessions, cases } from "@/db/schema";
@@ -27,7 +27,15 @@ export async function purgeExpiredSessions(
   now: Date = new Date(),
 ): Promise<PurgeResult> {
   return db.transaction(async (tx) => {
-    const expired = or(lt(browserSessions.expiresAt, now), sql`${browserSessions.revokedAt} is not null`);
+    // Expiry only — deliberately *not* "or revoked".
+    //
+    // Signing in rotates the session, which revokes the old row immediately.
+    // Treating revocation as purgeable would therefore make a row eligible for
+    // deletion the moment somebody signs in, and `documents.session_id` is a
+    // NOT NULL cascade, so their uploaded pay stubs and tax returns would go
+    // with it. A revoked row is already unusable for authentication; there is
+    // nothing to gain by deleting it early and a great deal to lose.
+    const expired = lt(browserSessions.expiresAt, now);
 
     // Anonymous cases go first and only while their session still exists; once
     // the session row is gone the link is null and they can no longer be
