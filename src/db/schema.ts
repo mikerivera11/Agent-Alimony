@@ -32,6 +32,8 @@ export const participantRoleEnum = pgEnum("participant_role", [
   "respondent",
 ]);
 
+export const identityProviderEnum = pgEnum("identity_provider", ["google"]);
+
 export const documentStorageProviderEnum = pgEnum("document_storage_provider", [
   "local",
   "azure",
@@ -51,16 +53,50 @@ export const extractionProposalStatusEnum = pgEnum("extraction_proposal_status",
 ]);
 
 /**
+ * A person who has signed in. Identity is federated — this table deliberately
+ * holds no password, no password hash, and no reset token, because the app
+ * never handles a credential it could leak.
+ *
+ * `subject` is the OIDC `sub` claim, not the email address. Google documents
+ * `sub` as the only stable, never-reused identifier for an account; an email
+ * can be changed or reassigned, so keying on it would let one person inherit
+ * another's financial case. `email` is stored for display only.
+ */
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: identityProviderEnum("provider").notNull(),
+    subject: text("subject").notNull(),
+    email: text("email"),
+    displayName: text("display_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Scoped by provider: two identity providers can legitimately issue the
+    // same subject string, and they are different people.
+    uniqueIndex("users_provider_subject_idx").on(table.provider, table.subject),
+  ],
+);
+
+/**
  * One row per issued browser session. The bearer token handed to the browser
  * is never persisted — only `tokenHash` (a keyed hash of the opaque secret)
  * so a leaked database cannot be used to mint valid cookies, and a stolen
  * cookie cannot be reconstructed from the database.
+ *
+ * `userId` is nullable on purpose: anonymous use is a supported mode, not a
+ * degraded one. Signing in attaches an identity to a session that already
+ * exists rather than creating a separate kind of session, so every existing
+ * expiry, rotation, and revocation rule keeps applying unchanged.
  */
 export const browserSessions = pgTable(
   "browser_sessions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     tokenHash: text("token_hash").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -70,6 +106,33 @@ export const browserSessions = pgTable(
   (table) => [
     uniqueIndex("browser_sessions_token_hash_idx").on(table.tokenHash),
     index("browser_sessions_expires_at_idx").on(table.expiresAt),
+    index("browser_sessions_user_id_idx").on(table.userId),
+  ],
+);
+
+/**
+ * A short-lived OAuth authorization request. The PKCE verifier and nonce are
+ * held server-side rather than in a cookie so neither is exposed to script in
+ * the browser, and each row is deleted the first time it is redeemed — a
+ * replayed callback therefore finds nothing and fails closed.
+ */
+export const authRequests = pgTable(
+  "auth_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    stateHash: text("state_hash").notNull(),
+    codeVerifier: text("code_verifier").notNull(),
+    nonce: text("nonce").notNull(),
+    redirectPath: text("redirect_path").notNull().default("/"),
+    sessionId: uuid("session_id").references(() => browserSessions.id, {
+      onDelete: "cascade",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("auth_requests_state_hash_idx").on(table.stateHash),
+    index("auth_requests_expires_at_idx").on(table.expiresAt),
   ],
 );
 
@@ -78,6 +141,13 @@ export const browserSessions = pgTable(
  * successful save and used as an optimistic-concurrency token (compare-and-
  * swap in the repository layer) so concurrent tabs cannot silently clobber
  * each other's edits.
+ *
+ * Ownership is deliberately two-headed. An anonymous case belongs to a browser
+ * session and dies with it; once someone signs in, `userId` is set and becomes
+ * the authoritative owner, so the case survives cookie loss, a new device, and
+ * session rotation. Both columns are nullable-by-situation rather than one
+ * being retrofitted onto the other, because the anonymous path is a supported
+ * mode of this app and not a temporary state.
  */
 export const cases = pgTable(
   "cases",
@@ -86,12 +156,49 @@ export const cases = pgTable(
     sessionId: uuid("session_id")
       .notNull()
       .references(() => browserSessions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    title: text("title"),
     draft: jsonb("draft").notNull().default(sql`'{}'::jsonb`),
     revision: integer("revision").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("cases_session_id_idx").on(table.sessionId)],
+  (table) => [
+    index("cases_session_id_idx").on(table.sessionId),
+    index("cases_user_id_idx").on(table.userId),
+  ],
+);
+
+/**
+ * An append-only snapshot of a case's draft, written on every save. This is
+ * what makes "go back to how it was" possible without the person re-entering
+ * anything.
+ *
+ * Restoring never deletes or rewrites a row. It reads an old snapshot and
+ * saves it forward as a *new* revision, so the act of reverting is itself
+ * undoable and the history stays a true record of what was entered when. A
+ * destructive revert would be the one operation in this app capable of losing
+ * a person's financial data outright.
+ *
+ * `restoredFromRevision` records where a restored snapshot came from, so the
+ * UI can label it honestly rather than presenting it as fresh input.
+ */
+export const caseRevisions = pgTable(
+  "case_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => cases.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    draft: jsonb("draft").notNull(),
+    restoredFromRevision: integer("restored_from_revision"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("case_revisions_case_id_idx").on(table.caseId),
+    uniqueIndex("case_revisions_case_id_revision_idx").on(table.caseId, table.revision),
+  ],
 );
 
 /** Normalized core record for the two adult parties on a case. */
@@ -289,9 +396,26 @@ export const auditLog = pgTable(
   ],
 );
 
-export const browserSessionsRelations = relations(browserSessions, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
+  sessions: many(browserSessions),
+  cases: many(cases),
+}));
+
+export const browserSessionsRelations = relations(browserSessions, ({ one, many }) => ({
+  user: one(users, { fields: [browserSessions.userId], references: [users.id] }),
   cases: many(cases),
   documents: many(documents),
+}));
+
+export const authRequestsRelations = relations(authRequests, ({ one }) => ({
+  session: one(browserSessions, {
+    fields: [authRequests.sessionId],
+    references: [browserSessions.id],
+  }),
+}));
+
+export const caseRevisionsRelations = relations(caseRevisions, ({ one }) => ({
+  case: one(cases, { fields: [caseRevisions.caseId], references: [cases.id] }),
 }));
 
 export const casesRelations = relations(cases, ({ one, many }) => ({
@@ -299,6 +423,8 @@ export const casesRelations = relations(cases, ({ one, many }) => ({
     fields: [cases.sessionId],
     references: [browserSessions.id],
   }),
+  user: one(users, { fields: [cases.userId], references: [users.id] }),
+  revisions: many(caseRevisions),
   participants: many(caseParticipants),
   children: many(caseChildren),
   documents: many(documents),

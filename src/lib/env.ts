@@ -54,6 +54,11 @@ const serverEnvSchema = z.object({
   // "v1" is the current Agents API. The older date-stamped versions address the
   // superseded Assistants API, which Foundry now labels "Classic agents".
   AZURE_FOUNDRY_AGENT_API_VERSION: emptyStringAsUndefined(z.string().default("v1")),
+  /** Google OAuth client credentials. Both must be set for sign-in to appear;
+   *  when either is missing the app stays fully usable anonymously, which is a
+   *  supported mode rather than a degraded one. See README, "Accounts". */
+  GOOGLE_CLIENT_ID: optionalString(),
+  GOOGLE_CLIENT_SECRET: optionalString(),
   MAX_UPLOAD_BYTES: emptyStringAsUndefined(z.coerce.number().int().positive().default(10 * 1024 * 1024)),
 });
 

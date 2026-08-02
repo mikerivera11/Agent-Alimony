@@ -24,6 +24,8 @@ export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export interface AuthenticatedSession {
   id: string;
   expiresAt: Date;
+  /** Null for anonymous sessions, which remain a fully supported mode. */
+  userId: string | null;
 }
 
 export interface IssuedSession {
@@ -44,7 +46,7 @@ export async function createSession(): Promise<IssuedSession> {
     .returning();
 
   const token = await signSessionToken({ sessionId: row.id, secret }, expiresAt);
-  return { token, session: { id: row.id, expiresAt: row.expiresAt } };
+  return { token, session: toSession(row) };
 }
 
 /**
@@ -83,7 +85,7 @@ export async function verifySession(token: string): Promise<AuthenticatedSession
     .set({ lastSeenAt: new Date() })
     .where(eq(browserSessions.id, row.id));
 
-  return { id: row.id, expiresAt: row.expiresAt };
+  return toSession(row);
 }
 
 /**
@@ -104,9 +106,11 @@ export async function rotateSession(currentSessionId: string): Promise<IssuedSes
   const tokenHash = hashOpaqueSecret(secret);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
+  // Identity carries across rotation. Rotation happens for hygiene as well as
+  // for privilege changes, so dropping it here would silently sign people out.
   const [row] = await db
     .insert(browserSessions)
-    .values({ tokenHash, expiresAt, rotatedFromId: current.id })
+    .values({ tokenHash, expiresAt, rotatedFromId: current.id, userId: current.userId })
     .returning();
 
   await db
@@ -115,7 +119,7 @@ export async function rotateSession(currentSessionId: string): Promise<IssuedSes
     .where(eq(browserSessions.id, current.id));
 
   const token = await signSessionToken({ sessionId: row.id, secret }, expiresAt);
-  return { token, session: { id: row.id, expiresAt: row.expiresAt } };
+  return { token, session: toSession(row) };
 }
 
 /** Immediately revokes a session (logout / explicit sign-out equivalent). */
@@ -125,6 +129,37 @@ export async function revokeSession(sessionId: string): Promise<void> {
     .update(browserSessions)
     .set({ revokedAt: new Date() })
     .where(eq(browserSessions.id, sessionId));
+}
+
+/**
+ * Attaches a signed-in identity to a session and rotates it in one step.
+ *
+ * Rotation is not optional here. Signing in is a privilege change, so the
+ * token that existed before the change must stop working — otherwise a token
+ * captured while the person was anonymous would silently gain access to their
+ * account.
+ */
+export async function linkSessionToUser(
+  sessionId: string,
+  userId: string,
+): Promise<IssuedSession | null> {
+  const db = getDb();
+  const updated = await db
+    .update(browserSessions)
+    .set({ userId })
+    .where(eq(browserSessions.id, sessionId))
+    .returning({ id: browserSessions.id });
+
+  if (updated.length === 0) return null;
+  return rotateSession(sessionId);
+}
+
+function toSession(row: {
+  id: string;
+  expiresAt: Date;
+  userId: string | null;
+}): AuthenticatedSession {
+  return { id: row.id, expiresAt: row.expiresAt, userId: row.userId };
 }
 
 export { SESSION_COOKIE_NAME, buildClearedSessionCookie, buildSessionCookie } from "./cookies";

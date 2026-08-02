@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   INTAKE_STEPS,
-  createLocalStorageIntakeDraftStorage,
+  createSyncedIntakeDraftStorage,
   type IntakeScreenId,
   type IntakeStepId,
   type ReviewedIntakeDraft,
 } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
+import { SavedVersionsPanel } from "@/components/account";
 
 import { IntakeWizard } from "./IntakeWizard";
 
@@ -26,14 +27,17 @@ export function parseStepParam(value: string | null): IntakeScreenId | undefined
 }
 
 /**
- * Wires the reusable IntakeWizard up to real browser storage. This is the only
- * place in the app that decides *how* the draft is persisted, so swapping in a
- * server-backed storage adapter later only means changing this one call.
+ * Wires the reusable IntakeWizard up to real storage. This is the only place
+ * in the app that decides *how* the draft is persisted.
+ *
+ * The draft is written to the browser first and mirrored to the server behind
+ * it, so typing never waits on the network and a server that is unreachable
+ * costs history rather than answers.
  */
 export function IntakeExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const storage = useMemo(() => createLocalStorageIntakeDraftStorage(), []);
+  const storage = useMemo(() => createSyncedIntakeDraftStorage(), []);
   const reviewedStorage = useMemo(() => createLocalStorageReviewedSnapshotStorage(), []);
   const initialScreenId = parseStepParam(searchParams.get("step"));
 
@@ -46,10 +50,13 @@ export function IntakeExperience() {
   );
 
   return (
-    <IntakeWizard
-      storage={storage}
-      initialScreenId={initialScreenId}
-      onReviewComplete={handleReviewComplete}
-    />
+    <div className="space-y-8">
+      <IntakeWizard
+        storage={storage}
+        initialScreenId={initialScreenId}
+        onReviewComplete={handleReviewComplete}
+      />
+      <SavedVersionsPanel />
+    </div>
   );
 }

@@ -364,15 +364,113 @@ no revision, and a test enforces that.
 
 ## Saving, editing, and coming back
 
-Answers autosave to the browser as they are typed (debounced, flushed on navigation), and a visible indicator reports when the draft was last saved. The wizard remembers the topic you were last on and reopens there; `?step=<topicId>` deep-links to any topic directly.
+Answers autosave to the browser as they are typed (debounced, flushed on navigation), and a visible indicator reports when the draft was last saved. If the server is reachable they are mirrored to a saved case behind that write, which is what makes version history and cross-device recovery possible — see "Accounts and version history". The wizard remembers the topic you were last on and reopens there; `?step=<topicId>` deep-links to any topic directly.
 
 Finishing does not freeze you out. The reviewed snapshot used for calculation is stored separately from the working draft, so answers stay editable afterwards — and because a snapshot's figures can then contradict the answers on file, `isReviewedSnapshotStale()` compares the draft's `updatedAt` against the snapshot's `reviewedAt`. When they diverge the results screen says so, offers to recalculate, and **disables PDF export** until it is recalculated. Exporting a packet for an attorney whose numbers no longer match the user's own answers is the failure this prevents.
 
 That comparison is why navigation must never touch `updatedAt`: `updatedAt` means *an answer changed*, and moving between screens persists position without bumping it. If it did, a freshly confirmed estimate would immediately declare itself stale. Timestamps that cannot be parsed are treated as stale, since the figures cannot be proven current.
 
+## Accounts and version history
+
+Signing in is optional and the app is fully usable without it. That is a
+deliberate position, not an unfinished one: someone researching their own
+divorce may have good reasons not to create an account tied to their email,
+and the privacy notice says as much.
+
+What an account buys is the two things localStorage cannot give:
+
+- the draft **survives this browser** — a different device, a cleared cache, a
+  replaced laptop;
+- **version history**, so answers can be brought back to how they were.
+
+### How the draft is stored
+
+The browser copy stays authoritative for responsiveness. Every answer is
+written to `localStorage` first and mirrored to the server behind it, so typing
+never waits on the network and an unreachable server costs *history*, never
+*answers*. `createSyncedIntakeDraftStorage` reports `offline` and keeps going.
+
+Saves are serialised and carry an `expectedRevision`. Two tabs, or a phone and
+a laptop, saving the same case is ordinary here; without the compare-and-swap
+the later save would silently erase the earlier one's answers. On conflict the
+client adopts the newer revision and reports it rather than overwriting.
+
+One rule is worth calling out because it is easy to get backwards: a **server
+draft that is empty never replaces local answers**. An empty draft is exactly
+the shape a freshly created account has, and wiping someone's work as a
+consequence of signing in would be an unforgivable first impression.
+
+### Restoring is never destructive
+
+`case_revisions` is append-only. Restoring reads an old snapshot and saves it
+**forward** as a new revision, recording `restored_from_revision` for
+provenance. Nothing is deleted, so a restore is itself undoable and the history
+remains a true record of what was entered when. A destructive revert would be
+the only operation in this app capable of losing a person's financial answers
+outright, which is why it does not exist.
+
+### Who can read a case
+
+One predicate, `ownerPredicate()`, defines ownership everywhere:
+
+- **anonymous** callers reach only *unclaimed* cases from their own session;
+- **signed-in** callers reach their account's cases, plus unclaimed ones from
+  the session in front of them.
+
+Once a case is claimed by an account the session route closes. A borrowed or
+shared browser must not keep reading a case after the person signed in and
+walked away — and that is precisely the situation the session route would
+otherwise cover. For the same reason, signing in only adopts cases from *that
+session*, so it cannot sweep up a previous user's draft on a shared computer.
+
+Anything not matching is reported as **404, not 403**, so the API never
+confirms that someone else's case exists. Repository tests assert this against
+the compiled SQL rather than trusting the code to read correctly.
+
+### Google sign-in setup
+
+Sign-in uses the OpenID Connect authorization-code flow with PKCE, written out
+directly rather than pulled from an auth framework. The app already has a
+database-backed session layer (hashed opaque secret, signed token, rotation,
+revocation); adding Auth.js would mean two sources of truth about who is signed
+in, which is the ambiguity that produces authorization bugs.
+
+Checked on every callback, each for a specific reason:
+
+| Check | What it prevents |
+| --- | --- |
+| `state`, hashed server-side and deleted on first use | CSRF into the login, and replay of a captured callback URL |
+| PKCE verifier, never sent to the browser | an intercepted authorization code being redeemable |
+| ID token signature against Google's JWKS | a forged token |
+| `iss` / `aud` | a token minted for a different application |
+| `nonce` | a token not bound to *this* request |
+| relative-path-only redirect | this endpoint becoming an open redirect |
+
+Identity is keyed on the OIDC `sub` claim, **not email**. Email addresses can
+be reassigned, and keying on one would eventually let a stranger inherit
+another person's financial case. An unverified email is dropped rather than
+displayed.
+
+To enable it, create an OAuth 2.0 Client ID (type: Web application) in the
+Google Cloud Console with these authorized redirect URIs:
+
+```
+http://localhost:3000/api/auth/google/callback
+https://<your-app>.azurewebsites.net/api/auth/google/callback
+```
+
+Then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. In Azure, put the
+secret in Key Vault and reference it from app settings — never in the repo.
+
+**When either is unset the feature disappears cleanly**: the header renders no
+sign-in control and `/api/auth/google/start` returns 501. Offering a button
+that leads to an error would be worse than offering none.
+
 ## Privacy and security defaults
 
-- No account in the initial MVP; local drafts are browser-bound and have no cross-device recovery
+- Accounts are **optional**; anonymous use is a first-class mode, not a degraded one (see "Accounts and version history")
+- Federated identity only — no password, password hash, or reset token is ever handled, so there is no credential here to leak
+- Signing in rotates the session token, so a token captured while anonymous cannot inherit the account
 - Private Azure Blob containers in the production design
 - Seven-day source-document retention; confirmed structured facts are separate
 - No raw document bytes or extracted financial values in application logs

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { AccountMenu } from "@/components/account";
+
 import { Container } from "./Container";
-import { cn } from "./cn";
 
 /** Small brand mark — a stylized set of balance scales. Decorative only. */
 function BrandMark() {
@@ -29,13 +30,19 @@ interface SiteHeaderProps {
   backToHome?: boolean;
   /** Right-aligned actions (e.g. the Quick exit control). */
   actions?: ReactNode;
+  /**
+   * Hides the sign-in control. Used on pages about privacy and safety, where
+   * an invitation to create an account would cut against what the page is
+   * telling the reader.
+   */
+  hideAccountMenu?: boolean;
 }
 
 /**
  * Sticky, translucent app header used across every screen. Keeps the product
  * wordmark on the left and a slot for safety/navigation actions on the right.
  */
-export function SiteHeader({ backToHome = false, actions }: SiteHeaderProps) {
+export function SiteHeader({ backToHome = false, actions, hideAccountMenu = false }: SiteHeaderProps) {
   const wordmark = (
     <span className="flex items-center gap-2.5">
       <BrandMark />
@@ -49,7 +56,7 @@ export function SiteHeader({ backToHome = false, actions }: SiteHeaderProps) {
     <header className="sticky top-0 z-40 border-b border-border bg-surface/85 backdrop-blur supports-[backdrop-filter]:bg-surface/70">
       <Container
         width="wide"
-        className={cn("flex flex-wrap items-center gap-3 py-3", actions ? "justify-between" : "justify-start")}
+        className="flex flex-wrap items-center justify-between gap-3 py-3"
       >
         {backToHome ? (
           <Link
@@ -61,7 +68,10 @@ export function SiteHeader({ backToHome = false, actions }: SiteHeaderProps) {
         ) : (
           wordmark
         )}
-        {actions}
+        <span className="flex items-center gap-3">
+          {hideAccountMenu ? null : <AccountMenu />}
+          {actions}
+        </span>
       </Container>
     </header>
   );
