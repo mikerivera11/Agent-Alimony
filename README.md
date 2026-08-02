@@ -427,6 +427,21 @@ Anything not matching is reported as **404, not 403**, so the API never
 confirms that someone else's case exists. Repository tests assert this against
 the compiled SQL rather than trusting the code to read correctly.
 
+### Why session expiry cannot delete an account's case
+
+`cases.session_id` is `ON DELETE SET NULL`, not `ON DELETE CASCADE`. The
+cascade was the obvious default and it was the wrong one: the day anyone adds a
+routine "delete expired sessions" job, every signed-in person's saved case
+would vanish with it — silently, with no way back, and with the job author
+having no reason to suspect it.
+
+With `set null` the worst case becomes an orphaned anonymous row, which is
+recoverable and cleanable. `purgeExpiredSessions()`
+(`src/server/session/purge.ts`) is the one safe way to do it: it deletes
+anonymous cases explicitly and in the right order, and never touches an
+account-owned one. A session lapsing is not somebody asking to erase their
+financial answers.
+
 ### Google sign-in setup
 
 Sign-in uses the OpenID Connect authorization-code flow with PKCE, written out

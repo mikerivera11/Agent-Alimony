@@ -7,7 +7,8 @@ import { ConcurrencyConflictError } from "./errors";
 
 export interface CaseRecord {
   id: string;
-  sessionId: string;
+  /** Null once the originating session row is gone; see cases.sessionId in the schema. */
+  sessionId: string | null;
   draft: unknown;
   revision: number;
   createdAt: Date;

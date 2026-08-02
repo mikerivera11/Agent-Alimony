@@ -153,9 +153,19 @@ export const cases = pgTable(
   "cases",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    sessionId: uuid("session_id")
-      .notNull()
-      .references(() => browserSessions.id, { onDelete: "cascade" }),
+    /**
+     * Nullable, and deliberately `set null` rather than `cascade`.
+     *
+     * A cascade here would mean that the day someone adds a routine "delete
+     * expired sessions" job, every signed-in person's saved case vanishes with
+     * it — silently, and with no way back. Setting it null instead makes the
+     * worst case an orphaned anonymous row, which is recoverable, rather than
+     * destroyed financial answers, which are not. Use `purgeExpiredSessions()`
+     * (src/server/session/purge.ts), which removes anonymous cases explicitly.
+     */
+    sessionId: uuid("session_id").references(() => browserSessions.id, {
+      onDelete: "set null",
+    }),
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     title: text("title"),
     draft: jsonb("draft").notNull().default(sql`'{}'::jsonb`),
