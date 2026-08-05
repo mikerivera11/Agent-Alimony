@@ -1,4 +1,4 @@
-import type { IntakeDraft } from "./draft";
+import { normalizeDraft, type IntakeDraft } from "./draft";
 
 /**
  * Storage contract for the intake draft. Every method is async so a future
@@ -41,7 +41,9 @@ export function createLocalStorageIntakeDraftStorage(
         if (!raw) {
           return null;
         }
-        return JSON.parse(raw) as IntakeDraft;
+        // Normalised because a draft saved before a step existed comes back
+        // without that key, and the screens index straight into it.
+        return normalizeDraft(JSON.parse(raw) as IntakeDraft);
       } catch {
         return null;
       }

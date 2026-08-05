@@ -170,7 +170,9 @@ export function ReviewSummary({ data, applicableStepIds, onEdit }: ReviewSummary
         <StepSummarySection
           key={stepId}
           stepId={stepId}
-          data={data[stepId] as Record<string, unknown>}
+          // Defensive as well as normalised on load: a summary is the wrong
+          // place to take down the page over a step with nothing saved in it.
+          data={(data[stepId] ?? {}) as Record<string, unknown>}
           onEdit={onEdit}
         />
       ))}

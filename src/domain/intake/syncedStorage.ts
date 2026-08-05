@@ -1,4 +1,4 @@
-import type { IntakeDraft } from "./draft";
+import { normalizeDraft, type IntakeDraft } from "./draft";
 import { clearLocalCaseData } from "./localData";
 import { createLocalStorageIntakeDraftStorage, type IntakeDraftStorage } from "./storage";
 
@@ -221,8 +221,10 @@ export function createSyncedIntakeDraftStorage(
         // first impression to wipe someone's work by signing in.
         if (Object.keys(record.draft as object).length === 0) return localDraft;
 
-        await local.save(record.draft);
-        return record.draft;
+        // Server copies predate steps too, and go straight to the screens.
+        const normalized = normalizeDraft(record.draft);
+        await local.save(normalized);
+        return normalized;
       } catch {
         return localDraft;
       }

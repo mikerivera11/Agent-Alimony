@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInMemoryIntakeDraftStorage } from "../storage";
 import { createSyncedIntakeDraftStorage } from "../syncedStorage";
-import type { IntakeDraft } from "../draft";
+import { createEmptyDraft, type IntakeDraft } from "../draft";
 
 /**
  * The rule these tests protect: **the network must never be able to lose what
@@ -11,7 +11,18 @@ import type { IntakeDraft } from "../draft";
  * at worst, never answers.
  */
 
-const draft = { caseBasics: { county: "Orange" } } as unknown as IntakeDraft;
+/**
+ * A real draft envelope rather than a stand-in. `load()` normalises whatever
+ * it is handed so a draft saved before a step existed cannot break the
+ * screens, which means a fixture shaped unlike a real draft comes back
+ * reshaped and the equality assertions below stop meaning anything.
+ */
+function draftForCounty(county: string): IntakeDraft {
+  const base = createEmptyDraft();
+  return { ...base, data: { ...base.data, caseBasics: { county } } };
+}
+
+const draft = draftForCounty("Orange");
 
 function installLocalStorage() {
   const store = new Map<string, string>();
@@ -137,7 +148,7 @@ describe("synced draft storage", () => {
   it("prefers the server draft when it actually has answers", async () => {
     installLocalStorage();
     const local = createInMemoryIntakeDraftStorage();
-    const serverDraft = { caseBasics: { county: "Broward" } };
+    const serverDraft = draftForCounty("Broward");
 
     const storage = createSyncedIntakeDraftStorage({
       local,
