@@ -6,6 +6,7 @@ import {
 } from "@/domain/integration";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import {
+  assertNotScenarioFact,
   calculateFloridaAlimony,
   calculateFloridaChildSupport,
   calculateFloridaEquitableDistribution,
@@ -68,6 +69,14 @@ export function buildPackageViewModel(reviewed: ReviewedIntakeDraft): PackageVie
   const childSupportMapping = mapReviewedDraftToChildSupportInput(reviewed);
   const alimonyMapping = mapReviewedDraftToAlimonyInput(reviewed);
   const equitableDistributionMapping = mapReviewedDraftToEquitableDistributionInput(reviewed);
+
+  // A package is output someone takes to an attorney. The rules engine will
+  // happily compute a hypothetical — that is what the what-if feature relies
+  // on — so the refusal has to live here, at the point where figures become a
+  // document, rather than being left to convention.
+  for (const mapping of [childSupportMapping, alimonyMapping, equitableDistributionMapping]) {
+    if (mapping.kind === "mapped") assertNotScenarioFact(mapping.value);
+  }
 
   const childSupport: RuleOutcome<ChildSupportResult> =
     childSupportMapping.kind === "mapped"

@@ -23,7 +23,10 @@ export function ChildSupportOutcomeCard({ outcome }: ChildSupportOutcomeCardProp
             <p className="text-xs font-semibold uppercase tracking-wide text-info-solid">
               Estimated monthly transfer amount
             </p>
-            <p className="mt-1 text-4xl font-bold tabular-nums text-info-text sm:text-5xl">
+            <p
+              className="mt-1 text-4xl font-bold tabular-nums text-info-text sm:text-5xl"
+              data-testid="child-support-transfer-amount"
+            >
               {formatCentsAsDollars(outcome.result.monthlyTransferAmountCents)}
             </p>
             <p className="mt-2 text-sm text-info-text">

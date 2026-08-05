@@ -11,3 +11,4 @@ export * from "./ScenariosPanel";
 export * from "./SourcesPanel";
 export * from "./ResultsEmptyState";
 export * from "./ResultsExperience";
+export * from "./WhatIfPanel";

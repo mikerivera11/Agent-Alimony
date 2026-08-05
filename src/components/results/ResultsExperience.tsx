@@ -24,6 +24,7 @@ import { DisclaimerBanner } from "./DisclaimerBanner";
 import { MissingItemsPanel } from "./MissingItemsPanel";
 import { ResultsEmptyState } from "./ResultsEmptyState";
 import { ScenariosPanel } from "./ScenariosPanel";
+import { WhatIfPanel } from "./WhatIfPanel";
 import { SourcesPanel } from "./SourcesPanel";
 
 type LoadState =
@@ -312,6 +313,11 @@ export function ResultsExperience() {
       <Card className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold text-ink">Illustrative scenarios</h2>
         <ScenariosPanel scenarios={viewModel.scenarios} />
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold text-ink">Try a different number</h2>
+        <WhatIfPanel reviewed={state.reviewed} disabled={isStale} />
       </Card>
 
       <Card className="flex flex-col gap-3">
