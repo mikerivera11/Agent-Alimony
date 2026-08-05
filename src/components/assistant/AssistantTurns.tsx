@@ -32,7 +32,10 @@ export function AssistantTurns({ turns, pending }: AssistantTurnsProps) {
           ) : null}
 
           {turn.answer ? (
-            <div className="flex flex-col gap-3 rounded-2xl rounded-bl-sm border border-border bg-surface px-3 py-3 text-sm text-ink">
+            <div
+              data-testid="assistant-answer"
+              className="flex flex-col gap-3 rounded-2xl rounded-bl-sm border border-border bg-surface px-3 py-3 text-sm text-ink"
+            >
               {turn.answer.escalations.map((escalation) => (
                 <p
                   key={escalation.topic}

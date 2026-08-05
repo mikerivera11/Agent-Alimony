@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { advanceGuidedIntakeToReview, sampleDraftStepIds, seedCompleteDraft } from "./seedDraft";
+import { advanceGuidedIntakeToReview, sampleDraftStepIds, seedCompleteDraft, startFreshSession } from "./seedDraft";
 
 /** Every dollar figure rendered on the results page, in order. */
 async function resultsFigures(page: Page): Promise<string> {
@@ -26,7 +26,9 @@ test("the one-page layout produces exactly the same figures as the guided flow",
   const guided = await resultsFigures(page);
   expect(guided.length).toBeGreaterThan(0);
 
-  await page.evaluate(() => window.localStorage.clear());
+  // Start over as a brand-new visitor. This must drop the session as well as
+  // localStorage, or the finished case above is restored from the server.
+  await startFreshSession(page);
   await seedCompleteDraft(page);
   await page.goto("/intake");
   await chooseOnePage(page);

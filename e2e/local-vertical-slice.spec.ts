@@ -71,3 +71,43 @@ test("keeps an excluded asset in the estate until a written agreement is confirm
   await expect(page.getByText("Items excluded by written agreement removed")).toBeVisible();
   await expect(page.getByText("Excluded").first()).toBeVisible();
 });
+
+test("offers the attorney filing packet only when it was asked for", async ({ page }) => {
+  // The packet is the one section that collects home addresses and full legal
+  // names, so the gate on it earning its keep matters as much as the download.
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
+  await advanceGuidedIntakeToReview(page);
+  await page.getByRole("button", { name: "Confirm and finish" }).click();
+  await expect(page).toHaveURL(/\/results$/);
+
+  await expect(page.getByRole("heading", { name: "Attorney filing packet" })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download filing packet" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("attorney-filing-packet.pdf");
+});
+
+test("hides the filing packet for someone who only wanted an estimate", async ({ page }) => {
+  await seedCompleteDraft(page);
+  // Registered after the seed so it runs after it: init scripts run in the
+  // order they were added, and this one edits what the seed just wrote.
+  await page.addInitScript(() => {
+    // Turn the opt-in back off in the seeded draft, the way someone who left
+    // the last step alone would have it.
+    const key = "florida-support-guide.intake-draft.v1";
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (draft?.data?.filingDetails) draft.data.filingDetails.wantsFilingPacket = "no";
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  });
+  await page.goto("/intake");
+  await advanceGuidedIntakeToReview(page);
+  await page.getByRole("button", { name: "Confirm and finish" }).click();
+  await expect(page).toHaveURL(/\/results$/);
+
+  await expect(page.getByRole("heading", { name: "Child support (estimate)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Attorney filing packet" })).toHaveCount(0);
+});

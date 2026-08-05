@@ -32,6 +32,25 @@ export async function seedCompleteDraft(page: Page): Promise<void> {
 }
 
 /**
+ * Puts the browser back to the state of someone who has never used the app.
+ *
+ * Clearing localStorage is *not* enough, and assuming it was made this suite
+ * pass locally while failing roughly one run in three against the deployed app.
+ * The draft is mirrored to the server and keyed on a session cookie, and
+ * `syncedStorage.load()` deliberately prefers the server copy — that is what
+ * makes "come back tomorrow" work. Wiping only localStorage therefore leaves
+ * the session intact, so the next `/intake` load quietly restores the finished
+ * case from the API and opens on the review screen, where the controls a fresh
+ * visitor sees do not exist. It is a race, which is why it was intermittent,
+ * and it never reproduced locally because there is no database there for the
+ * server copy to live in.
+ */
+export async function startFreshSession(page: Page): Promise<void> {
+  await page.context().clearCookies();
+  await page.evaluate(() => window.localStorage.clear());
+}
+
+/**
  * The intake steps the seeded draft actually walks through.
  *
  * Derived from the app's own step model rather than written out, because these

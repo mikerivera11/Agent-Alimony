@@ -26,9 +26,17 @@ test("answers a question from the section it was opened on, grounded in that sec
   // same retrieved passages, so exact wording is provider-dependent; what must
   // hold either way is that the answer classifies assets and shows the statute
   // it came from.
-  await expect(dock.getByText(/nonmarital/i).first()).toBeVisible({ timeout: 30_000 });
+  //
+  // Both assertions target the *answer*, not the dock. Matching anywhere in the
+  // dock passed the moment the question was echoed back — the starter itself
+  // contains "nonmarital" — so this raced a live model call against a five
+  // second default and failed most runs against the deployed app while passing
+  // locally, where the fallback adapter answers instantly.
+  const answer = dock.getByTestId("assistant-answer").first();
+  await expect(answer).toBeVisible({ timeout: 30_000 });
+  await expect(answer).toContainText(/nonmarital/i);
   // Grounded answers cite the statute they came from.
-  await expect(dock.getByText(/61\.075/).first()).toBeVisible();
+  await expect(answer).toContainText(/61\.075/);
 });
 
 test("declines to guess when the knowledge base does not cover the question", async ({ page }) => {
