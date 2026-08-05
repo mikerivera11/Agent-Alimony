@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { advanceGuidedIntakeToReview, advanceGuidedIntakeToStep, seedCompleteDraft } from "./seedDraft";
+import {
+  advanceGuidedIntakeFromStepToReview,
+  advanceGuidedIntakeToReview,
+  advanceGuidedIntakeToStep,
+  seedCompleteDraft,
+} from "./seedDraft";
 
 test("completes the intake, calculates results, downloads a package, and reviews extraction proposals", async ({
   page,
@@ -57,10 +62,7 @@ test("keeps an excluded asset in the estate until a written agreement is confirm
   await agreement.check();
   await expect(page.getByText(/yet confirmed a written agreement/i)).toHaveCount(0);
 
-  for (let step = 9; step < 12; step += 1) {
-    await page.getByRole("button", { name: "Save and continue" }).click();
-  }
-  await page.getByRole("button", { name: "Save and go to review" }).click();
+  await advanceGuidedIntakeFromStepToReview(page, "assetsDebts");
   await page.getByRole("button", { name: "Confirm and finish" }).click();
   await expect(page).toHaveURL(/\/results$/);
 

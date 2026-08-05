@@ -33,6 +33,19 @@ export type AlimonyPartyInput = z.infer<typeof alimonyPartyInputSchema>;
 export const ALIMONY_FORMS = ["bridgeTheGap", "rehabilitative", "durational"] as const;
 export type AlimonyForm = (typeof ALIMONY_FORMS)[number];
 
+/**
+ * How each form of alimony is named in §61.08, for display.
+ *
+ * The identifiers above are camelCase because they are code. Rendering them
+ * raw put "bridgeTheGap" in front of users, which is both unreadable and not
+ * what the statute calls it.
+ */
+export const ALIMONY_FORM_LABELS: Record<AlimonyForm, string> = {
+  bridgeTheGap: "Bridge-the-gap alimony",
+  rehabilitative: "Rehabilitative alimony",
+  durational: "Durational alimony",
+};
+
 export const alimonyInputSchema = z
   .object({
     marriageDateIso: isoDateSchema,

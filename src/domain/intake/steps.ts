@@ -8,6 +8,7 @@ import {
   childrenSchema,
   deductionsSchema,
   documentReadinessSchema,
+  filingDetailsSchema,
   householdExpensesSchema,
   incomeSchema,
   marriageSchema,
@@ -22,6 +23,7 @@ import {
   type Children,
   type Deductions,
   type DocumentReadiness,
+  type FilingDetails,
   type HouseholdExpenses,
   type Income,
   type Marriage,
@@ -48,6 +50,7 @@ export const INTAKE_STEP_ORDER: IntakeStepId[] = [
   "alimonyFactors",
   "safetyComplexity",
   "documentReadiness",
+  "filingDetails",
 ];
 
 export interface IntakeStepConfig<T> {
@@ -60,8 +63,24 @@ export interface IntakeStepConfig<T> {
   whyWeAsk: string;
   schema: ZodType<T>;
   defaultValues: T;
+  /**
+   * Optional per-draft defaults, for topics whose starting shape depends on
+   * answers given earlier. Used by the filing packet so a child entered once
+   * in the children topic is not typed in again — the row is created here and
+   * keyed to that child's id, which is what keeps the two in sync.
+   */
+  deriveDefaults?: (data: IntakeDraftData) => T;
   /** Whether this topic applies given what's known so far (e.g. no children = skip parenting time). */
   isApplicable: (data: IntakeDraftData) => boolean;
+}
+
+/**
+ * Starting values for a topic, given everything answered so far. Call sites
+ * should use this rather than reading `defaultValues` directly.
+ */
+export function getStepDefaultValues(stepId: IntakeStepId, data: IntakeDraftData): unknown {
+  const step = INTAKE_STEPS[stepId];
+  return step.deriveDefaults ? step.deriveDefaults(data) : step.defaultValues;
 }
 
 const alwaysApplicable = () => true;
@@ -327,6 +346,45 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
       hasParentingOrTimeshareRecords: "not_applicable",
       acknowledgesSevenDayRetention: false,
     } satisfies DocumentReadiness,
+    isApplicable: alwaysApplicable,
+  },
+  filingDetails: {
+    id: "filingDetails",
+    title: "Attorney filing packet (optional)",
+    summary: "Extra details an attorney needs to prepare court forms. Skip this if you only want an estimate.",
+    whyWeAsk:
+      "Nothing here changes your estimate. The court's forms ask for details the estimate doesn't need — full legal names, addresses, dates — so this section exists only if you want to hand an attorney a packet they can file from. Answer 'no' and the rest stays blank.",
+    schema: filingDetailsSchema,
+    defaultValues: {
+      wantsFilingPacket: "no",
+      you: { address: {}, dateOfBirth: undefined },
+      spouse: { address: {}, dateOfBirth: undefined },
+      children: [],
+      marriagePlaceCity: "",
+      marriagePlaceStateOrCountry: "",
+      floridaResidentSince: undefined,
+      whichPartyIsFloridaResident: undefined,
+      formerNameRestorationRequested: "no",
+      formerNameToRestore: "",
+    } satisfies FilingDetails,
+    deriveDefaults: (data) => ({
+      wantsFilingPacket: "no",
+      you: { address: {}, dateOfBirth: undefined },
+      spouse: { address: {}, dateOfBirth: undefined },
+      // One row per child already entered, keyed by that child's id so the two
+      // topics cannot drift apart and nobody types a child in twice.
+      children: (data.children.children ?? []).map((child) => ({
+        childId: child.id,
+        fullLegalName: "",
+        addressHistory: "",
+      })),
+      marriagePlaceCity: "",
+      marriagePlaceStateOrCountry: "",
+      floridaResidentSince: undefined,
+      whichPartyIsFloridaResident: undefined,
+      formerNameRestorationRequested: "no",
+      formerNameToRestore: "",
+    }),
     isApplicable: alwaysApplicable,
   },
 };

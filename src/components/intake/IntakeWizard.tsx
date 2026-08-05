@@ -21,7 +21,7 @@ import {
   type IntakeStepId,
   type ReviewedIntakeDraft,
 } from "@/domain/intake";
-import { INTAKE_STEPS } from "@/domain/intake";
+import { getStepDefaultValues, INTAKE_STEPS } from "@/domain/intake";
 
 import { AllAtOnceForm } from "./AllAtOnceForm";
 import { AttorneyEscalationNotice } from "./AttorneyEscalationNotice";
@@ -365,7 +365,10 @@ export function IntakeWizard({ storage, initialDraft, initialScreenId, onReviewC
         <StepForm
           key={screen}
           stepId={screen}
-          defaultValues={{ ...INTAKE_STEPS[screen].defaultValues, ...draft.data[screen] }}
+          defaultValues={{
+            ...(getStepDefaultValues(screen, draft.data) as Record<string, unknown>),
+            ...draft.data[screen],
+          }}
           onSubmit={handleStepSubmit}
           onAutoSave={handleStepAutoSave}
           onBack={() => handleBack(screen)}

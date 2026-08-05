@@ -8,7 +8,7 @@
  */
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from "pdf-lib";
 
-import type { FormWorksheet } from "@/domain/forms";
+import type { FilingReadiness, FormWorksheet, SettlementTermSheet } from "@/domain/forms";
 import { formatCentsAsDollars } from "@/domain/package";
 import type { PackageViewModel, ConfirmedFactEntry } from "@/domain/package";
 import type { FormulaStep, MissingFact, RuleFlag, StatutoryCitation, EquitableDistributionResult } from "@/domain/rules";
@@ -521,6 +521,92 @@ export async function generateWorksheetPdf(worksheet: FormWorksheet): Promise<Ui
     `Rules version ${worksheet.ruleVersion}, effective ${worksheet.effectiveDate}.`,
     { color: MUTED },
   );
+
+  return doc.save();
+}
+
+/**
+ * The attorney filing packet.
+ *
+ * Rendered by its own generator rather than squeezed into `FormWorksheet`,
+ * because that shape names exactly one official form and this document spans
+ * a dozen. Forcing it in would have printed a single form number at the top of
+ * a packet covering many, which is the sort of small misstatement that gets a
+ * person filing the wrong thing.
+ *
+ * It prints what is ready, what is missing, and what only an attorney can
+ * decide. It never prints a filled-in court form, and it never prints a
+ * settlement agreement.
+ */
+export async function generateFilingPacketPdf(options: {
+  readiness: FilingReadiness;
+  termSheet: SettlementTermSheet;
+}): Promise<Uint8Array> {
+  const { readiness, termSheet } = options;
+  const doc = await PDFDocument.create();
+  doc.setTitle("Attorney filing packet");
+  doc.setSubject("Information for an attorney — not a court filing");
+  doc.setProducer("Florida Support Guide");
+
+  const fonts: Fonts = {
+    regular: await doc.embedFont(StandardFonts.Helvetica),
+    bold: await doc.embedFont(StandardFonts.HelveticaBold),
+  };
+  const writer = new PdfWriter(doc, fonts);
+
+  writer.title("Attorney filing packet");
+  writer.paragraph(`Generated ${new Date(termSheet.generatedAt).toLocaleString("en-US")}`, { color: MUTED });
+  writer.spacer(6);
+  writer.disclaimerBox(
+    "Not a court filing, and not a settlement agreement.",
+    "This packet hands a Florida attorney the information needed to prepare and file an uncontested dissolution. " +
+      "Nothing here has been filed, nothing is signed, and no court form has been filled in. Every figure is an " +
+      "estimate produced from the answers given.",
+  );
+
+  writer.heading("Florida residence requirement");
+  writer.paragraph(readiness.residency.message, { indent: 8 });
+
+  if (readiness.generalGaps.length > 0) {
+    writer.heading("Read this first");
+    for (const gap of readiness.generalGaps) writer.bullet(gap, 8);
+  }
+
+  writer.heading("Forms this case is likely to need");
+  writer.paragraph(
+    "Revisions below were read from the footer of the court's own PDF. Check the copy you file matches.",
+    { color: MUTED },
+  );
+  for (const form of readiness.forms) {
+    const revision = form.entry.form.revision ? ` (rev. ${form.entry.form.revision})` : "";
+    writer.subheading(`${form.entry.form.formNumber} — ${form.entry.form.title}${revision}`);
+    writer.paragraph(form.entry.whyItMatters, { indent: 8, color: MUTED });
+    writer.bullet(`When it applies: ${form.reason}`, 8);
+    if (form.status === "ready") {
+      writer.bullet("Every answer this packet can supply is present.", 8);
+    } else if (form.status === "completeByHand") {
+      writer.bullet("Must be completed by hand.", 8);
+    }
+    for (const missing of form.missing) writer.bullet(`Still needed: ${missing}`, 16);
+    if (form.entry.form.url) writer.paragraph(form.entry.form.url, { indent: 8, color: MUTED });
+  }
+
+  writer.heading("Proposed terms");
+  writer.paragraph(termSheet.disclaimer, { color: MUTED });
+  for (const section of termSheet.sections) {
+    writer.subheading(section.title);
+    if (section.unavailable) {
+      writer.paragraph(section.unavailable, { indent: 8, color: MUTED });
+    }
+    for (const item of section.items) {
+      writer.bullet(`${item.label}: ${item.value}`, 8);
+      writer.paragraph(item.basis, { indent: 22, color: MUTED });
+    }
+    if (section.attorneyDecisions.length > 0) {
+      writer.paragraph("For the attorney to decide:", { indent: 8, bold: true });
+      for (const decision of section.attorneyDecisions) writer.bullet(decision, 16);
+    }
+  }
 
   return doc.save();
 }

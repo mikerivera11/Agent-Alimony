@@ -9,6 +9,7 @@ import type {
   Children,
   Deductions,
   DocumentReadiness,
+  FilingDetails,
   HouseholdExpenses,
   Income,
   Marriage,
@@ -47,6 +48,7 @@ export interface ReviewedIntakeDraft {
     alimonyFactors: AlimonyFactors;
     safetyComplexity: SafetyComplexity;
     documentReadiness: DocumentReadiness;
+    filingDetails: FilingDetails;
   };
 }
 
@@ -131,6 +133,7 @@ export function buildReviewedDraft(draft: IntakeDraft): ReviewedIntakeDraft {
       alimonyFactors: parseStep("alimonyFactors", draft.data),
       safetyComplexity: parseStep("safetyComplexity", draft.data),
       documentReadiness: parseStep("documentReadiness", draft.data),
+      filingDetails: parseStep("filingDetails", draft.data),
     },
   };
 }

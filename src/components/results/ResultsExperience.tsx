@@ -34,7 +34,7 @@ type LoadState =
 type DownloadState = "idle" | "downloading" | "error";
 
 /** Which download is in flight, so one button's spinner never appears on another. */
-type DownloadTarget = "package" | "child-support-guidelines" | "parenting-plan";
+type DownloadTarget = "package" | "child-support-guidelines" | "parenting-plan" | "filing-packet";
 
 const WORKSHEET_DOWNLOADS: ReadonlyArray<{
   readonly target: DownloadTarget;
@@ -114,6 +114,10 @@ export function ResultsExperience() {
     if (state.status !== "ready") return null;
     return buildPackageViewModel(state.reviewed);
   }, [state]);
+
+  // Read from the reviewed snapshot rather than the live draft, so the offer
+  // matches the answers the packet would actually be built from.
+  const wantsFilingPacket = reviewed?.data.filingDetails?.wantsFilingPacket === "yes";
 
   /**
    * One download path for the packet and every worksheet. They all post the
@@ -264,6 +268,36 @@ export function ResultsExperience() {
           ))}
         </div>
       </Card>
+
+      {wantsFilingPacket && (
+        <Card className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xl font-semibold text-ink">Attorney filing packet</h2>
+            <p className="text-sm text-ink-muted">
+              Everything an attorney needs to prepare an uncontested filing: which Florida forms your case calls for,
+              which answers you have already given for each, exactly what is still missing, and a term sheet covering
+              alimony, child support, property, and parenting. It is not a court filing and not a settlement
+              agreement — an attorney drafts and files those.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-xl text-sm text-ink-muted">
+              Bring this to a Florida attorney. It will not be accepted by a clerk.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                runDownload("filing-packet", "/api/package/filing-packet", "attorney-filing-packet.pdf")
+              }
+              loading={downloadState === "downloading" && downloadTarget === "filing-packet"}
+              disabled={isStale || downloadState === "downloading"}
+            >
+              Download filing packet
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <ChildSupportOutcomeCard outcome={viewModel.childSupport} />
       <AlimonyOutcomeCard outcome={viewModel.alimony} />

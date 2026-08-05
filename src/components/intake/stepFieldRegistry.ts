@@ -10,6 +10,7 @@ import {
   ChildrenFields,
   DeductionsFields,
   DocumentReadinessFields,
+  FilingDetailsFields,
   HouseholdExpensesFields,
   IncomeFields,
   MarriageFields,
@@ -59,4 +60,6 @@ export const STEP_FIELD_COMPONENTS: Record<
   safetyComplexity: SafetyComplexityFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   documentReadiness: DocumentReadinessFields as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filingDetails: FilingDetailsFields as any,
 };

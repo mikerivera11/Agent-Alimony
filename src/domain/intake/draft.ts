@@ -6,6 +6,7 @@ import type {
   Children,
   Deductions,
   DocumentReadiness,
+  FilingDetails,
   HouseholdExpenses,
   Income,
   Marriage,
@@ -36,6 +37,7 @@ export interface IntakeDraftData {
   alimonyFactors: Partial<AlimonyFactors>;
   safetyComplexity: Partial<SafetyComplexity>;
   documentReadiness: Partial<DocumentReadiness>;
+  filingDetails: Partial<FilingDetails>;
 }
 
 export type IntakeStepId = keyof IntakeDraftData;
@@ -81,6 +83,7 @@ export const EMPTY_INTAKE_DRAFT_DATA: IntakeDraftData = {
   alimonyFactors: {},
   safetyComplexity: {},
   documentReadiness: {},
+  filingDetails: {},
 };
 
 function generateId(): string {

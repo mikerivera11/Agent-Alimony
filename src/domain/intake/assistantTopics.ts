@@ -206,6 +206,16 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
       "How many months of pay stubs and bank statements do I need?",
     ],
   },
+  filingDetails: {
+    knowledgeEntryIds: ["financial-disclosure", "app-scope"],
+    statuteSections: ["61.021", "61.052", "61.522"],
+    keywords: ["filing", "petition", "residency", "uccjea", "forms", "clerk", "settlement agreement"],
+    suggestedQuestions: [
+      "How long must someone live in Florida before filing for dissolution?",
+      "What is a parenting plan required to cover?",
+      "What does mandatory disclosure require me to exchange?",
+    ],
+  },
 };
 
 /** The step ids the assistant accepts as a grounding topic. */

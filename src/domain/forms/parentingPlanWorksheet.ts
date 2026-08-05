@@ -26,23 +26,24 @@ import type { StatutoryCitation } from "@/domain/rules";
 import type { FormLine, FormWorksheet, OfficialFormReference } from "./types";
 
 /**
- * Verified 2026-07-31 by extracting the content streams of the linked PDF: of
- * 47,262 text strings in the document, exactly one carries a date, and it is
- * the footer reading "Parenting Plan (03/09)". Note that the court publishes a
- * *separate* instructions document for this form whose own footer reads
- * (02/18) — that date belongs to the instructions, not to the form, and must
- * not be copied here. The PDF `Title` metadata happens to agree with the
- * footer on this form, which is luck rather than a rule: on 12.902(e) the
- * filename implies 11/20 while the footer reads 06/25.
+ * Re-verified 2026-08-02. This previously recorded (03/09), which was wrong.
+ * The correct revision is (02/18), established three ways against the same
+ * byte-identical PDF (sha256 7f93a2d9…): the court's own CMS lists the form's
+ * date as 02/2018, the footer on every page reads "Form 12.995(a), Parenting
+ * Plan (02/18)", and it is the *only* revision token anywhere in the document.
+ * The earlier note claimed (02/18) belonged to a separate instructions
+ * document; that was backwards. The bad reading came from a hand-rolled
+ * content-stream scraper that mangled kerned text, so this and every other
+ * form date is now read with a real PDF parser (pypdf) instead.
  */
 export const PARENTING_PLAN_FORM: OfficialFormReference = {
   formNumber: "12.995(a)",
   title: "Parenting Plan",
-  revision: "03/09",
+  revision: "02/18",
   url: "https://www.flcourts.gov/content/download/686031/file_pdf/995a.pdf",
   verified: true,
   note:
-    "The revision above was read from the footer of the court's own PDF on 2026-07-31. Florida also publishes " +
+    "The revision above was read from the footer of the court's own PDF on 2026-08-02. Florida also publishes " +
     "a supervised/safety-focused variant (12.995(b)) and a relocation/long-distance variant (12.995(c)), and " +
     "which one fits your case is a decision for you and an attorney. Check the revision date in the footer of " +
     "the copy you file.",

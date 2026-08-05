@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getApplicableStepIds,
+  getStepDefaultValues,
   INTAKE_STEPS,
   type IntakeDraftData,
   type IntakeStepId,
@@ -151,7 +152,10 @@ export function AllAtOnceForm({ data, onSaveProgress, onComplete }: AllAtOnceFor
   const sectionDefaults = useMemo(() => {
     const defaults = new Map<IntakeStepId, Record<string, unknown>>();
     for (const stepId of applicableStepIds) {
-      defaults.set(stepId, { ...INTAKE_STEPS[stepId].defaultValues, ...data[stepId] });
+      defaults.set(stepId, {
+        ...(getStepDefaultValues(stepId, data) as Record<string, unknown>),
+        ...data[stepId],
+      });
     }
     return defaults;
   }, [applicableStepIds, data]);

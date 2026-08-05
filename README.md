@@ -323,7 +323,8 @@ it slipped through, reach the money sum as `NaN`.
 ## Court form worksheets
 
 The results screen exports two worksheets alongside the estimate packet:
-Child Support Guidelines (Form 12.902(e)) and Parenting Plan (Form 12.995(a)).
+Child Support Guidelines (Form 12.902(e), rev. 06/25) and Parenting Plan
+(Form 12.995(a), rev. 02/18).
 
 They are **worksheets, not filled forms**, and that is a deliberate choice
 rather than a limitation of the PDF tooling:
@@ -350,17 +351,66 @@ exactly like `/api/package`; the client never sends a figure.
 ### Verifying a form reference
 
 `OfficialFormReference.verified` means the number, title, and revision were read
-out of the court's own PDF. Do not set it any other way:
+out of the **footer** of the court's own PDF. Do not set it any other way:
 
-- Metadata is stale. 12.995(a)'s PDF `Title` says `03/09`, and 12.902(e)'s
-  filename implies `11/20` while its footer reads `06/25`.
+- Metadata is stale, and trusting it has already caused one wrong value here.
+  12.995(a) was recorded as revision `03/09` for a while. `03/09` is what the
+  PDF's `Title` metadata says; the footer on every page reads `02/18`, and
+  `(02/18)` is the only revision token anywhere in the document. Likewise
+  12.902(e)'s filename implies `11/20` while its footer reads `06/25`.
+- Extract with a real PDF parser. The bad `03/09` reading came from a
+  hand-rolled content-stream scraper that mangled kerned text. Kerning splits
+  words across separate string literals, so naive extraction silently loses or
+  garbles exactly the footer you are trying to read.
 - Download URLs carry opaque CMS content ids that **cannot be guessed**. A
   plausible-looking invented URL for 12.995(a) served Florida's Dependency
   Benchbook instead.
 
-Both references were verified on 2026-07-31 by reading the footer text out of
-the content streams of the linked PDFs. An unverified form exposes no URL and
-no revision, and a test enforces that.
+To find a form's real download URL, use the court's own page data rather than
+scraping HTML — the site is client-rendered, so the links are not in the markup:
+
+```
+https://www.flcourts.gov/sitemap-{1,2,3}.xml          # index of every form page
+https://www.flcourts.gov/_next/data/<buildId>/<path>.json   # carries number, date, and PDF uri
+```
+
+All seventeen references in `officialForms.ts` were verified on 2026-08-02 this
+way: page JSON for the number and CMS date, then the PDF itself downloaded and
+its footer read with a parser. The two agreed in every case. An unverified form
+exposes no URL and no revision, and a test enforces that.
+
+## Attorney filing packet
+
+Optional, off by default, and the only intake section whose answers never reach
+a calculation. When a person turns it on, the last intake step collects what
+*court forms* need but an estimate does not — full legal names, addresses,
+where the marriage took place, when Florida residence began, and each child's
+five-year address history.
+
+`/api/package/filing-packet` returns a PDF containing:
+
+- **A residency check**, done as arithmetic off the date given rather than as a
+  yes/no the person self-assesses (§61.021 requires six months).
+- **The forms this case calls for**, chosen from the answers — which petition,
+  which settlement agreement, and the child-related forms only when there are
+  children — each with its verified revision and the court's own URL.
+- **Exactly what is still missing** per form, worded as the question that was
+  not answered rather than as a field name.
+- **A term sheet** covering alimony, child support, equitable distribution, and
+  parenting, with the statutory basis printed under every figure.
+
+Three things it deliberately does not do:
+
+- **It does not fill in the official PDFs**, for the AcroForm reason above.
+- **It does not draft a marital settlement agreement.** Drafting the binding
+  instrument means deciding whether alimony is modifiable, who claims the
+  children on a tax return, whether a QDRO is needed to divide retirement,
+  whether life insurance secures support, and how a house is deeded or
+  refinanced. None of that is arithmetic. Each section of the term sheet lists
+  those decisions under "For the attorney to decide" instead of guessing.
+- **It never collects Social Security numbers**, even though Form 12.902(j)
+  needs them. They change no calculation here and would make a breach far
+  worse, so the packet says to complete that form by hand.
 
 ## Saving, editing, and coming back
 

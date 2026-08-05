@@ -13,3 +13,4 @@ export * from "./AssetsDebtsFields";
 export * from "./AlimonyFactorsFields";
 export * from "./SafetyComplexityFields";
 export * from "./DocumentReadinessFields";
+export * from "./FilingDetailsFields";

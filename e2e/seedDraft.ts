@@ -55,6 +55,21 @@ export async function advanceGuidedIntakeToReview(page: Page): Promise<void> {
 }
 
 /**
+ * Walks the guided wizard from whichever step is on screen through to the
+ * review screen. Counting the remaining steps from the step model rather than
+ * by hand is what keeps this from rotting when a step is added.
+ */
+export async function advanceGuidedIntakeFromStepToReview(page: Page, stepId: string): Promise<void> {
+  const stepIds = sampleDraftStepIds();
+  const index = stepIds.indexOf(stepId);
+  if (index < 0) throw new Error(`"${stepId}" is not an applicable step for the sample draft.`);
+  for (let step = index; step < stepIds.length - 1; step += 1) {
+    await page.getByRole("button", { name: "Save and continue" }).click();
+  }
+  await page.getByRole("button", { name: "Save and go to review" }).click();
+}
+
+/**
  * Walks the guided wizard forward until `stepId` is on screen.
  *
  * The position is looked up in the step model rather than counted by hand, so

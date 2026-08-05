@@ -39,6 +39,7 @@ const OUTPUT_PATH = path.join(
  * tested.
  */
 const SECTIONS = [
+  "61.021",
   "61.046",
   "61.052",
   "61.075",
@@ -50,6 +51,8 @@ const SECTIONS = [
   "61.16",
   "61.29",
   "61.30",
+  // UCCJEA: the five-year child address history the filing packet reports on.
+  "61.522",
 ] as const;
 
 /**

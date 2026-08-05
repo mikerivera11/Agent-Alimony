@@ -225,6 +225,41 @@ export function createSampleDraft(): IntakeDraft {
       hasParentingOrTimeshareRecords: "yes",
       acknowledgesSevenDayRetention: true,
     },
+    // Deliberately opted in, so the filing packet is exercised by the fixture
+    // rather than only by its own tests. Child rows are keyed to the ids above.
+    filingDetails: {
+      wantsFilingPacket: "yes",
+      you: {
+        fullLegalName: "Alex Rivera (fictional)",
+        dateOfBirth: "1985-06-14",
+        address: { street: "100 Demo Street", city: "Orlando", state: "FL", postalCode: "32801" },
+        employerName: "Demo Employer LLC",
+      },
+      spouse: {
+        fullLegalName: "Jordan Rivera (fictional)",
+        dateOfBirth: "1986-01-30",
+        address: { street: "200 Sample Avenue", city: "Orlando", state: "FL", postalCode: "32803" },
+        employerName: "Sample Corp",
+      },
+      children: [
+        {
+          childId: "demo-child-1",
+          fullLegalName: "Taylor Rivera (fictional)",
+          addressHistory: "Orlando, FL with both parents since birth.",
+        },
+        {
+          childId: "demo-child-2",
+          fullLegalName: "Morgan Rivera (fictional)",
+          addressHistory: "Orlando, FL with both parents since birth.",
+        },
+      ],
+      marriagePlaceCity: "Orlando",
+      marriagePlaceStateOrCountry: "Florida",
+      floridaResidentSince: "2010-01-01",
+      whichPartyIsFloridaResident: "both",
+      formerNameRestorationRequested: "no",
+      formerNameToRestore: "",
+    },
   };
   // Derived rather than listed, so adding an intake step cannot leave this
   // fixture quietly claiming a case is complete when a whole section is

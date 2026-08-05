@@ -8,6 +8,7 @@ import {
   childrenSchema,
   deductionsSchema,
   documentReadinessSchema,
+  filingDetailsSchema,
   householdExpensesSchema,
   incomeSchema,
   marriageSchema,
@@ -51,6 +52,7 @@ export const packageRequestSchema = z
             alimonyFactors: alimonyFactorsSchema,
             safetyComplexity: safetyComplexitySchema,
             documentReadiness: documentReadinessSchema,
+            filingDetails: filingDetailsSchema,
           })
           .strict(),
       })

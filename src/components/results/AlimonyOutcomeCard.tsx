@@ -1,4 +1,5 @@
 import { formatCentsAsDollars } from "@/domain/package";
+import { ALIMONY_FORM_LABELS } from "@/domain/rules";
 import type { AlimonyResult, RuleOutcome } from "@/domain/rules";
 
 import { Alert, Card } from "@/components/ui";
@@ -53,7 +54,7 @@ export function AlimonyOutcomeCard({ outcome }: AlimonyOutcomeCardProps) {
             <ul className="flex flex-col gap-2">
               {outcome.result.formAvailability.map((form) => (
                 <li key={form.form} className="rounded-lg border border-border bg-surface-2 p-3 text-sm text-ink">
-                  <span className="font-semibold">{form.form}:</span> {form.available ? "Available" : "Not available"}{" "}
+                  <span className="font-semibold">{ALIMONY_FORM_LABELS[form.form]}:</span> {form.available ? "Available" : "Not available"}{" "}
                   — {form.reason}
                   {form.maxDurationMonths !== null && ` (max ${form.maxDurationMonths} months)`}
                 </li>

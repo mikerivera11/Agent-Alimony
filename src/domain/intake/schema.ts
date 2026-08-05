@@ -587,3 +587,127 @@ export const documentReadinessSchema = z.object({
 });
 
 export type DocumentReadiness = z.infer<typeof documentReadinessSchema>;
+
+// 14. Filing details -----------------------------------------------------------
+
+/**
+ * The identifying details a court filing needs but a support calculation does
+ * not.
+ *
+ * Everything else in this intake deliberately accepts initials — the estimate
+ * does not care who you are, and collecting less is the safer default for an
+ * app holding somebody's divorce finances. A filing is the opposite: the clerk
+ * needs full legal names, addresses, and dates.
+ *
+ * So this step is **opt-in**. `wantsFilingPacket` gates the rest, and when it
+ * is "no" nothing here is required and nothing is collected. Data
+ * minimisation only means something if the minimal path is genuinely
+ * available.
+ *
+ * Social Security numbers are deliberately **not** collected, even though
+ * Florida requires form 12.902(j) to carry them. They contribute nothing to
+ * any calculation, and holding them would raise the consequences of a breach
+ * far more than it raises the usefulness of the packet. The generated packet
+ * lists that form and tells the person to complete it by hand.
+ */
+const addressSchema = z.object({
+  street: shortTextSchema.optional(),
+  city: shortTextSchema.optional(),
+  state: shortTextSchema.optional(),
+  postalCode: shortTextSchema.optional(),
+});
+
+export type FilingAddress = z.infer<typeof addressSchema>;
+
+const partyFilingDetailsSchema = z.object({
+  fullLegalName: shortTextSchema.optional(),
+  dateOfBirth: optionalIsoDateSchema,
+  address: addressSchema.default({}),
+  employerName: shortTextSchema.optional(),
+  employerAddress: shortTextSchema.optional(),
+  /**
+   * Servicemembers Civil Relief Act protections change how a default may be
+   * entered, so an uncontested filing has to state this either way.
+   */
+  militaryService: z.enum(["none", "active_duty", "reserve_or_guard", "not_sure"]).optional(),
+});
+
+export type PartyFilingDetails = z.infer<typeof partyFilingDetailsSchema>;
+
+/** Per-child details a filing needs that the support calculation does not. */
+const childFilingDetailsSchema = z.object({
+  /** Matches `childSchema.id` so this never has to guess which child it means. */
+  childId: z.string().min(1),
+  fullLegalName: shortTextSchema.optional(),
+  /**
+   * The UCCJEA affidavit asks where the child has lived, with whom, for the
+   * period the form specifies. Free text, because real histories do not fit a
+   * fixed set of fields and a truncated history on a sworn document is worse
+   * than a full one an attorney can transcribe.
+   */
+  addressHistory: longTextSchema.optional(),
+});
+
+export type ChildFilingDetails = z.infer<typeof childFilingDetailsSchema>;
+
+export const filingDetailsSchema = z
+  .object({
+    wantsFilingPacket: yesNoSchema,
+    you: partyFilingDetailsSchema.default(() => ({ address: {}, dateOfBirth: undefined })),
+    spouse: partyFilingDetailsSchema.default(() => ({ address: {}, dateOfBirth: undefined })),
+    children: z.array(childFilingDetailsSchema).default([]),
+    marriagePlaceCity: shortTextSchema.optional(),
+    marriagePlaceStateOrCountry: shortTextSchema.optional(),
+    /**
+     * §61.021 requires one party to have resided in Florida for six months
+     * before filing. The date is collected rather than a yes/no so the
+     * readiness check is arithmetic instead of self-assessment.
+     */
+    floridaResidentSince: optionalIsoDateSchema,
+    whichPartyIsFloridaResident: z.enum(["you", "spouse", "both", "neither"]).optional(),
+    /** Whether a spouse asks the court to restore a former name. */
+    formerNameRestorationRequested: yesNoSchema.optional(),
+    formerNameToRestore: shortTextSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    // Nothing below is required unless the person actually wants the packet.
+    if (value.wantsFilingPacket !== "yes") return;
+
+    if (!value.you.fullLegalName?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["you", "fullLegalName"],
+        message: "Enter your full legal name as it appears on your ID",
+      });
+    }
+    if (!value.spouse.fullLegalName?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["spouse", "fullLegalName"],
+        message: "Enter your spouse's full legal name",
+      });
+    }
+    if (!value.whichPartyIsFloridaResident) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["whichPartyIsFloridaResident"],
+        message: "Choose who has lived in Florida",
+      });
+    }
+    if (value.whichPartyIsFloridaResident && value.whichPartyIsFloridaResident !== "neither" && !value.floridaResidentSince) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["floridaResidentSince"],
+        message: "Enter the date Florida residence began",
+      });
+    }
+    if (value.formerNameRestorationRequested === "yes" && !value.formerNameToRestore?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["formerNameToRestore"],
+        message: "Enter the former name to restore",
+      });
+    }
+  });
+
+export type FilingDetails = z.infer<typeof filingDetailsSchema>;
