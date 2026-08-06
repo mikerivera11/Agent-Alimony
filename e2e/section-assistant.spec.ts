@@ -96,7 +96,10 @@ test("can be widened from a section to anything", async ({ page }) => {
 
 test("keeps the financial-options guide separate from the Florida-law thread", async ({ page }) => {
   await page.goto("/intake?step=assetsDebts");
-  await page.getByTestId("assistant-dock-launcher").click();
+  // Open through the section control, not the global launcher. On a deployed
+  // app the saved draft can still be hydrating when the launcher first paints,
+  // before the section has registered its context with the dock.
+  await page.getByTestId("section-assistant-assetsDebts").getByRole("button").click();
 
   const dock = page.getByTestId("assistant-dock");
   await expect(dock.getByText(/Answering about/i)).toContainText(/Assets, debts/i);
