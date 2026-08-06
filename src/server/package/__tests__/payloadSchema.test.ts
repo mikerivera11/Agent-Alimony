@@ -37,4 +37,23 @@ describe("packageRequestSchema", () => {
     const result = packageRequestSchema.safeParse({ reviewedDraft: { draftId: "x", reviewedAt: "x", isDemo: false, data: {} } });
     expect(result.success).toBe(false);
   });
+
+  it("accepts a reviewed snapshot created before structured holiday schedules existed", () => {
+    const reviewed = buildReviewedDraft(createSampleDraft());
+    const legacyParentingPlan = { ...reviewed.data.parentingPlan } as Record<string, unknown>;
+    delete legacyParentingPlan.holidayScheduleMode;
+    delete legacyParentingPlan.holidayScheduleOverridesRegular;
+    delete legacyParentingPlan.holidaySchedules;
+    delete legacyParentingPlan.threeWeekendAdjustment;
+    delete legacyParentingPlan.unspecifiedHolidayFollowsAdjacentWeekend;
+
+    const result = packageRequestSchema.safeParse({
+      reviewedDraft: {
+        ...reviewed,
+        data: { ...reviewed.data, parentingPlan: legacyParentingPlan },
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

@@ -354,6 +354,16 @@ rather than a limitation of the PDF tooling:
   engine already implements exactly that order, so the layout survives form
   revisions.
 
+The parenting-plan intake includes a structured holiday schedule builder that
+matches the information Form 12.995(a) asks for: named holiday, alternating or
+every-year assignment, odd-year parent, exact beginning/end time, priority over
+the regular schedule, and the form's two optional weekend-correction rules.
+Thanksgiving, Christmas, and New Year's Day begin as **proposed alternating
+defaults**. They are not presented as Florida legal defaults; the form leaves
+those choices blank. Christmas starts opposite Thanksgiving so one parent does
+not receive both in the same year. Blank times remain visible gaps in the
+worksheet and attorney filing-readiness list rather than being invented.
+
 Every figure comes from the rule result the packet uses. Nothing on a worksheet
 is computed locally, so a worksheet cannot disagree with the packet in the same
 envelope. `/api/package/worksheet` re-validates and recalculates server-side

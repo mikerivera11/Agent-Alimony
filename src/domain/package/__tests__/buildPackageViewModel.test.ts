@@ -34,6 +34,26 @@ describe("buildPackageViewModel", () => {
     }
   });
 
+  it("does not mislabel a legacy narrative holiday schedule as an agreement", () => {
+    const reviewed = demoReviewedDraft();
+    const legacyParentingPlan = { ...reviewed.data.parentingPlan } as Record<string, unknown>;
+    delete legacyParentingPlan.holidayScheduleMode;
+    delete legacyParentingPlan.holidaySchedules;
+    legacyParentingPlan.holidaySchedule = "The parents alternate holidays under their existing written schedule.";
+
+    const viewModel = buildPackageViewModel({
+      ...reviewed,
+      data: {
+        ...reviewed.data,
+        parentingPlan: legacyParentingPlan as ReviewedIntakeDraft["data"]["parentingPlan"],
+      },
+    });
+
+    expect(
+      viewModel.confirmedFacts.find((entry) => entry.label === "Holiday schedule method")?.value,
+    ).toBe("Legacy narrative schedule");
+  });
+
   it("shows a prominent attorney-review disclaimer with no binding-agreement language", () => {
     const viewModel = buildPackageViewModel(demoReviewedDraft());
     expect(viewModel.disclaimer).toContain(PACKAGE_DISCLAIMER_HEADING);

@@ -233,6 +233,24 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
     if (data.parentingPlan?.planStatus === undefined) {
       missing.push("Whether the parenting plan is agreed, proposed, or in dispute");
     }
+    const plan = data.parentingPlan;
+    if (plan?.holidayScheduleMode === undefined) {
+      missing.push("How holidays will be handled");
+    } else if (plan.holidayScheduleMode === "specific") {
+      const holidays = plan.holidaySchedules ?? [];
+      if (holidays.length === 0) missing.push("At least one holiday assignment");
+      for (const holiday of holidays) {
+        if (holiday.rotation === "undecided") {
+          missing.push(`Who has the children for ${holiday.name || "each holiday"}`);
+        }
+        if (holiday.rotation === "alternating" && holiday.oddYearParent === undefined) {
+          missing.push(`Who has the children in odd-numbered years for ${holiday.name || "each holiday"}`);
+        }
+        if (isBlank(holiday.beginEndTime)) {
+          missing.push(`Beginning and ending time for ${holiday.name || "each holiday"}`);
+        }
+      }
+    }
   }
 
   if (formNumber.startsWith("12.902(f)")) {

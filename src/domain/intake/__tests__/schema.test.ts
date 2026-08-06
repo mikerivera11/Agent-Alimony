@@ -6,7 +6,9 @@ import {
   caseBasicsSchema,
   childrenSchema,
   documentReadinessSchema,
+  DEFAULT_HOLIDAY_SCHEDULES,
   marriageSchema,
+  parentingPlanSchema,
   parentingTimeSchema,
   safetyComplexitySchema,
 } from "../schema";
@@ -134,6 +136,7 @@ describe("parentingTimeSchema", () => {
       overnightsWithOtherParentPerYear: 300,
       scheduleStatus: "agreed",
     });
+
     expect(result.success).toBe(false);
   });
 
@@ -156,6 +159,100 @@ describe("parentingTimeSchema", () => {
     if (result.success) {
       expect(result.data.overnightsWithYouPerYear).toBe(0);
     }
+  });
+});
+
+describe("parentingPlanSchema", () => {
+  const completePlan = {
+    planStatus: "proposed" as const,
+    schoolDesignationParent: "undecided" as const,
+    decisionMakingEducation: "undecided" as const,
+    decisionMakingHealthcare: "undecided" as const,
+    decisionMakingReligion: "undecided" as const,
+    weekdaySchedule: "",
+    weekendSchedule: "",
+    holidaySchedule: "",
+    holidayScheduleMode: "specific" as const,
+    holidayScheduleOverridesRegular: true,
+    holidaySchedules: DEFAULT_HOLIDAY_SCHEDULES.map((holiday) => ({ ...holiday })),
+    threeWeekendAdjustment: false,
+    unspecifiedHolidayFollowsAdjacentWeekend: false,
+    summerSchedule: "",
+    exchangeArrangements: "",
+    communicationBetweenChildAndParent: "",
+    relocationAnticipated: "no" as const,
+  };
+
+  it("starts the requested major holidays as alternating-year proposals", () => {
+    expect(completePlan.holidaySchedules.map((holiday) => holiday.name)).toEqual([
+      "Thanksgiving",
+      "Christmas",
+      "New Year's Day",
+    ]);
+    expect(completePlan.holidaySchedules.every((holiday) => holiday.rotation === "alternating")).toBe(true);
+    expect(parentingPlanSchema.safeParse(completePlan).success).toBe(true);
+  });
+
+  it("puts Christmas opposite Thanksgiving so one parent does not receive both in one year", () => {
+    const thanksgiving = completePlan.holidaySchedules.find((holiday) => holiday.name === "Thanksgiving");
+    const christmas = completePlan.holidaySchedules.find((holiday) => holiday.name === "Christmas");
+    expect(thanksgiving?.oddYearParent).not.toBe(christmas?.oddYearParent);
+  });
+
+  it("refuses an alternating holiday without an odd-year parent", () => {
+    const invalid = {
+      ...completePlan,
+      holidaySchedules: [
+        {
+          id: "custom",
+          name: "Child's birthday",
+          rotation: "alternating" as const,
+          beginEndTime: "",
+          notes: "",
+        },
+      ],
+    };
+    const result = parentingPlanSchema.safeParse(invalid);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join(".") === "holidaySchedules.0.oddYearParent")).toBe(
+        true,
+      );
+    }
+  });
+
+  it("accepts a legacy narrative plan without structured holiday fields", () => {
+    const legacyPlan = { ...completePlan } as Record<string, unknown>;
+    delete legacyPlan.holidayScheduleMode;
+    delete legacyPlan.holidayScheduleOverridesRegular;
+    delete legacyPlan.holidaySchedules;
+    delete legacyPlan.threeWeekendAdjustment;
+    delete legacyPlan.unspecifiedHolidayFollowsAdjacentWeekend;
+
+    expect(
+      parentingPlanSchema.safeParse({
+        ...legacyPlan,
+        holidaySchedule: "The parents alternate holidays under their existing written schedule.",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("ignores retained incomplete rows when the specific schedule is hidden", () => {
+    const result = parentingPlanSchema.safeParse({
+      ...completePlan,
+      holidayScheduleMode: "regular_schedule",
+      holidaySchedules: [
+        {
+          id: "retained-custom",
+          name: "",
+          rotation: "alternating",
+          beginEndTime: "",
+          notes: "",
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
   });
 });
 

@@ -47,6 +47,19 @@ describe("getMissingDataSummary", () => {
     expect(isDraftReadyForReview(draft)).toBe(true);
   });
 
+  it("keeps a completed legacy parenting plan reviewable", () => {
+    const draft = createSampleDraft();
+    const legacyParentingPlan = draft.data.parentingPlan as Record<string, unknown>;
+    delete legacyParentingPlan.holidayScheduleMode;
+    delete legacyParentingPlan.holidayScheduleOverridesRegular;
+    delete legacyParentingPlan.holidaySchedules;
+    delete legacyParentingPlan.threeWeekendAdjustment;
+    delete legacyParentingPlan.unspecifiedHolidayFollowsAdjacentWeekend;
+
+    expect(getMissingDataSummary(draft)).toEqual([]);
+    expect(isDraftReadyForReview(draft)).toBe(true);
+  });
+
   it("is not ready for review on a brand-new draft", () => {
     const draft = createEmptyDraft();
     expect(isDraftReadyForReview(draft)).toBe(false);

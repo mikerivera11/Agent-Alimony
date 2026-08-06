@@ -10,3 +10,4 @@ export * from "./localData";
 export * from "./reviewed";
 export * from "./mode";
 export * from "./assistantTopics";
+export * from "./parentingSchedule";

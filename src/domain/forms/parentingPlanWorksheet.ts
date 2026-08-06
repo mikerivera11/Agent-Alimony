@@ -20,7 +20,12 @@
  * because the hole is what prompts the conversation.
  */
 
-import type { Children, ParentingPlan, ParentingTime } from "@/domain/intake";
+import {
+  describeHolidayRotation,
+  type Children,
+  type ParentingPlan,
+  type ParentingTime,
+} from "@/domain/intake";
 import type { StatutoryCitation } from "@/domain/rules";
 
 import type { FormLine, FormWorksheet, OfficialFormReference } from "./types";
@@ -188,12 +193,82 @@ export function buildParentingPlanWorksheet(options: {
       kind: "input",
       authority: "§61.13(2)(b)2.",
     },
-    {
-      label: "Holidays and school breaks",
-      value: record("Holidays and school breaks", narrative(plan.holidaySchedule)),
-      kind: "input",
-      authority: "§61.13(2)(b)2.",
-    },
+    ...(plan.holidayScheduleMode === undefined
+      ? [
+          {
+            label: "Holidays and school breaks",
+            value: record("Holidays and school breaks", narrative(plan.holidaySchedule)),
+            kind: "input" as const,
+            authority: "§61.13(2)(b)2.",
+          },
+        ]
+      : [
+          {
+            label: "Holiday schedule method",
+            value:
+              plan.holidayScheduleMode === "specific"
+                ? "Specific written holiday schedule"
+                : plan.holidayScheduleMode === "regular_schedule"
+                  ? "The regular time-sharing schedule applies"
+                  : "The parents decide holidays by agreement",
+            kind: "input" as const,
+            authority: "§61.13(2)(b)2.; Form 12.995(a)",
+          },
+          ...(plan.holidayScheduleMode === "specific"
+            ? (plan.holidaySchedules ?? []).flatMap((holiday) => {
+                const assignment = describeHolidayRotation(holiday);
+                if (assignment === UNDECIDED) undecidedTerms.push(`${holiday.name} assignment`);
+                if (!holiday.beginEndTime?.trim()) undecidedTerms.push(`${holiday.name} beginning and ending time`);
+                return [
+                  {
+                    label: holiday.name,
+                    value: `${assignment} Beginning/end: ${narrative(holiday.beginEndTime)}${
+                      holiday.notes?.trim() ? ` Details: ${holiday.notes.trim()}` : ""
+                    }`,
+                    kind: "input" as const,
+                    authority: "§61.13(2)(b)2.; Form 12.995(a)",
+                  },
+                ];
+              })
+            : []),
+          ...(plan.holidayScheduleMode === "specific"
+            ? [
+                {
+                  label: "Holiday schedule priority",
+                  value: plan.holidayScheduleOverridesRegular
+                    ? "The holiday schedule takes priority over the regular weekday, weekend, and summer schedules"
+                    : "Priority over the regular schedule has not been selected",
+                  kind: "input" as const,
+                  authority: "Form 12.995(a)",
+                },
+                {
+                  label: "Three-weekend correction",
+                  value: plan.threeWeekendAdjustment
+                    ? "Yes — exchange the following weekend if a holiday creates three weekends in a row"
+                    : "No correction selected",
+                  kind: "input" as const,
+                  authority: "Form 12.995(a)",
+                },
+                {
+                  label: "Unspecified holidays next to a weekend",
+                  value: plan.unspecifiedHolidayFollowsAdjacentWeekend
+                    ? "Stay with the parent who has the immediately adjacent weekend"
+                    : "No adjacent-weekend rule selected",
+                  kind: "input" as const,
+                  authority: "Form 12.995(a)",
+                },
+              ]
+            : []),
+          {
+            label: "Winter break, spring break, and other schedule notes",
+            value: record(
+              "Winter break, spring break, and other schedule notes",
+              narrative(plan.holidaySchedule),
+            ),
+            kind: "input" as const,
+            authority: "§61.13(2)(b)2.; Form 12.995(a)",
+          },
+        ]),
     {
       label: "Summer schedule",
       value: record("Summer schedule", narrative(plan.summerSchedule)),

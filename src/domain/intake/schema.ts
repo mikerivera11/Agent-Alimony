@@ -176,6 +176,65 @@ export type ParentingTime = z.infer<typeof parentingTimeSchema>;
 
 // 5b. Parenting plan ----------------------------------------------------------
 
+export const holidayScheduleItemSchema = z.object({
+  id: z.string().min(1),
+  // Empty retained rows are harmless outside "specific" mode and are validated
+  // by the parent schema when the rows actually control the schedule.
+  name: shortTextSchema,
+  /**
+   * A compact, internally-consistent version of Form 12.995(a)'s Even Years,
+   * Odd Years, and Every Year columns. "Alternating" stores who receives odd
+   * years; the other parent necessarily receives even years.
+   */
+  rotation: z.enum([
+    "alternating",
+    "you_every_year",
+    "other_parent_every_year",
+    "regular_schedule",
+    "undecided",
+  ]),
+  oddYearParent: z.enum(["you", "other_parent"]).optional(),
+  beginEndTime: shortTextSchema.optional(),
+  notes: longTextSchema.optional(),
+});
+
+export type HolidayScheduleItem = z.infer<typeof holidayScheduleItemSchema>;
+
+/**
+ * Proposed defaults, not legal defaults. Form 12.995(a) leaves the assignments
+ * and times blank for the parents/court to decide. These merely make the
+ * alternating-year pattern the user requested concrete and reviewable.
+ *
+ * Christmas is opposite Thanksgiving so one parent does not receive both in
+ * the same year. New Year's Day alternates independently.
+ */
+export const DEFAULT_HOLIDAY_SCHEDULES: readonly HolidayScheduleItem[] = [
+  {
+    id: "major-thanksgiving",
+    name: "Thanksgiving",
+    rotation: "alternating",
+    oddYearParent: "you",
+    beginEndTime: "",
+    notes: "",
+  },
+  {
+    id: "major-christmas",
+    name: "Christmas",
+    rotation: "alternating",
+    oddYearParent: "other_parent",
+    beginEndTime: "",
+    notes: "",
+  },
+  {
+    id: "major-new-years",
+    name: "New Year's Day",
+    rotation: "alternating",
+    oddYearParent: "you",
+    beginEndTime: "",
+    notes: "",
+  },
+] as const;
+
 /**
  * The substantive terms a Florida parenting plan has to settle. §61.13(2)(b)
  * requires a parenting plan in every case involving a minor child, and
@@ -189,27 +248,75 @@ export type ParentingTime = z.infer<typeof parentingTimeSchema>;
  * and leave the rest open; a half-decided plan is the normal state, and
  * forcing a guess would put an unconsidered term in front of a judge.
  */
-export const parentingPlanSchema = z.object({
-  planStatus: z.enum(["agreed", "proposed", "in_dispute"], {
-    message: "Choose the option that matches your situation",
-  }),
-  /** §61.13(2)(b)3: school-designation and other addresses. */
-  schoolDesignationParent: z.enum(["you", "other_parent", "undecided"], {
-    message: "Choose who the plan designates",
-  }),
-  /** §61.13(2)(b): shared vs sole parental responsibility for major decisions. */
-  decisionMakingEducation: z.enum(["shared", "you", "other_parent", "undecided"]),
-  decisionMakingHealthcare: z.enum(["shared", "you", "other_parent", "undecided"]),
-  decisionMakingReligion: z.enum(["shared", "you", "other_parent", "undecided"]),
-  weekdaySchedule: longTextSchema.optional(),
-  weekendSchedule: longTextSchema.optional(),
-  holidaySchedule: longTextSchema.optional(),
-  summerSchedule: longTextSchema.optional(),
-  exchangeArrangements: longTextSchema.optional(),
-  communicationBetweenChildAndParent: longTextSchema.optional(),
-  /** §61.13001 relocation is a distinct statutory process; flagged, never advised on. */
-  relocationAnticipated: yesNoSchema,
-});
+export const parentingPlanSchema = z
+  .object({
+    planStatus: z.enum(["agreed", "proposed", "in_dispute"], {
+      message: "Choose the option that matches your situation",
+    }),
+    /** §61.13(2)(b)3: school-designation and other addresses. */
+    schoolDesignationParent: z.enum(["you", "other_parent", "undecided"], {
+      message: "Choose who the plan designates",
+    }),
+    /** §61.13(2)(b): shared vs sole parental responsibility for major decisions. */
+    decisionMakingEducation: z.enum(["shared", "you", "other_parent", "undecided"]),
+    decisionMakingHealthcare: z.enum(["shared", "you", "other_parent", "undecided"]),
+    decisionMakingReligion: z.enum(["shared", "you", "other_parent", "undecided"]),
+    weekdaySchedule: longTextSchema.optional(),
+    weekendSchedule: longTextSchema.optional(),
+    /**
+     * Retained for legacy drafts and for winter/spring breaks or other schedule
+     * notes that do not belong to one named holiday row.
+     */
+    holidaySchedule: longTextSchema.optional(),
+    // Optional only for drafts reviewed before the structured builder existed.
+    // New drafts receive "specific" from the step defaults.
+    holidayScheduleMode: z.enum(["regular_schedule", "as_agreed", "specific"]).optional(),
+    holidayScheduleOverridesRegular: z.boolean().default(true),
+    holidaySchedules: z.array(holidayScheduleItemSchema).max(30, "Add no more than 30 holiday rows").default([]),
+    threeWeekendAdjustment: z.boolean().default(false),
+    unspecifiedHolidayFollowsAdjacentWeekend: z.boolean().default(false),
+    summerSchedule: longTextSchema.optional(),
+    exchangeArrangements: longTextSchema.optional(),
+    communicationBetweenChildAndParent: longTextSchema.optional(),
+    /** §61.13001 relocation is a distinct statutory process; flagged, never advised on. */
+    relocationAnticipated: yesNoSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (value.holidayScheduleMode !== "specific") return;
+
+    const ids = new Set<string>();
+    value.holidaySchedules.forEach((holiday, index) => {
+      if (ids.has(holiday.id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["holidaySchedules", index, "id"],
+          message: "Each holiday needs a unique identifier",
+        });
+      }
+      ids.add(holiday.id);
+      if (!holiday.name.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["holidaySchedules", index, "name"],
+          message: "Enter a holiday or special-day name",
+        });
+      }
+      if (holiday.rotation === "alternating" && holiday.oddYearParent === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["holidaySchedules", index, "oddYearParent"],
+          message: "Choose which parent has this holiday in odd-numbered years",
+        });
+      }
+    });
+    if (value.holidaySchedules.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["holidaySchedules"],
+        message: "Add at least one holiday, or choose the regular schedule",
+      });
+    }
+  });
 
 export type ParentingPlan = z.infer<typeof parentingPlanSchema>;
 

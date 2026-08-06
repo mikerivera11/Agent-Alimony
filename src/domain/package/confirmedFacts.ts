@@ -1,5 +1,5 @@
 import { sumGrossIncomeDollars } from "@/domain/integration";
-import type { ReviewedIntakeDraft } from "@/domain/intake";
+import { describeHolidayRotation, type ReviewedIntakeDraft } from "@/domain/intake";
 
 import type { ConfirmedFactEntry } from "./types";
 
@@ -30,6 +30,7 @@ export function buildConfirmedFactEntries(reviewed: ReviewedIntakeDraft): Confir
     spouses,
     children,
     parentingTime,
+    parentingPlan,
     income,
     deductions,
     childCosts,
@@ -90,6 +91,33 @@ export function buildConfirmedFactEntries(reviewed: ReviewedIntakeDraft): Confir
       String(parentingTime.overnightsWithOtherParentPerYear),
     );
     push("parentingTime", "Parenting time", "Schedule status", parentingTime.scheduleStatus);
+  }
+
+  if (parentingPlan) {
+    push("parentingPlan", "Parenting plan", "Plan status", parentingPlan.planStatus);
+    const holidayScheduleMethod =
+      parentingPlan.holidayScheduleMode === "specific"
+        ? "Specific written schedule"
+        : parentingPlan.holidayScheduleMode === "regular_schedule"
+          ? "Regular time-sharing schedule"
+          : parentingPlan.holidayScheduleMode === "as_agreed"
+            ? "By agreement"
+            : parentingPlan.holidaySchedule?.trim()
+              ? "Legacy narrative schedule"
+              : "Not decided yet";
+    push("parentingPlan", "Parenting plan", "Holiday schedule method", holidayScheduleMethod);
+    if (parentingPlan.holidayScheduleMode === "specific") {
+      for (const holiday of parentingPlan.holidaySchedules) {
+        push(
+          "parentingPlan",
+          "Parenting plan",
+          holiday.name,
+          `${describeHolidayRotation(holiday)} Beginning/end: ${
+            holiday.beginEndTime?.trim() || "Not decided yet"
+          }`,
+        );
+      }
+    }
   }
 
   // Uses the same gross-income definition the calculators use, rather than

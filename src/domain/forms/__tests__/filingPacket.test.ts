@@ -134,6 +134,22 @@ describe("buildFilingReadiness", () => {
     expect(uccjea?.missing).toContain("Filing details for every child");
   });
 
+  it("names holiday timing gaps on the parenting-plan form", () => {
+    const data = draftData();
+    data.parentingPlan = {
+      ...data.parentingPlan,
+      holidaySchedules: data.parentingPlan.holidaySchedules?.map((holiday) =>
+        holiday.name === "Christmas" ? { ...holiday, beginEndTime: "" } : holiday,
+      ),
+    };
+
+    const parentingPlan = buildFilingReadiness({ data, asOfIso: AS_OF }).forms.find(
+      (form) => form.entry.form.formNumber === "12.995(a)",
+    );
+
+    expect(parentingPlan?.missing).toContain("Beginning and ending time for Christmas");
+  });
+
   it("says the Social Security notice must be completed by hand", () => {
     const ssn = buildFilingReadiness({ data: draftData(), asOfIso: AS_OF }).forms.find(
       (form) => form.entry.form.formNumber === "12.902(j)",

@@ -1,6 +1,12 @@
-import type { ParentingPlan } from "@/domain/intake";
+"use client";
 
-import { TextareaField, RadioGroupField } from "../fields";
+import { useFieldArray, useWatch } from "react-hook-form";
+
+import type { ParentingPlan } from "@/domain/intake";
+import { Alert } from "@/components/ui";
+
+import { CheckboxField, RadioGroupField, SelectField, TextareaField, TextField } from "../fields";
+import { dangerLinkClasses, secondaryButtonClasses } from "../fields/inputStyles";
 import type { StepFieldsProps } from "./StepFieldsProps";
 
 /**
@@ -20,7 +26,30 @@ const RESPONSIBILITY_OPTIONS = [
   { value: "undecided", label: "Not decided yet" },
 ];
 
-export function ParentingPlanFields({ register, errors }: StepFieldsProps<ParentingPlan>) {
+const HOLIDAY_ROTATION_OPTIONS = [
+  { value: "alternating", label: "Alternate every year" },
+  { value: "you_every_year", label: "You every year" },
+  { value: "other_parent_every_year", label: "The other parent every year" },
+  { value: "regular_schedule", label: "Follow the regular schedule" },
+  { value: "undecided", label: "Not decided yet" },
+];
+
+function generateHolidayId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `holiday-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function ParentingPlanFields({ register, errors, control }: StepFieldsProps<ParentingPlan>) {
+  const holidayScheduleMode = useWatch({ control, name: "holidayScheduleMode" });
+  const holidaySchedules = useWatch({ control, name: "holidaySchedules" }) ?? [];
+  const {
+    fields: holidayFields,
+    append: appendHoliday,
+    remove: removeHoliday,
+  } = useFieldArray({ control, name: "holidaySchedules", keyName: "fieldKey" });
+
   return (
     <div className="flex flex-col gap-5">
       <RadioGroupField
@@ -89,10 +118,152 @@ export function ParentingPlanFields({ register, errors }: StepFieldsProps<Parent
         registration={register("weekendSchedule")}
         error={errors.weekendSchedule?.message}
       />
+
+      <RadioGroupField
+        id="holidayScheduleMode"
+        legend="How will holidays be handled?"
+        hint="Florida's standard parenting-plan form allows the regular schedule, agreement as holidays arise, or a specific written schedule."
+        required
+        registration={register("holidayScheduleMode")}
+        error={errors.holidayScheduleMode?.message}
+        options={[
+          { value: "specific", label: "Use a specific holiday schedule" },
+          { value: "regular_schedule", label: "Follow the regular time-sharing schedule" },
+          { value: "as_agreed", label: "Decide holidays by agreement" },
+        ]}
+      />
+
+      {holidayScheduleMode === "specific" ? (
+        <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface-2 p-4" aria-labelledby="holiday-builder-heading">
+          <div className="flex flex-col gap-2">
+            <h3 id="holiday-builder-heading" className="text-lg font-semibold text-ink">
+              Holiday schedule builder
+            </h3>
+            <Alert variant="info" role="status" className="text-sm">
+              <p>
+                These are <strong>proposed defaults, not Florida legal defaults</strong>. Thanksgiving,
+                Christmas, and New Year&rsquo;s Day start as alternating-year holidays. Christmas is opposite
+                Thanksgiving so one parent does not receive both in the same year. Review every assignment and
+                add exact beginning and ending times.
+              </p>
+            </Alert>
+          </div>
+
+          {holidayFields.map((field, index) => {
+            const rotation = holidaySchedules[index]?.rotation;
+            const oddParent = holidaySchedules[index]?.oddYearParent;
+            const evenParent = oddParent === "you" ? "the other parent" : oddParent === "other_parent" ? "you" : "not decided";
+            const holidayErrors = errors.holidaySchedules?.[index];
+            return (
+              <fieldset key={field.fieldKey} className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
+                <legend className="px-1 text-base font-semibold text-ink">
+                  {holidaySchedules[index]?.name || `Holiday ${index + 1}`}
+                </legend>
+                <input type="hidden" {...register(`holidaySchedules.${index}.id`)} />
+                <TextField
+                  id={`holiday-${index}-name`}
+                  label="Holiday or special day"
+                  required
+                  registration={register(`holidaySchedules.${index}.name`)}
+                  error={holidayErrors?.name?.message}
+                />
+                <SelectField
+                  id={`holiday-${index}-rotation`}
+                  label="Who has the children?"
+                  required
+                  options={HOLIDAY_ROTATION_OPTIONS}
+                  registration={register(`holidaySchedules.${index}.rotation`)}
+                  error={holidayErrors?.rotation?.message}
+                />
+                {rotation === "alternating" ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <SelectField
+                      id={`holiday-${index}-odd-year-parent`}
+                      label="Odd-numbered years"
+                      required
+                      options={[
+                        { value: "you", label: "You" },
+                        { value: "other_parent", label: "The other parent" },
+                      ]}
+                      registration={register(`holidaySchedules.${index}.oddYearParent`)}
+                      error={holidayErrors?.oddYearParent?.message}
+                    />
+                    <div className="rounded-lg border border-border bg-surface-2 p-3">
+                      <p className="text-sm font-medium text-ink">Even-numbered years</p>
+                      <p className="mt-1 text-sm text-ink-muted capitalize">{evenParent}</p>
+                    </div>
+                  </div>
+                ) : null}
+                <TextField
+                  id={`holiday-${index}-begin-end-time`}
+                  label="Beginning and ending time"
+                  hint="Be exact. Example: Wednesday at 6:00 p.m. until Sunday at 6:00 p.m."
+                  placeholder="Not decided yet"
+                  registration={register(`holidaySchedules.${index}.beginEndTime`)}
+                  error={holidayErrors?.beginEndTime?.message}
+                />
+                <TextareaField
+                  id={`holiday-${index}-notes`}
+                  label="Exchange or other details"
+                  registration={register(`holidaySchedules.${index}.notes`)}
+                  error={holidayErrors?.notes?.message}
+                />
+                <button type="button" onClick={() => removeHoliday(index)} className={`${dangerLinkClasses} self-start`}>
+                  Remove {holidaySchedules[index]?.name || "holiday"}
+                </button>
+              </fieldset>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() =>
+              appendHoliday({
+                id: generateHolidayId(),
+                name: "",
+                rotation: "undecided",
+                oddYearParent: undefined,
+                beginEndTime: "",
+                notes: "",
+              })
+            }
+            className={`${secondaryButtonClasses} self-start`}
+          >
+            + Add another holiday or special day
+          </button>
+          {errors.holidaySchedules?.message ? (
+            <p role="alert" className="text-sm font-medium text-danger-solid">
+              {errors.holidaySchedules.message}
+            </p>
+          ) : null}
+
+          <CheckboxField
+            id="holidayScheduleOverridesRegular"
+            label="The holiday schedule takes priority over the regular weekday, weekend, and summer schedules"
+            hint="This matches the priority rule printed in the specific-holiday section of Form 12.995(a)."
+            registration={register("holidayScheduleOverridesRegular")}
+            error={errors.holidayScheduleOverridesRegular?.message}
+          />
+          <CheckboxField
+            id="threeWeekendAdjustment"
+            label="Correct the next weekend if the holiday schedule would give one parent three weekends in a row"
+            hint="The form offers this as an optional way to return to the alternating-weekend pattern."
+            registration={register("threeWeekendAdjustment")}
+            error={errors.threeWeekendAdjustment?.message}
+          />
+          <CheckboxField
+            id="unspecifiedHolidayFollowsAdjacentWeekend"
+            label="An unspecified holiday or non-school day goes with the parent who has the adjacent weekend"
+            registration={register("unspecifiedHolidayFollowsAdjacentWeekend")}
+            error={errors.unspecifiedHolidayFollowsAdjacentWeekend?.message}
+          />
+        </section>
+      ) : null}
+
       <TextareaField
         id="holidaySchedule"
-        label="Holidays and school breaks"
-        hint="Many plans alternate major holidays by even and odd years. Include birthdays and Mother's or Father's Day if you have discussed them."
+        label="Winter break, spring break, and other schedule notes"
+        hint="Include how school breaks are divided and any term not captured by the holiday rows above."
         registration={register("holidaySchedule")}
         error={errors.holidaySchedule?.message}
       />

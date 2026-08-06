@@ -120,6 +120,49 @@ describe("parenting plan worksheet", () => {
     const notes = worksheet!.lines.filter((line) => line.kind === "note").map((line) => line.explanation).join(" ");
     expect(notes).toMatch(/detrimental/i);
   });
+
+  it("carries the alternating holiday assignments and exact times into the attorney worksheet", () => {
+    const reviewed = buildReviewedDraft(createSampleDraft());
+    const parentingPlan = reviewed.data.parentingPlan!;
+    const parentingTime = reviewed.data.parentingTime!;
+    const worksheet = buildParentingPlanWorksheet({
+      parentingPlan,
+      parentingTime,
+      children: reviewed.data.children,
+      generatedAt: "2026-08-05T00:00:00.000Z",
+      county: reviewed.data.caseBasics.county,
+    });
+
+    const thanksgiving = worksheet!.lines.find((line) => line.label === "Thanksgiving");
+    const christmas = worksheet!.lines.find((line) => line.label === "Christmas");
+    expect(thanksgiving?.value).toMatch(/Odd-numbered years: You/i);
+    expect(thanksgiving?.value).toMatch(/Wednesday at 6:00 p\.m\./i);
+    expect(christmas?.value).toMatch(/Odd-numbered years: The other parent/i);
+    expect(
+      worksheet!.lines.find((line) => line.label === "Holiday schedule priority")?.value,
+    ).toMatch(/takes priority/i);
+  });
+
+  it("lists a missing beginning and ending time as an open term", () => {
+    const reviewed = buildReviewedDraft(createSampleDraft());
+    const parentingPlan = reviewed.data.parentingPlan!;
+    const parentingTime = reviewed.data.parentingTime!;
+    const plan = {
+      ...parentingPlan,
+      holidaySchedules: parentingPlan.holidaySchedules.map((holiday) =>
+        holiday.name === "Christmas" ? { ...holiday, beginEndTime: "" } : holiday,
+      ),
+    };
+    const worksheet = buildParentingPlanWorksheet({
+      parentingPlan: plan,
+      parentingTime,
+      children: reviewed.data.children,
+      generatedAt: "2026-08-05T00:00:00.000Z",
+      county: reviewed.data.caseBasics.county,
+    });
+
+    expect(worksheet!.gaps.join(" ")).toMatch(/Christmas beginning and ending time/i);
+  });
 });
 
 describe("official form references", () => {

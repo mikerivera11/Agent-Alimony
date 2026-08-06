@@ -1,4 +1,10 @@
-import { INTAKE_STEPS, type IntakeDraftData, type IntakeStepId } from "@/domain/intake";
+import {
+  describeHolidayRotation,
+  INTAKE_STEPS,
+  type HolidayScheduleItem,
+  type IntakeDraftData,
+  type IntakeStepId,
+} from "@/domain/intake";
 
 import { secondaryButtonClasses } from "./fields/inputStyles";
 
@@ -120,6 +126,24 @@ function buildEntries(stepId: IntakeStepId, data: Record<string, unknown>): Entr
       label: "Complex business interests",
       value: formatPrimitive("hasComplexBusinessInterests", data.hasComplexBusinessInterests),
     });
+    return entries;
+  }
+
+  if (stepId === "parentingPlan") {
+    const holidays = (data.holidaySchedules as HolidayScheduleItem[] | undefined) ?? [];
+    const entries = Object.entries(data)
+      .filter(([key]) => key !== "holidaySchedules")
+      .map(([key, value]) => ({ label: humanizeKey(key), value: formatPrimitive(key, value) }));
+    if (data.holidayScheduleMode === "specific") {
+      holidays.forEach((holiday) => {
+        entries.push({
+          label: holiday.name || "Unnamed holiday",
+          value: `${describeHolidayRotation(holiday)} Beginning/end: ${
+            holiday.beginEndTime?.trim() || "Not decided yet"
+          }${holiday.notes?.trim() ? ` Details: ${holiday.notes.trim()}` : ""}`,
+        });
+      });
+    }
     return entries;
   }
 
