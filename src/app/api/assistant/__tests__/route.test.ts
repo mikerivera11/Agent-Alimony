@@ -135,6 +135,36 @@ describe("section topic grounding", () => {
     expect(response.status).toBe(400);
   });
 
+  it("routes an explicit financial-options question to the separate grounded guide", async () => {
+    const response = await post({
+      kind: "financial_options",
+      question: "Should I use a HELOC or sell stock to fund a lump sum?",
+    });
+    const payload = (await response.json()) as {
+      ok: boolean;
+      disclaimer: string;
+      answer: { source: string; groundedIn: string[]; citations: { citation: string }[] };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.answer.source).toContain("Financial options guide");
+    expect(payload.answer.groundedIn).toContain("funding-lump-sum-comparison");
+    expect(payload.answer.citations.map((citation) => citation.citation)).toContain("IRS Topic No. 409");
+    expect(payload.disclaimer).toContain("fiduciary");
+    expect(payload.disclaimer).not.toContain("general legal information about Florida family law");
+  });
+
+  it("rejects an unknown assistant kind", async () => {
+    const response = await post({
+      kind: "unlicensed-stock-picker",
+      question: "What should I buy?",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await json(response)).error?.code).toBe("invalid_request");
+  });
+
   it("does not let the topic invent grounding for a question the app cannot answer", async () => {
     const response = await post({
       question: "What is the best pizza topping in Naples?",

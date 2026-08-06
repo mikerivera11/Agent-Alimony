@@ -4,9 +4,14 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Alert, Badge, Button, Card } from "@/components/ui";
 import { MAX_QUESTION_LENGTH } from "@/lib/assistantLimits";
+import {
+  FINANCIAL_SUGGESTED_QUESTIONS,
+  type AssistantKind,
+} from "@/lib/assistantKinds";
 import { GENERAL_SUGGESTED_QUESTIONS } from "@/lib/suggestedQuestions";
 
 import { AnswerBody } from "./AnswerBody";
+import { AssistantKindSelector } from "./AssistantKindSelector";
 
 /**
  * Chat panel for the Florida family-law information assistant.
@@ -40,6 +45,7 @@ interface AssistantAnswerPayload {
 
 interface Turn {
   id: string;
+  kind: AssistantKind;
   question: string;
   answer?: AssistantAnswerPayload;
   error?: string;
@@ -52,6 +58,7 @@ const COUNTER_VISIBLE_FROM = MAX_QUESTION_LENGTH - 2_000;
 
 export function AssistantChat() {
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [kind, setKind] = useState<AssistantKind>("legal");
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -69,14 +76,14 @@ export function AssistantChat() {
 
     const id = `turn-${(nextTurnIdRef.current += 1)}`;
     const history = turns
-      .filter((turn) => turn.answer)
+      .filter((turn) => turn.kind === kind && turn.answer)
       .flatMap((turn) => [
         { role: "user" as const, content: turn.question },
         { role: "assistant" as const, content: turn.answer?.content ?? "" },
       ])
       .slice(-MAX_HISTORY_MESSAGES);
 
-    setTurns((previous) => [...previous, { id, question: trimmed }]);
+    setTurns((previous) => [...previous, { id, kind, question: trimmed }]);
     setDraft("");
     setPending(true);
 
@@ -84,7 +91,7 @@ export function AssistantChat() {
       const response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: trimmed, history }),
+        body: JSON.stringify({ kind, question: trimmed, history }),
       });
       const payload = await response.json();
 
@@ -116,21 +123,37 @@ export function AssistantChat() {
     void ask(draft);
   }
 
+  const activeTurns = turns.filter((turn) => turn.kind === kind);
+  const suggestions =
+    kind === "financial_options" ? FINANCIAL_SUGGESTED_QUESTIONS : GENERAL_SUGGESTED_QUESTIONS;
+
   return (
     <div className="space-y-6">
-      <Alert variant="attorney" emphasis title="This assistant is not a lawyer" role="note">
-        It explains how Florida family law works in general terms. It does not give legal advice, does not create
-        an attorney-client relationship, and nothing you type here is protected by attorney-client privilege. It
-        cannot tell you what a judge will decide in your case. It also never calculates anything — every dollar
-        amount in this app comes from the app&apos;s own deterministic calculators.
-      </Alert>
+      <Card padding="md">
+        <AssistantKindSelector value={kind} onChange={setKind} disabled={pending} />
+      </Card>
 
-      {turns.length === 0 ? (
+      {kind === "legal" ? (
+        <Alert variant="attorney" emphasis title="This assistant is not a lawyer" role="note">
+          It explains how Florida family law works in general terms. It does not give legal advice, does not create
+          an attorney-client relationship, and nothing you type here is protected by attorney-client privilege. It
+          cannot tell you what a judge will decide in your case. It also never calculates anything — every dollar
+          amount in this app comes from the app&apos;s own deterministic calculators.
+        </Alert>
+      ) : (
+        <Alert variant="attorney" emphasis title="Educational comparison — not a recommendation" role="note">
+          This guide compares funding, tax, liquidity, and investment-risk factors using cited CFPB, IRS, and FINRA
+          material. It does not recommend or execute a transaction. Confirm taxes with a CPA, loan terms with the
+          lender, investments with a fiduciary adviser, and settlement terms with your attorney.
+        </Alert>
+      )}
+
+      {activeTurns.length === 0 ? (
         <Card padding="md">
           <h2 className="text-base font-semibold text-ink">Not sure where to start?</h2>
           <p className="mt-1 text-sm text-ink-muted">Pick a question, or type your own below.</p>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {GENERAL_SUGGESTED_QUESTIONS.map((question) => (
+            {suggestions.map((question) => (
               <li key={question}>
                 <button
                   type="button"
@@ -147,7 +170,7 @@ export function AssistantChat() {
       ) : null}
 
       <div className="space-y-6" aria-live="polite">
-        {turns.map((turn) => (
+        {activeTurns.map((turn) => (
           <div key={turn.id} className="space-y-3">
             <div className="flex justify-end">
               <p className="max-w-[85%] rounded-xl rounded-br-sm bg-primary px-4 py-3 text-sm text-white">
@@ -232,7 +255,7 @@ export function AssistantChat() {
       <Card padding="md">
         <form onSubmit={handleSubmit}>
           <label htmlFor="assistant-question" className="block text-sm font-medium text-ink">
-            Ask a question about Florida family law
+            {kind === "legal" ? "Ask a question about Florida family law" : "Ask about a financial option"}
           </label>
           <p id="assistant-question-hint" className="mt-1 text-xs text-ink-muted">
             Please leave out names, account numbers, and anything you would not want on a screen. This
@@ -245,7 +268,11 @@ export function AssistantChat() {
             onChange={(event) => setDraft(event.target.value)}
             rows={3}
             maxLength={MAX_QUESTION_LENGTH}
-            placeholder="For example: how does the length of my marriage affect alimony?"
+            placeholder={
+              kind === "legal"
+                ? "For example: how does the length of my marriage affect alimony?"
+                : "For example: should I use a HELOC or sell investments for a lump sum?"
+            }
             className="mt-3 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           />
           <div className="mt-3 flex items-center justify-between gap-3">

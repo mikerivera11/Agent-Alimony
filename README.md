@@ -166,6 +166,21 @@ Guardrails are enforced in code, not merely requested in the prompt:
 
 The endpoint is stateless and persists nothing; neither the question nor the answer is logged.
 
+### Financial options guide
+
+The chat has a separate **Financial options** mode for questions such as whether
+to use home equity or sell investments to fund a settlement lump sum. Its
+in-memory thread and grounding are separate from the Florida-law assistant. It
+compares secured-debt cost and home risk, tax basis and holding period,
+portfolio concentration, and post-divorce liquidity using curated CFPB, IRS,
+and FINRA sources.
+
+It does not select securities, recommend or execute a transaction, calculate
+taxes from chat, or present itself as a fiduciary, CPA, lender, or lawyer. Its
+role is to organize a same-horizon comparison and identify what the user should
+have verified by the lender, CPA, fee-only fiduciary adviser, and family-law
+attorney before acting.
+
 ### Asking from inside a section
 
 A side panel carries the same assistant on every page, so a question can be asked where it arises instead of by abandoning the form. It keeps one conversation as you move between sections, and scopes each question to whichever section is on screen — shown explicitly as "Answering about ...", with a control to widen back out to anything. Each intake topic also has its own "Have a question about ...?" button that opens the panel already scoped to it.

@@ -122,11 +122,15 @@ export function topicRetrievalOptions(topic: IntakeStepId | undefined): Retrieva
  * An empty array means the assistant has no verified material on the topic
  * and must say so rather than improvising.
  */
-export function retrieveKnowledge(question: string, options: RetrievalOptions = {}): readonly RetrievalHit[] {
+export function retrieveFromKnowledgeBase(
+  entries: readonly KnowledgeEntry[],
+  question: string,
+  options: RetrievalOptions = {},
+): readonly RetrievalHit[] {
   const { limit = 3, minimumScore = 2, preferredEntryIds = [] } = options;
   const preferred = new Set(preferredEntryIds);
 
-  const ranked = KNOWLEDGE_BASE.map((entry) => scoreEntry(entry, question))
+  const ranked = entries.map((entry) => scoreEntry(entry, question))
     // The boost is applied after this filter, so a preferred entry still has to
     // earn its place on the question's own merits before being promoted.
     .filter((hit) => hit.score >= minimumScore)
@@ -137,4 +141,8 @@ export function retrieveKnowledge(question: string, options: RetrievalOptions = 
 
   const threshold = ranked[0].score * RELEVANCE_GAP_RATIO;
   return ranked.filter((hit) => hit.score >= threshold).slice(0, limit);
+}
+
+export function retrieveKnowledge(question: string, options: RetrievalOptions = {}): readonly RetrievalHit[] {
+  return retrieveFromKnowledgeBase(KNOWLEDGE_BASE, question, options);
 }

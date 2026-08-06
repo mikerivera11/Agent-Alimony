@@ -5,11 +5,13 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 
 import { INTAKE_ASSISTANT_TOPICS, INTAKE_STEPS } from "@/domain/intake";
 import { MAX_QUESTION_LENGTH } from "@/lib/assistantLimits";
+import { FINANCIAL_SUGGESTED_QUESTIONS, type AssistantKind } from "@/lib/assistantKinds";
 import { GENERAL_SUGGESTED_QUESTIONS } from "@/lib/suggestedQuestions";
 
 import { QuickExitLink } from "@/components/intake/QuickExitLink";
 
 import { AssistantTurns } from "./AssistantTurns";
+import { AssistantKindSelector } from "./AssistantKindSelector";
 import { useAssistantDock } from "./AssistantDockContext";
 import { useAssistantConversation } from "./useAssistantConversation";
 
@@ -42,6 +44,7 @@ export function AssistantDock() {
   const launcherRef = useRef<HTMLButtonElement>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
+  const [kind, setKind] = useState<AssistantKind>("legal");
 
   // Read at send time so switching sections mid-thread scopes the next
   // question to where you actually are.
@@ -51,14 +54,17 @@ export function AssistantDock() {
   }, [topic]);
   const getTopic = useCallback(() => topicRef.current, []);
 
-  const { turns, pending, ask, reset } = useAssistantConversation(getTopic);
+  const { turns, pending, ask, reset } = useAssistantConversation(getTopic, kind);
 
   const suppressed = SUPPRESSED_PATHS.has(pathname ?? "");
 
-  const sectionTitle = topic ? INTAKE_STEPS[topic].title : undefined;
-  const suggestions = topic
-    ? INTAKE_ASSISTANT_TOPICS[topic].suggestedQuestions
-    : GENERAL_SUGGESTED_QUESTIONS;
+  const sectionTitle = kind === "legal" && topic ? INTAKE_STEPS[topic].title : undefined;
+  const suggestions =
+    kind === "financial_options"
+      ? FINANCIAL_SUGGESTED_QUESTIONS
+      : topic
+        ? INTAKE_ASSISTANT_TOPICS[topic].suggestedQuestions
+        : GENERAL_SUGGESTED_QUESTIONS;
 
   useEffect(() => {
     if (isOpen) inputRef.current?.focus();
@@ -115,15 +121,19 @@ export function AssistantDock() {
       <aside
         id={panelId}
         role="complementary"
-        aria-label="Florida family law assistant"
+        aria-label={kind === "legal" ? "Florida family law assistant" : "Financial options guide"}
         data-testid="assistant-dock"
         hidden={!isOpen}
         className="fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l border-border bg-surface-2 shadow-2xl sm:max-w-md"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex flex-col gap-0.5">
-            <h2 className="text-sm font-semibold text-ink">Ask about this page</h2>
-            <p className="text-xs text-ink-muted">Florida family law, in plain language</p>
+            <h2 className="text-sm font-semibold text-ink">
+              {kind === "legal" ? "Ask about this page" : "Compare financial options"}
+            </h2>
+            <p className="text-xs text-ink-muted">
+              {kind === "legal" ? "Florida family law, in plain language" : "Funding, tax, liquidity, and risk"}
+            </p>
           </div>
           <div className="flex flex-none items-center gap-2">
             {/* Full-screen on small viewports, so the page's own Quick exit is
@@ -154,6 +164,10 @@ export function AssistantDock() {
           </div>
         </div>
 
+        <div className="border-b border-border bg-surface-2 px-4 py-3">
+          <AssistantKindSelector value={kind} onChange={setKind} disabled={pending} />
+        </div>
+
         {sectionTitle ? (
           <div className="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2">
             <p className="text-xs text-ink-muted">
@@ -170,11 +184,19 @@ export function AssistantDock() {
         ) : null}
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <p className="text-xs text-ink-muted">
-            Answers explain Florida law in general terms using this app&apos;s cited sources. This is not legal
-            advice and never calculates your figures — every dollar amount comes from the app&apos;s own
-            deterministic calculators.
-          </p>
+          {kind === "legal" ? (
+            <p className="text-xs text-ink-muted">
+              Answers explain Florida law in general terms using this app&apos;s cited sources. This is not legal
+              advice and never calculates your figures — every dollar amount comes from the app&apos;s own
+              deterministic calculators.
+            </p>
+          ) : (
+            <p className="text-xs text-ink-muted">
+              This guide compares choices such as home-equity borrowing and selling investments using CFPB, IRS,
+              and FINRA sources. It does not recommend or execute a transaction. Confirm taxes with a CPA, loan
+              terms with the lender, and investments with a fiduciary adviser.
+            </p>
+          )}
 
           {turns.length === 0 ? (
             <ul className="mt-4 flex flex-col gap-2">
@@ -201,7 +223,11 @@ export function AssistantDock() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-t border-border px-4 py-3">
           <label htmlFor={`${panelId}-input`} className="sr-only">
-            {sectionTitle ? `Ask a question about ${sectionTitle}` : "Ask a question about Florida family law"}
+            {kind === "financial_options"
+              ? "Ask a question about financial options"
+              : sectionTitle
+                ? `Ask a question about ${sectionTitle}`
+                : "Ask a question about Florida family law"}
           </label>
           <textarea
             ref={inputRef}
@@ -219,7 +245,11 @@ export function AssistantDock() {
             maxLength={MAX_QUESTION_LENGTH}
             rows={2}
             placeholder={
-              sectionTitle ? `Ask about ${sectionTitle.toLowerCase()}…` : "Ask about Florida alimony, support, or property…"
+              kind === "financial_options"
+                ? "For example: HELOC or sell investments for a lump sum?"
+                : sectionTitle
+                  ? `Ask about ${sectionTitle.toLowerCase()}…`
+                  : "Ask about Florida alimony, support, or property…"
             }
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           />

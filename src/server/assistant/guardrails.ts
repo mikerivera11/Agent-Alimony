@@ -310,3 +310,9 @@ export const ASSISTANT_DISCLAIMER =
   "legal advice, and does not create an attorney-client relationship. Nothing you type here is protected by " +
   "attorney-client privilege. It cannot tell you what a judge will do in your case. Every dollar figure in this " +
   "app comes from the app's own deterministic calculators, never from the assistant.";
+
+export const FINANCIAL_OPTIONS_DISCLAIMER =
+  "This guide provides source-grounded financial education, not individualized investment, tax, lending, or " +
+  "legal advice. It does not act as a fiduciary, recommend or execute a transaction, select securities, or " +
+  "calculate your tax liability. Verify loan terms with the lender, tax effects with a CPA, investments with a " +
+  "qualified fiduciary adviser, and settlement terms with a licensed family-law attorney.";

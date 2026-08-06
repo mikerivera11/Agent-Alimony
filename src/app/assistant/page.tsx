@@ -5,9 +5,9 @@ import { QuickExitLink } from "@/components/intake";
 import { Container, SiteHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "Ask about Florida family law — Florida Support Guide",
+  title: "Ask a legal or financial-options question — Florida Support Guide",
   description:
-    "Plain-language answers about Florida alimony, child support, and property division, grounded in the Florida Statutes.",
+    "Choose statute-grounded Florida family-law information or a source-grounded guide for comparing settlement funding options.",
 };
 
 export default function AssistantPage() {
@@ -16,10 +16,10 @@ export default function AssistantPage() {
       <SiteHeader backToHome actions={<QuickExitLink />} />
       <Container as="main" id="main-content" width="prose" className="flex flex-1 flex-col gap-6 py-10 sm:py-12">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Ask about Florida family law</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">Ask a focused guide</h1>
           <p className="mt-3 text-base text-ink-muted">
-            Get plain-language explanations of how Florida handles alimony, child support, and dividing property.
-            Answers come from the Florida Statutes and show you exactly which section they rely on.
+            Choose Florida law for statute-grounded legal information, or Financial options to compare ways of
+            funding a settlement without turning the chat into a stock picker or transaction service.
           </p>
         </div>
 

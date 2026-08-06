@@ -93,3 +93,31 @@ test("can be widened from a section to anything", async ({ page }) => {
   // Falls back to the general starters.
   await expect(dock.getByRole("button", { name: /What financial documents do I have to provide/i })).toBeVisible();
 });
+
+test("keeps the financial-options guide separate from the Florida-law thread", async ({ page }) => {
+  await page.goto("/intake?step=assetsDebts");
+  await page.getByTestId("assistant-dock-launcher").click();
+
+  const dock = page.getByTestId("assistant-dock");
+  await expect(dock.getByText(/Answering about/i)).toContainText(/Assets, debts/i);
+
+  await dock.getByRole("button", { name: /Financial options/i }).click();
+  await expect(dock.getByText(/Answering about/i)).toHaveCount(0);
+  await expect(dock.getByText(/does not recommend or execute a transaction/i)).toBeVisible();
+
+  await dock
+    .getByRole("button", { name: /Should I use a home equity line or sell investments/i })
+    .click();
+
+  const financialAnswer = dock.getByTestId("assistant-answer");
+  await expect(financialAnswer).toContainText(/secured debt versus an asset sale/i);
+  await expect(financialAnswer).toContainText(/IRS Topic No\. 409/i);
+  await expect(financialAnswer).toContainText(/CFPB/i);
+
+  await dock.getByRole("button", { name: /Florida law/i }).click();
+  await expect(financialAnswer).toHaveCount(0);
+  await expect(dock.getByText(/Answering about/i)).toContainText(/Assets, debts/i);
+
+  await dock.getByRole("button", { name: /Financial options/i }).click();
+  await expect(dock.getByTestId("assistant-answer")).toContainText(/secured debt versus an asset sale/i);
+});

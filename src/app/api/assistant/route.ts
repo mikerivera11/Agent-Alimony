@@ -3,12 +3,14 @@ import { z } from "zod";
 
 import {
   ASSISTANT_DISCLAIMER,
+  FINANCIAL_OPTIONS_DISCLAIMER,
   MAX_CONVERSATION_LENGTH,
   MAX_HISTORY_TURNS,
   MAX_QUESTION_LENGTH,
   getAssistantAdapter,
 } from "@/server/assistant";
 import { INTAKE_ASSISTANT_TOPIC_IDS, type IntakeStepId } from "@/domain/intake";
+import { ASSISTANT_KINDS } from "@/lib/assistantKinds";
 
 /**
  * Q&A endpoint for the Florida family-law information assistant.
@@ -24,6 +26,7 @@ export const runtime = "nodejs";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" } as const;
 
 const requestSchema = z.object({
+  kind: z.enum(ASSISTANT_KINDS).default("legal"),
   question: z.string().trim().min(1).max(MAX_QUESTION_LENGTH),
   history: z
     .array(
@@ -81,7 +84,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   try {
-    const adapter = getAssistantAdapter();
+    const adapter = getAssistantAdapter(parsed.data.kind);
     const answer = await adapter.answer({
       question: parsed.data.question,
       history: parsed.data.history,
@@ -89,7 +92,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
 
     return NextResponse.json(
-      { ok: true, answer, disclaimer: ASSISTANT_DISCLAIMER },
+      {
+        ok: true,
+        answer,
+        disclaimer:
+          parsed.data.kind === "financial_options" ? FINANCIAL_OPTIONS_DISCLAIMER : ASSISTANT_DISCLAIMER,
+      },
       { status: 200, headers: NO_STORE_HEADERS },
     );
   } catch {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { IntakeStepId } from "@/domain/intake";
+import type { AssistantKind } from "@/lib/assistantKinds";
 
 export interface AssistantCitation {
   citation: string;
@@ -27,6 +28,7 @@ export interface AssistantAnswerPayload {
 
 export interface AssistantTurn {
   id: string;
+  kind: AssistantKind;
   question: string;
   answer?: AssistantAnswerPayload;
   error?: string;
@@ -45,8 +47,8 @@ const MAX_HISTORY_MESSAGES = 6;
  * starts, so moving to another section mid-thread scopes the *next* question
  * correctly instead of silently answering from the section you have left.
  */
-export function useAssistantConversation(getTopic: () => IntakeStepId | undefined) {
-  const [turns, setTurns] = useState<AssistantTurn[]>([]);
+export function useAssistantConversation(getTopic: () => IntakeStepId | undefined, kind: AssistantKind) {
+  const [allTurns, setAllTurns] = useState<AssistantTurn[]>([]);
   const [pending, setPending] = useState(false);
   const nextTurnIdRef = useRef(0);
   // Mirrored into a ref so `ask` can read the latest transcript without being
@@ -54,8 +56,8 @@ export function useAssistantConversation(getTopic: () => IntakeStepId | undefine
   // which React forbids.
   const turnsRef = useRef<AssistantTurn[]>([]);
   useEffect(() => {
-    turnsRef.current = turns;
-  }, [turns]);
+    turnsRef.current = allTurns;
+  }, [allTurns]);
 
   const ask = useCallback(
     async (question: string) => {
@@ -64,25 +66,30 @@ export function useAssistantConversation(getTopic: () => IntakeStepId | undefine
 
       const id = `turn-${(nextTurnIdRef.current += 1)}`;
       const history = turnsRef.current
-        .filter((turn) => turn.answer)
+        .filter((turn) => turn.kind === kind && turn.answer)
         .flatMap((turn) => [
           { role: "user" as const, content: turn.question },
           { role: "assistant" as const, content: turn.answer?.content ?? "" },
         ])
         .slice(-MAX_HISTORY_MESSAGES);
 
-      setTurns((previous) => [...previous, { id, question: trimmed }]);
+      setAllTurns((previous) => [...previous, { id, kind, question: trimmed }]);
       setPending(true);
 
       try {
         const response = await fetch("/api/assistant", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ question: trimmed, history, topic: getTopic() }),
+          body: JSON.stringify({
+            kind,
+            question: trimmed,
+            history,
+            topic: kind === "legal" ? getTopic() : undefined,
+          }),
         });
         const payload = await response.json();
 
-        setTurns((previous) =>
+        setAllTurns((previous) =>
           previous.map((turn) => {
             if (turn.id !== id) return turn;
             return response.ok && payload?.ok
@@ -91,7 +98,7 @@ export function useAssistantConversation(getTopic: () => IntakeStepId | undefine
           }),
         );
       } catch {
-        setTurns((previous) =>
+        setAllTurns((previous) =>
           previous.map((turn) =>
             turn.id === id
               ? { ...turn, error: "The assistant could not be reached. Check your connection and try again." }
@@ -102,12 +109,12 @@ export function useAssistantConversation(getTopic: () => IntakeStepId | undefine
         setPending(false);
       }
     },
-    [getTopic, pending],
+    [getTopic, kind, pending],
   );
 
   const reset = useCallback(() => {
-    setTurns([]);
-  }, []);
+    setAllTurns((previous) => previous.filter((turn) => turn.kind !== kind));
+  }, [kind]);
 
-  return { turns, pending, ask, reset };
+  return { turns: allTurns.filter((turn) => turn.kind === kind), pending, ask, reset };
 }
