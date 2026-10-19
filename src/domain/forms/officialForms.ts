@@ -2,12 +2,11 @@
  * Catalogue of the Florida Supreme Court Approved Family Law Forms an
  * uncontested dissolution normally involves.
  *
- * This module deliberately does *not* fill these forms in. It records which
- * ones a case needs, and the filing packet reports which answers the user has
- * already given that map onto them. The reason is in `types.ts`: the official
- * PDFs are AcroForms whose field names are positional rather than semantic, so
- * writing into them is guesswork that produces an authoritative-looking but
- * wrong document. An attorney fills the forms; this tells them what they have.
+ * The filing packet records which forms a case needs. A separate server-side
+ * exporter can also populate a deliberately limited set of revision-locked
+ * copies. Its mappings are tied to the exact verified revision and fill only
+ * controls whose meaning has been checked; signatures, SSNs, binding legal
+ * elections, and ambiguous positional fields remain blank for attorney review.
  *
  * Every entry below was verified on 2026-08-02 by downloading the court's own
  * PDF from the URL recorded here and reading the footer with a PDF parser.

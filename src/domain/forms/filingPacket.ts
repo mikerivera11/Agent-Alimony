@@ -4,10 +4,10 @@
  *
  * Two deliberate limits define this module.
  *
- * First, it does not fill in the official PDFs, for the reason given in
- * `types.ts`: their AcroForm fields are positional rather than semantic, so
- * writing into them produces an authoritative-looking document that may be
- * wrong in ways nobody can see. It reports readiness instead.
+ * First, this module itself does not fill official PDFs; it reports readiness.
+ * The separate official-form exporter uses revision-locked court PDFs and
+ * verified field mappings, and still leaves unsupported legal elections,
+ * signatures, SSNs, and ambiguous positional fields blank.
  *
  * Second, it does not draft a marital settlement agreement. It produces a
  * *term sheet* — the agreed economics, stated plainly, with every figure

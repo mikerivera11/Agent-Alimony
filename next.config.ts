@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/api/package/court-forms": ["./src/server/package/florida-forms/*.pdf"],
+  },
   poweredByHeader: false,
   allowedDevOrigins: ["127.0.0.1"],
   experimental: {

@@ -1,24 +1,18 @@
 /**
  * Court-form support.
  *
- * This module turns confirmed intake data and deterministic rule results into
- * *worksheets* laid out the way Florida's official forms are laid out, so a
- * person (or their attorney) can transcribe them onto the real filing.
- *
- * It deliberately does **not** reproduce or fill an official Florida Supreme
- * Court Approved Family Law Form, and the distinction is not pedantic:
+ * This module defines the worksheets laid out in the order Florida's official
+ * forms request information. A separate server-only exporter also fills a
+ * limited set of revision-locked official PDFs. The distinction still matters:
  *
  * - The official forms are versioned documents with a revision date in their
  *   footer. Embedding a copy would silently go stale, and a superseded form is
  *   rejected at the clerk's window. Referring to a form by number while
  *   pointing at the court's own current copy cannot go stale.
- * - The official PDFs *are* interactive AcroForms (12.902(e) carries 93
- *   fields, 12.995(a) carries 317), so filling one is technically possible.
- *   It is not done here because the field names are positional rather than
- *   semantic — "Odd Years 1" through "Odd Years 7" carry no indication of
- *   which holiday each row belongs to. Any mapping is therefore an inference,
- *   it silently re-points on the next revision, and a figure landing in the
- *   wrong box on a sworn court document is worse than no figure at all.
+ * - The official PDFs are interactive AcroForms whose names are often
+ *   positional. The exporter therefore maps only verified controls on an
+ *   exact revision, checks the vendored file hash, and leaves ambiguous fields
+ *   blank instead of guessing.
  * - Guessing where a form lives is unsafe. A plausible-looking URL for form
  *   12.995(a) turned out to serve Florida's Dependency Benchbook. Form
  *   identity is therefore something this module *records as verified*, never

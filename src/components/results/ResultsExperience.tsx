@@ -35,7 +35,12 @@ type LoadState =
 type DownloadState = "idle" | "downloading" | "error";
 
 /** Which download is in flight, so one button's spinner never appears on another. */
-type DownloadTarget = "package" | "child-support-guidelines" | "parenting-plan" | "filing-packet";
+type DownloadTarget =
+  | "package"
+  | "child-support-guidelines"
+  | "parenting-plan"
+  | "filing-packet"
+  | "court-forms";
 
 const WORKSHEET_DOWNLOADS: ReadonlyArray<{
   readonly target: DownloadTarget;
@@ -273,7 +278,7 @@ export function ResultsExperience() {
       {wantsFilingPacket && (
         <Card className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-semibold text-ink">Attorney filing packet</h2>
+            <h2 className="text-xl font-semibold text-ink">Attorney filing packet and court forms</h2>
             <p className="text-sm text-ink-muted">
               Everything an attorney needs to prepare an uncontested filing: which Florida forms your case calls for,
               which answers you have already given for each, exactly what is still missing, and a term sheet covering
@@ -283,19 +288,37 @@ export function ResultsExperience() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-xl text-sm text-ink-muted">
-              Bring this to a Florida attorney. It will not be accepted by a clerk.
+              Download the attorney packet for the full readiness analysis, and the separate official-forms draft for
+              verified answers inserted into revision-locked Florida court PDFs. Both require attorney review.
             </p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() =>
-                runDownload("filing-packet", "/api/package/filing-packet", "attorney-filing-packet.pdf")
-              }
-              loading={downloadState === "downloading" && downloadTarget === "filing-packet"}
-              disabled={isStale || downloadState === "downloading"}
-            >
-              Download filing packet
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  runDownload("filing-packet", "/api/package/filing-packet", "attorney-filing-packet.pdf")
+                }
+                loading={downloadState === "downloading" && downloadTarget === "filing-packet"}
+                disabled={isStale || downloadState === "downloading"}
+              >
+                Download filing packet
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  runDownload(
+                    "court-forms",
+                    "/api/package/court-forms",
+                    "populated-florida-court-forms-review-draft.pdf",
+                  )
+                }
+                loading={downloadState === "downloading" && downloadTarget === "court-forms"}
+                disabled={isStale || downloadState === "downloading"}
+              >
+                Download populated court forms
+              </Button>
+            </div>
           </div>
         </Card>
       )}

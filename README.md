@@ -352,18 +352,18 @@ The results screen exports two worksheets alongside the estimate packet:
 Child Support Guidelines (Form 12.902(e), rev. 06/25) and Parenting Plan
 (Form 12.995(a), rev. 02/18).
 
-They are **worksheets, not filled forms**, and that is a deliberate choice
-rather than a limitation of the PDF tooling:
+They remain **worksheets, not filled forms** because they show the statutory
+calculation and open questions in a more readable attorney-review layout. The
+separate official-forms exporter described below uses a stricter policy:
 
 - The official PDFs *are* interactive AcroForms — 12.902(e) carries 93 fields
-  and 12.995(a) carries 317, so filling them is technically possible. The field
-  names are positional rather than semantic, though (`Odd Years 1` through
-  `Odd Years 7` give no clue which holiday each row is). Any mapping would be
-  an inference that silently re-points on the next revision, and a figure in
-  the wrong box on a sworn document is worse than no figure.
+  and 12.995(a) carries 317. Many field names are positional rather than
+  semantic, so the official-forms exporter maps only controls verified against
+  one exact revision and leaves ambiguous controls blank.
 - Forms carry a revision footer and a superseded form is refused at the
-  clerk's window, so an embedded copy goes stale. Referring to the form by
-  number while pointing at the court's own current copy cannot.
+  clerk's window. Each vendored form is therefore revision-labelled and
+  integrity-checked; users are still told to compare the footer against the
+  court's current copy before filing.
 - The line order is taken from the **statute** (§61.30, §61.13(2)(b)), not from
   a form. The statute is the authority the form is derived from and the rules
   engine already implements exactly that order, so the layout survives form
@@ -435,9 +435,27 @@ five-year address history.
 - **A term sheet** covering alimony, child support, equitable distribution, and
   parenting, with the statutory basis printed under every figure.
 
-Three things it deliberately does not do:
+The results page also offers a separate **Populated Florida court forms**
+download. It inserts confirmed answers into revision-locked copies of the
+Florida Supreme Court Approved Family Law Forms using verified AcroForm field
+mappings. The download includes the applicable petition, cover sheet,
+child-related forms when relevant, child-support worksheet when the
+deterministic calculation completed, parenting plan, and mandatory-disclosure
+certificate.
 
-- **It does not fill in the official PDFs**, for the AcroForm reason above.
+The official-forms download starts with a review cover sheet and is not
+filing-ready:
+
+- **It does not sign, notarize, serve, or file anything.** Case numbers,
+  division, judicial circuit, service details, and unanswered facts remain
+  blank.
+- **It maps only verified controls on an exact form revision.** Ambiguous
+  positional controls and legal elections remain blank instead of being
+  guessed. The vendored court PDFs are checked against recorded SHA-256 hashes,
+  and standalone builds explicitly trace them into the court-forms route.
+- **It does not choose between financial affidavit 12.902(b) and 12.902(c).**
+  The short-versus-long threshold has not been verified from a primary source,
+  so selecting one automatically would be unsafe.
 - **It does not draft a marital settlement agreement.** Drafting the binding
   instrument means deciding whether alimony is modifiable, who claims the
   children on a tax return, whether a QDRO is needed to divide retirement,
@@ -447,6 +465,11 @@ Three things it deliberately does not do:
 - **It never collects Social Security numbers**, even though Form 12.902(j)
   needs them. They change no calculation here and would make a breach far
   worse, so the packet says to complete that form by hand.
+
+The attorney filing packet and the official-forms draft remain separate
+downloads so both can be reviewed together: the packet explains readiness,
+gaps, sources, and settlement terms; the forms show where confirmed information
+was inserted into the court's documents.
 
 ## Saving, editing, and coming back
 

@@ -81,12 +81,19 @@ test("offers the attorney filing packet only when it was asked for", async ({ pa
   await page.getByRole("button", { name: "Confirm and finish" }).click();
   await expect(page).toHaveURL(/\/results$/);
 
-  await expect(page.getByRole("heading", { name: "Attorney filing packet" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Attorney filing packet and court forms" }),
+  ).toBeVisible();
 
-  const downloadPromise = page.waitForEvent("download");
+  let downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download filing packet" }).click();
-  const download = await downloadPromise;
+  let download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("attorney-filing-packet.pdf");
+
+  downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download populated court forms" }).click();
+  download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("populated-florida-court-forms-review-draft.pdf");
 });
 
 test("hides the filing packet for someone who only wanted an estimate", async ({ page }) => {
@@ -109,7 +116,9 @@ test("hides the filing packet for someone who only wanted an estimate", async ({
   await expect(page).toHaveURL(/\/results$/);
 
   await expect(page.getByRole("heading", { name: "Child support (estimate)" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Attorney filing packet" })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Attorney filing packet and court forms" }),
+  ).toHaveCount(0);
 });
 
 test("runs a what-if against the real calculators without touching the saved case", async ({ page }) => {
