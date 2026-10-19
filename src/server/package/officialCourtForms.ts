@@ -11,7 +11,7 @@ import {
   rgb,
 } from "pdf-lib";
 
-import type { FilingReadiness } from "@/domain/forms";
+import { POPULATED_OFFICIAL_FORM_NUMBERS, type FilingReadiness } from "@/domain/forms";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import type { PackageViewModel } from "@/domain/package";
 
@@ -102,6 +102,8 @@ interface Party {
   readonly name: string;
   readonly street: string;
   readonly cityStateZip: string;
+  readonly phone: string;
+  readonly email: string;
 }
 
 interface PartyContext {
@@ -144,6 +146,8 @@ function partyFromDraft(
     name: details?.fullLegalName?.trim() ?? "",
     street: address?.street?.trim() ?? "",
     cityStateZip: [address?.city, address?.state, address?.postalCode].filter(Boolean).join(", "),
+    phone: details?.phoneNumber?.trim() ?? "",
+    email: details?.emailAddress?.trim() ?? "",
   };
 }
 
@@ -216,11 +220,34 @@ function fillCaption(form: PDFForm, context: PopulationContext, fields: {
   setText(form, fields.respondent, context.parties.respondent?.name, context.warnings);
 }
 
+function fillCaseMetadata(
+  form: PDFForm,
+  context: PopulationContext,
+  fields: {
+    circuit?: string;
+    caseNumber?: string;
+    division?: string;
+  },
+): void {
+  const filing = context.draft.data.filingDetails;
+  if (fields.circuit) setText(form, fields.circuit, filing?.judicialCircuit, context.warnings);
+  if (fields.caseNumber) setText(form, fields.caseNumber, filing?.caseNumber, context.warnings);
+  if (fields.division) setText(form, fields.division, filing?.division, context.warnings);
+}
+
 function fillCoverSheet(form: PDFForm, context: PopulationContext): void {
   fillCaption(form, context, { county: "County", petitioner: "Petitioner", respondent: "Respondent" });
+  fillCaseMetadata(form, context, { circuit: "Circuit", caseNumber: "Case Number" });
   setText(form, "Initial ActionPetition", "X", context.warnings);
   setText(form, "Dissolution of Marriage", "X", context.warnings);
+  if (context.draft.data.filingDetails?.relatedCasesStatus === "none") {
+    setText(form, "No to the best of my knowledge no related cases exist", "X", context.warnings);
+  }
+  if (context.draft.data.filingDetails?.relatedCasesStatus === "listed_separately") {
+    setText(form, "Yes all related cases are listed on Family Law Form 12900h", "X", context.warnings);
+  }
   setText(form, "Type or print name", context.parties.self.name, context.warnings);
+  setText(form, "E-mail Address", context.parties.self.email, context.warnings);
 }
 
 function fillPetition(form: PDFForm, context: PopulationContext, formNumber: SupportedFormNumber): void {
@@ -233,6 +260,11 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
       county: "NAME OF COUNTY",
       petitioner: "Petitioner",
       respondent: "Respondent",
+    });
+    fillCaseMetadata(form, context, {
+      circuit: "NAME OF CIRCUIT COURT",
+      caseNumber: "Case No",
+      division: "Division",
     });
     setText(form, "full legal name", petitioner?.name, context.warnings);
     setText(form, "Date of marriage month day year", formatDate(data.marriage.marriageDate), context.warnings);
@@ -282,10 +314,17 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
     setText(form, "Printed Name", petitioner?.name, context.warnings);
     setText(form, "Address", petitioner?.street, context.warnings);
     setText(form, "City State Zip", petitioner?.cityStateZip, context.warnings);
+    setText(form, "Telephone Number", petitioner?.phone, context.warnings);
+    setText(form, "designated email address", petitioner?.email, context.warnings);
     return;
   }
 
   fillCaption(form, context, { county: "County Name", petitioner: "Petitioner", respondent: "Respondent" });
+  fillCaseMetadata(form, context, {
+    circuit: "Judicial Circuit",
+    caseNumber: "Case Number",
+    division: "Division",
+  });
   setText(form, "Full Legal Name", petitioner?.name, context.warnings);
   setText(form, "Date of marriage: {month, day, year}", formatDate(data.marriage.marriageDate), context.warnings);
   setText(
@@ -300,6 +339,8 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
   setText(form, "Printed Name of Petitioner", petitioner?.name, context.warnings);
   setText(form, "Address of Petitioner", petitioner?.street, context.warnings);
   setText(form, "City State Zip of Petitioner", petitioner?.cityStateZip, context.warnings);
+  setText(form, "Telephone Number of Petitioner", petitioner?.phone, context.warnings);
+  setText(form, "Email Addresses of Petitioner", petitioner?.email, context.warnings);
 }
 
 function fillUccjea(form: PDFForm, context: PopulationContext): void {
@@ -308,6 +349,11 @@ function fillUccjea(form: PDFForm, context: PopulationContext): void {
     county: "COUNTY NAME",
     petitioner: "PETITIONER NAME",
     respondent: "RESPONDENT NAME",
+  });
+  fillCaseMetadata(form, context, {
+    circuit: "CIRCUIT COURT NAME",
+    caseNumber: "CASE NUMBER",
+    division: "COURT DIVISION",
   });
   setText(form, "full legal name", context.parties.self.name, context.warnings);
   setText(form, "number of minor children subject to this proceeding is", data.children.children.length, context.warnings);
@@ -318,15 +364,181 @@ function fillUccjea(form: PDFForm, context: PopulationContext): void {
     (data.filingDetails?.children ?? []).map((child) => [child.childId, child.fullLegalName ?? ""]),
   );
   const childFields = [
-    ["child number one name", "Date of Birth of child 1"],
-    ["child number two legal name", "Date of Birth 2"],
-    ["Childs Full Legal Name_3", "Date of Birth_3"],
+    {
+      name: "child number one name",
+      birthDate: "Date of Birth of child 1",
+      birthPlace: "Place of Birth for child 1",
+      sex: "Sex of child 1",
+      residences: [
+        {
+          address: "where child lived for past five years. Give address",
+          combinedDates: "where child lived for past five years. Give date from when to present",
+          livedWith: "name and address of person child lived with for past five years",
+        },
+        ...[2, 3, 4, 5, 6].map((number) => ({
+          address: number === 2 ? "previous address" : `previous address ${number}`,
+          from: `date ${number} from`,
+          until: `date ${number} until`,
+          livedWith: number === 2 ? "previous name" : `previous name ${number}`,
+          relationship: number === 2 ? "previous relationship" : `previous relationship ${number}`,
+        })),
+      ],
+    },
+    {
+      name: "child number two legal name",
+      birthDate: "Date of Birth 2",
+      birthPlace: "Place of Birth 2",
+      sex: "Sex 2",
+      residences: [
+        { address: "address 2", from: "date 7 from", livedWith: "name 2", relationship: "relationship 2" },
+        ...[7, 8, 9, 10, 11].map((number) => ({
+          address: `previous address ${number}`,
+          from: `date ${number + 1} from`,
+          until: `date ${number + 1} until`,
+          livedWith: `previous name ${number}`,
+          relationship: `previous relationship ${number}`,
+        })),
+      ],
+    },
+    {
+      name: "Childs Full Legal Name_3",
+      birthDate: "Date of Birth_3",
+      birthPlace: "Place of Birth_3",
+      sex: "Sex_3",
+      residences: [
+        {
+          address: "previous address 12",
+          from: "date 13 from",
+          livedWith: "previous name 12",
+          relationship: "previous relationship 12",
+        },
+        ...[13, 14, 15, 16, 17].map((number) => ({
+          address: `previous address ${number}`,
+          from: `date ${number + 1} from`,
+          until: `date ${number + 1} until`,
+          livedWith: `previous name ${number}`,
+          relationship: `previous relationship ${number}`,
+        })),
+      ],
+    },
   ] as const;
   data.children.children.slice(0, childFields.length).forEach((child, index) => {
-    const [nameField, dateField] = childFields[index]!;
-    setText(form, nameField, filingChildren.get(child.id) || child.nameOrInitials, context.warnings);
-    setText(form, dateField, formatDate(child.dateOfBirth), context.warnings);
+    const fields = childFields[index]!;
+    const filingChild = data.filingDetails?.children.find((entry) => entry.childId === child.id);
+    setText(form, fields.name, filingChildren.get(child.id) || child.nameOrInitials, context.warnings);
+    setText(form, fields.birthDate, formatDate(child.dateOfBirth), context.warnings);
+    setText(form, fields.birthPlace, filingChild?.placeOfBirth, context.warnings);
+    setText(
+      form,
+      fields.sex,
+      filingChild?.sex === "female" ? "Female" : filingChild?.sex === "male" ? "Male" : "",
+      context.warnings,
+    );
+    filingChild?.residences.slice(0, fields.residences.length).forEach((residence, residenceIndex) => {
+      const residenceFields = fields.residences[residenceIndex]!;
+      setText(form, residenceFields.address, residence.address, context.warnings);
+      if ("combinedDates" in residenceFields) {
+        setText(
+          form,
+          residenceFields.combinedDates,
+          `${formatDate(residence.fromDate)} to ${residence.untilDate ? formatDate(residence.untilDate) : "present"}`,
+          context.warnings,
+        );
+      }
+      if ("from" in residenceFields) {
+        setText(form, residenceFields.from, formatDate(residence.fromDate), context.warnings);
+      }
+      if ("until" in residenceFields) {
+        setText(form, residenceFields.until, formatDate(residence.untilDate), context.warnings);
+      }
+      setText(form, residenceFields.livedWith, residence.livedWithNameAndAddress, context.warnings);
+      if ("relationship" in residenceFields) {
+        setText(form, residenceFields.relationship, residence.relationship, context.warnings);
+      }
+    });
   });
+
+  const filing = data.filingDetails;
+  if (filing?.priorCustodyProceedingStatus === "none") {
+    check(form, "check if you have not participated in custody or time sharing proceedings");
+  } else if (filing?.priorCustodyProceedingStatus === "exists") {
+    check(form, "check if you have participated in custody or time sharing proceedings");
+    setText(
+      form,
+      "if you have participated in custody or time sharing proceedings indicate name of child",
+      filing.priorCustodyProceedingDetails.childNames,
+      context.warnings,
+    );
+    setText(form, "Type of proceeding", filing.priorCustodyProceedingDetails.proceedingType, context.warnings);
+    setText(form, "Court and state", filing.priorCustodyProceedingDetails.courtAndState, context.warnings);
+    setText(
+      form,
+      "Date of court order or judgment if any",
+      formatDate(filing.priorCustodyProceedingDetails.orderDate),
+      context.warnings,
+    );
+  }
+  if (filing?.pendingCustodyProceedingStatus === "none") {
+    check(form, "I HAVE NO INFORMATION of any custody or time-sharing proceeding pending in a court of this");
+  } else if (filing?.pendingCustodyProceedingStatus === "exists") {
+    check(form, "I have the following information of custody or time sharing proceedings pending in a court");
+    setText(form, "Name of each child", filing.pendingCustodyProceedingDetails.childNames, context.warnings);
+    setText(form, "Type of proceeding 2", filing.pendingCustodyProceedingDetails.proceedingType, context.warnings);
+    setText(form, "Court and state 2", filing.pendingCustodyProceedingDetails.courtAndState, context.warnings);
+    setText(
+      form,
+      "Date of court order or judgment if any 2",
+      formatDate(filing.pendingCustodyProceedingDetails.orderDate),
+      context.warnings,
+    );
+    setText(form, "case number", filing.pendingCustodyProceedingDetails.caseNumber, context.warnings);
+  }
+  if (filing?.thirdPartyCustodyClaimStatus === "none") {
+    check(
+      form,
+      "I DO NOT KNOW OF ANY PERSON not a party to this proceeding who has physical custody or claims to have custody, visitation or time-sharing with respect to any child subject to this proceeding",
+    );
+  } else if (filing?.thirdPartyCustodyClaimStatus === "exists") {
+    check(
+      form,
+      "I  KNOW THAT THE FOLLOWING NAMED PERSON(S) not a party to this proceeding who has physical custody or claims to have custody, visitation or time-sharing with respect to any child subject to this proceeding",
+    );
+    setText(form, "Name and address of person", filing.thirdPartyCustodyClaimDetails.nameAndAddress, context.warnings);
+    setText(form, "Name of each child 4", filing.thirdPartyCustodyClaimDetails.childNames, context.warnings);
+    setText(form, "Relationship to child", filing.thirdPartyCustodyClaimDetails.relationshipToChildren, context.warnings);
+    if (filing.thirdPartyCustodyClaimDetails.claimType === "physical_custody") {
+      check(form, "has physical custody");
+    } else if (filing.thirdPartyCustodyClaimDetails.claimType === "custody_rights") {
+      check(form, "claims custody rights");
+    } else if (filing.thirdPartyCustodyClaimDetails.claimType === "visitation_or_time_sharing") {
+      check(form, "claims visitation or time sharing");
+    }
+  }
+  if (filing?.existingChildSupportOrderStatus === "none") {
+    check(form, "children not subject to existing child support");
+  } else if (filing?.existingChildSupportOrderStatus === "exists") {
+    check(form, "children are subject to existing child support");
+    setText(form, "Name of each child 6", filing.existingChildSupportOrderDetails.childNames, context.warnings);
+    setText(form, "Type of proceeding 3", filing.existingChildSupportOrderDetails.proceedingType, context.warnings);
+    setText(form, "Court and address", filing.existingChildSupportOrderDetails.courtAndAddress, context.warnings);
+    setText(
+      form,
+      "Date of court order/judgment if any",
+      formatDate(filing.existingChildSupportOrderDetails.orderDate),
+      context.warnings,
+    );
+    setText(
+      form,
+      "Amount of child support paid and by whom",
+      filing.existingChildSupportOrderDetails.amountAndPayer,
+      context.warnings,
+    );
+  }
+  setText(form, "Printed Name", context.parties.self.name, context.warnings);
+  setText(form, "Address 2", context.parties.self.street, context.warnings);
+  setText(form, "City State Zip 2", context.parties.self.cityStateZip, context.warnings);
+  setText(form, "Telephone Number", context.parties.self.phone, context.warnings);
+  setText(form, "Designated Email Addresses 2", context.parties.self.email, context.warnings);
 }
 
 function parentOrder<T>(context: PopulationContext, selfValue: T, spouseValue: T): {
@@ -347,6 +559,7 @@ function fillChildSupport(form: PDFForm, context: PopulationContext): void {
     petitioner: "petitioner",
     respondent: "respondent",
   });
+  fillCaseMetadata(form, context, { caseNumber: "Case No", division: "Division" });
   setText(form, "County Name_2", context.draft.data.caseBasics.county, context.warnings);
   setText(form, "petitioner_2", context.parties.petitioner?.name, context.warnings);
   setText(form, "respondent_2", context.parties.respondent?.name, context.warnings);
@@ -378,6 +591,8 @@ function fillChildSupport(form: PDFForm, context: PopulationContext): void {
   setText(form, "Printed Name", context.parties.self.name, context.warnings);
   setText(form, "Address_2", context.parties.self.street, context.warnings);
   setText(form, "City State Zip_2", context.parties.self.cityStateZip, context.warnings);
+  setText(form, "Telephone Number_2", context.parties.self.phone, context.warnings);
+  setText(form, "Email Addresses_2", context.parties.self.email, context.warnings);
 }
 
 function holidayParent(
@@ -414,16 +629,29 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
     petitioner: "Petitioner",
     respondent: "Respondent",
   });
+  fillCaseMetadata(form, context, {
+    circuit: "Judicial Circuit",
+    caseNumber: "Case Number",
+    division: "Division",
+  });
   setText(form, "Name of Petitioner", context.parties.petitioner?.name, context.warnings);
   setText(form, "Name of Respondent", context.parties.respondent?.name, context.warnings);
   setText(form, "address of Petitioner", context.parties.petitioner?.street, context.warnings);
+  setText(form, "telephone of Petitioner", context.parties.petitioner?.phone, context.warnings);
+  setText(form, "email of Petitioner", context.parties.petitioner?.email, context.warnings);
   setText(form, "address of Respondent", context.parties.respondent?.street, context.warnings);
+  setText(form, "telephone of Respondent", context.parties.respondent?.phone, context.warnings);
+  setText(form, "email of Respondent", context.parties.respondent?.email, context.warnings);
   setText(form, "Printed Name of Petitioner/Parent", context.parties.petitioner?.name, context.warnings);
   setText(form, "Address of Petitioner/Parent", context.parties.petitioner?.street, context.warnings);
   setText(form, "City State Zip of Petitioner/Parent", context.parties.petitioner?.cityStateZip, context.warnings);
+  setText(form, "Telephone Number of Petitioner/Parent", context.parties.petitioner?.phone, context.warnings);
+  setText(form, "Designated Email Addresses of Petitioner", context.parties.petitioner?.email, context.warnings);
   setText(form, "Printed Name of Respondent/Parent", context.parties.respondent?.name, context.warnings);
   setText(form, "Address of Respondent/Parent", context.parties.respondent?.street, context.warnings);
   setText(form, "City State Zip of Respondent/Parent", context.parties.respondent?.cityStateZip, context.warnings);
+  setText(form, "Telephone Number of Respondent/Parent", context.parties.respondent?.phone, context.warnings);
+  setText(form, "Designated Email Addresses of Respondent/Parent", context.parties.respondent?.email, context.warnings);
 
   const filingChildren = new Map(
     (data.filingDetails?.children ?? []).map((child) => [child.childId, child.fullLegalName ?? ""]),
@@ -504,9 +732,16 @@ function fillDisclosureCertificate(form: PDFForm, context: PopulationContext): v
     petitioner: "petitioner",
     respondent: "respondent",
   });
+  fillCaseMetadata(form, context, {
+    circuit: "JUDICIAL CIRCUIT",
+    caseNumber: "Case No",
+    division: "Division",
+  });
   setText(form, "Printed Name", context.parties.self.name, context.warnings);
   setText(form, "Address_2", context.parties.self.street, context.warnings);
   setText(form, "City State Zip_2", context.parties.self.cityStateZip, context.warnings);
+  setText(form, "Telephone Number_2", context.parties.self.phone, context.warnings);
+  setText(form, "Email Addresses_2", context.parties.self.email, context.warnings);
 }
 
 function fillForm(formNumber: SupportedFormNumber, form: PDFForm, context: PopulationContext): void {
@@ -549,7 +784,6 @@ function supportedFormNumbers(
     numbers.push("12.902(e)");
   }
   if (readiness.forms.some((form) => form.entry.form.formNumber === "12.995(a)")) numbers.push("12.995(a)");
-  numbers.push("12.932");
   return numbers;
 }
 
@@ -571,9 +805,9 @@ export function buildOfficialCourtFormsManifest(options: {
       "Petitioner and respondent were not assigned because you selected 'not sure' for your role. Confirm the roles before using these forms.",
     );
   }
-  if (options.draft.data.children.hasChildren === "yes") {
+  if (options.draft.data.children.children.length > 3) {
     warnings.push(
-      "The UCCJEA form includes child names and birth dates, but its structured five-year address tables must be completed from the full histories in the filing packet.",
+      "The official UCCJEA PDF has structured tables for three children. Additional children remain listed in the filing packet for attorney completion.",
     );
   }
 
@@ -582,6 +816,7 @@ export function buildOfficialCourtFormsManifest(options: {
     warnings,
     omitted: [
       "Financial affidavit 12.902(b) or 12.902(c): the correct version depends on a rule threshold this app has not verified from a primary source.",
+      "Certificate of Compliance with Mandatory Disclosure 12.932: generate it only after the required documents have actually been exchanged and service details can be sworn.",
       "Notice of Social Security Number 12.902(j): SSNs are deliberately never collected; complete this form securely by hand.",
       "Marital settlement agreement 12.902(f): this app produces a term sheet, not a binding agreement.",
       "Final judgment: reserved for the court and the attorney preparing the proposed order.",
@@ -704,6 +939,15 @@ export async function generateOfficialCourtFormsPdf(options: {
     pages.forEach((page) => doc.addPage(page));
   }
   return doc.save();
+}
+
+export function getOfficialCourtFormsBlockingGaps(readiness: FilingReadiness): string[] {
+  const populated = new Set<string>(POPULATED_OFFICIAL_FORM_NUMBERS);
+  return readiness.forms
+    .filter((form) => populated.has(form.entry.form.formNumber) && form.status === "needsInformation")
+    .flatMap((form) =>
+      form.missing.map((missing) => `Form ${form.entry.form.formNumber}: ${missing}`),
+    );
 }
 
 export const __testing = {

@@ -40,6 +40,21 @@ describe("POST /api/package/court-forms", () => {
     expect(await response.json()).toHaveProperty("error");
   });
 
+  it("blocks the download when an applicable official-form answer is unresolved", async () => {
+    const draft = createSampleDraft();
+    if (!draft.data.filingDetails.spouse) throw new Error("Expected sample spouse details.");
+    draft.data.filingDetails.spouse.emailAddress = "";
+
+    const response = await POST(
+      postRequest({ reviewedDraft: buildReviewedDraft(draft) }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error).toMatch(/remaining court-form questions/i);
+    expect(body.missing.join(" ")).toMatch(/spouse's address and contact information/i);
+  });
+
   it("rejects invalid JSON", async () => {
     const response = await POST(
       new Request("http://localhost/api/package/court-forms", {

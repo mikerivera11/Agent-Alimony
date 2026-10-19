@@ -123,14 +123,23 @@ describe("buildFilingReadiness", () => {
     const data = draftData();
     data.filingDetails = {
       ...data.filingDetails,
-      children: [{ childId: "demo-child-1", fullLegalName: "A Child", addressHistory: "" }],
+      children: [
+        {
+          childId: "demo-child-1",
+          fullLegalName: "A Child",
+          placeOfBirth: "Orlando, Florida",
+          sex: "female",
+          residences: [],
+          addressHistory: "",
+        },
+      ],
     };
 
     const uccjea = buildFilingReadiness({ data, asOfIso: AS_OF }).forms.find(
       (form) => form.entry.form.formNumber === "12.902(d)",
     );
 
-    expect(uccjea?.missing).toContain("Each child's five-year address history");
+    expect(uccjea?.missing).toContain("Each child's structured five-year residence history");
     expect(uccjea?.missing).toContain("Filing details for every child");
   });
 

@@ -1,7 +1,11 @@
 import { buildFilingReadiness } from "@/domain/forms";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import { buildPackageViewModel } from "@/domain/package";
-import { generateOfficialCourtFormsPdf, packageRequestSchema } from "@/server/package";
+import {
+  generateOfficialCourtFormsPdf,
+  getOfficialCourtFormsBlockingGaps,
+  packageRequestSchema,
+} from "@/server/package";
 
 export const runtime = "nodejs";
 
@@ -38,6 +42,16 @@ export async function POST(request: Request): Promise<Response> {
       {
         error:
           "Populated court forms require the opt-in filing details. Turn on the attorney filing packet and confirm those answers first.",
+      },
+      { status: 409 },
+    );
+  }
+  const blockingGaps = getOfficialCourtFormsBlockingGaps(readiness);
+  if (blockingGaps.length > 0) {
+    return Response.json(
+      {
+        error: "Answer the remaining court-form questions before generating populated forms.",
+        missing: blockingGaps,
       },
       { status: 409 },
     );

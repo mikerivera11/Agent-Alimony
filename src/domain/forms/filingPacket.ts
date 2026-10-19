@@ -194,14 +194,38 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
 
   if (formNumber.startsWith("12.901")) {
     needsBothNames();
+    if (data.spouses?.yourRole === "not_sure" || !data.spouses?.yourRole) {
+      missing.push("Whether you are the petitioner or respondent");
+    }
     if (isBlank(filing.you?.address?.street) || isBlank(filing.you?.address?.city)) {
       missing.push("Your address");
+    }
+    if (isBlank(filing.you?.phoneNumber)) missing.push("Your telephone number");
+    if (isBlank(filing.you?.emailAddress)) missing.push("Your designated email address");
+    if (!filing.you?.militaryService || filing.you.militaryService === "not_sure") {
+      missing.push("Your military-service status");
+    }
+    if (!filing.spouse?.militaryService || filing.spouse.militaryService === "not_sure") {
+      missing.push("Your spouse's military-service status");
     }
     if (isBlank(data.marriage?.marriageDate)) missing.push("The date you married");
     if (isBlank(filing.marriagePlaceCity) && isBlank(filing.marriagePlaceStateOrCountry)) {
       missing.push("Where you married");
     }
     if (isBlank(filing.floridaResidentSince)) missing.push("When Florida residence began");
+    if (isBlank(filing.judicialCircuit)) missing.push("The judicial circuit");
+    if (data.caseBasics?.petitionStatus === "filed") {
+      if (isBlank(filing.caseNumber)) missing.push("The assigned case number");
+      if (isBlank(filing.division)) missing.push("The assigned division");
+    }
+  }
+
+  if (formNumber === "12.928") {
+    needsBothNames();
+    if (isBlank(filing.judicialCircuit)) missing.push("The judicial circuit");
+    if (!filing.relatedCasesStatus || filing.relatedCasesStatus === "not_sure") {
+      missing.push("Whether related family cases exist");
+    }
   }
 
   if (formNumber === "12.902(c)" || formNumber === "12.902(b)") {
@@ -225,11 +249,36 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
     }
     for (const child of rows) {
       if (isBlank(child.fullLegalName)) missing.push("Each child's full legal name");
-      if (isBlank(child.addressHistory)) missing.push("Each child's five-year address history");
+      if (isBlank(child.placeOfBirth)) missing.push("Each child's place of birth");
+      if (!child.sex || child.sex === "another_or_not_listed") {
+        missing.push("The entry for each child's sex field");
+      }
+      if ((child.residences ?? []).length === 0) {
+        missing.push("Each child's structured five-year residence history");
+      }
+    }
+    for (const [field, label] of [
+      ["priorCustodyProceedingStatus", "Prior custody or time-sharing proceedings"],
+      ["pendingCustodyProceedingStatus", "Pending custody or time-sharing proceedings"],
+      ["thirdPartyCustodyClaimStatus", "Third-party custody or time-sharing claims"],
+      ["existingChildSupportOrderStatus", "Existing child-support orders"],
+    ] as const) {
+      if (!filing[field] || filing[field] === "not_sure") missing.push(label);
     }
   }
 
   if (formNumber === "12.995(a)") {
+    needsBothNames();
+    if (isBlank(filing.you?.phoneNumber) || isBlank(filing.you?.emailAddress)) {
+      missing.push("Your court-form contact information");
+    }
+    if (
+      isBlank(filing.spouse?.address?.street) ||
+      isBlank(filing.spouse?.phoneNumber) ||
+      isBlank(filing.spouse?.emailAddress)
+    ) {
+      missing.push("Your spouse's address and contact information, if safely known");
+    }
     if (data.parentingPlan?.planStatus === undefined) {
       missing.push("Whether the parenting plan is agreed, proposed, or in dispute");
     }

@@ -419,9 +419,10 @@ exposes no URL and no revision, and a test enforces that.
 
 Optional, off by default, and the only intake section whose answers never reach
 a calculation. When a person turns it on, the last intake step collects what
-*court forms* need but an estimate does not — full legal names, addresses,
-where the marriage took place, when Florida residence began, and each child's
-five-year address history.
+*court forms* need but an estimate does not — full legal names, court contact
+information, military status, case identifiers, related cases, where the
+marriage took place, when Florida residence began, and each child's structured
+five-year residence and UCCJEA proceeding history.
 
 `/api/package/filing-packet` returns a PDF containing:
 
@@ -440,15 +441,19 @@ download. It inserts confirmed answers into revision-locked copies of the
 Florida Supreme Court Approved Family Law Forms using verified AcroForm field
 mappings. The download includes the applicable petition, cover sheet,
 child-related forms when relevant, child-support worksheet when the
-deterministic calculation completed, parenting plan, and mandatory-disclosure
-certificate.
+deterministic calculation completed, and parenting plan.
+
+The court-form download is disabled until every mapped, applicable factual
+question has a confirmed answer. The results page lists each remaining answer
+by form number and links directly back to the filing-details questions, so a
+blank cannot be mistaken for a completed response.
 
 The official-forms download starts with a review cover sheet and is not
 filing-ready:
 
-- **It does not sign, notarize, serve, or file anything.** Case numbers,
-  division, judicial circuit, service details, and unanswered facts remain
-  blank.
+- **It does not sign, notarize, serve, or file anything.** A case number and
+  division remain blank when the clerk has not assigned them; service and
+  execution details remain for the filing process.
 - **It maps only verified controls on an exact form revision.** Ambiguous
   positional controls and legal elections remain blank instead of being
   guessed. The vendored court PDFs are checked against recorded SHA-256 hashes,
@@ -456,6 +461,11 @@ filing-ready:
 - **It does not choose between financial affidavit 12.902(b) and 12.902(c).**
   The short-versus-long threshold has not been verified from a primary source,
   so selecting one automatically would be unsafe.
+- **It does not generate Form 12.932 before disclosure occurs.** The
+  Certificate of Compliance with Mandatory Disclosure is a statement about
+  documents actually exchanged and how they were served, not merely documents
+  a user has available. It remains in the readiness packet until those events
+  can truthfully be certified.
 - **It does not draft a marital settlement agreement.** Drafting the binding
   instrument means deciding whether alimony is modifiable, who claims the
   children on a tax return, whether a QDRO is needed to divide retirement,

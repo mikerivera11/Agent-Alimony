@@ -42,9 +42,9 @@ describe("official court forms", () => {
       "12.902(d)",
       "12.902(e)",
       "12.995(a)",
-      "12.932",
     ]);
     expect(manifest.omitted.join(" ")).toContain("Financial affidavit");
+    expect(manifest.omitted.join(" ")).toContain("Mandatory Disclosure");
     expect(manifest.omitted.join(" ")).toContain("Social Security");
     expect(manifest.omitted.join(" ")).toContain("settlement agreement");
   });
@@ -65,6 +65,83 @@ describe("official court forms", () => {
       "Taylor Rivera (fictional)",
     );
     expect(form.getCheckBox("there are marital assets or liabilities").isChecked()).toBe(true);
+    expect(form.getTextField("Telephone Number").getText()).toBe("407-555-0100");
+    expect(form.getTextField("designated email address").getText()).toBe("alex@example.invalid");
+  });
+
+  it("writes structured child residence and UCCJEA history answers into the affidavit", async () => {
+    const { draft, viewModel } = sampleInputs();
+    const bytes = await __testing.populateForm({
+      formNumber: "12.902(d)",
+      draft,
+      viewModel,
+    });
+    const form = (await PDFDocument.load(bytes)).getForm();
+
+    expect(form.getTextField("Place of Birth for child 1").getText()).toBe("Orlando, Florida");
+    expect(form.getTextField("Sex of child 1").getText()).toBe("Female");
+    expect(form.getTextField("where child lived for past five years. Give address").getText()).toBe(
+      "100 Demo Street, Orlando, FL 32801",
+    );
+    expect(
+      form.getCheckBox("check if you have not participated in custody or time sharing proceedings").isChecked(),
+    ).toBe(true);
+    expect(
+      form
+        .getCheckBox(
+          "I DO NOT KNOW OF ANY PERSON not a party to this proceeding who has physical custody or claims to have custody, visitation or time-sharing with respect to any child subject to this proceeding",
+        )
+        .isChecked(),
+    ).toBe(true);
+  });
+
+  it("maps affirmative UCCJEA proceeding answers into their separate verified fields", async () => {
+    const source = createSampleDraft();
+    source.data.filingDetails.priorCustodyProceedingStatus = "exists";
+    source.data.filingDetails.priorCustodyProceedingDetails = {
+      childNames: "Taylor Rivera",
+      proceedingType: "Prior time-sharing case",
+      courtAndState: "Sample County Court, Florida",
+      orderDate: "2024-05-01",
+    };
+    source.data.filingDetails.pendingCustodyProceedingStatus = "exists";
+    source.data.filingDetails.pendingCustodyProceedingDetails = {
+      childNames: "Morgan Rivera",
+      proceedingType: "Pending custody case",
+      courtAndState: "Example County Court, Georgia",
+      caseNumber: "TEST-123",
+    };
+    source.data.filingDetails.thirdPartyCustodyClaimStatus = "exists";
+    source.data.filingDetails.thirdPartyCustodyClaimDetails = {
+      nameAndAddress: "Casey Example, 1 Example Road",
+      childNames: "Taylor Rivera",
+      relationshipToChildren: "Grandparent",
+      claimType: "visitation_or_time_sharing",
+    };
+    source.data.filingDetails.existingChildSupportOrderStatus = "exists";
+    source.data.filingDetails.existingChildSupportOrderDetails = {
+      childNames: "Taylor Rivera",
+      proceedingType: "Child support",
+      courtAndAddress: "Sample County Court, Florida",
+      orderDate: "2024-05-01",
+      amountAndPayer: "$500 monthly paid by Parent A",
+    };
+    const draft = buildReviewedDraft(source);
+    const viewModel = buildPackageViewModel(draft);
+    const bytes = await __testing.populateForm({
+      formNumber: "12.902(d)",
+      draft,
+      viewModel,
+    });
+    const form = (await PDFDocument.load(bytes)).getForm();
+
+    expect(form.getTextField("Type of proceeding").getText()).toBe("Prior time-sharing case");
+    expect(form.getTextField("case number").getText()).toBe("TEST-123");
+    expect(form.getTextField("Relationship to child").getText()).toBe("Grandparent");
+    expect(form.getCheckBox("claims visitation or time sharing").isChecked()).toBe(true);
+    expect(form.getTextField("Amount of child support paid and by whom").getText()).toBe(
+      "$500 monthly paid by Parent A",
+    );
   });
 
   it.each([

@@ -50,6 +50,21 @@ export interface FilingFormEntry {
   readonly whyItMatters: string;
 }
 
+/**
+ * Forms for which the application has revision-locked, verified field
+ * mappings. The filing packet may list additional required forms, but those
+ * are not represented as automatically populated.
+ */
+export const POPULATED_OFFICIAL_FORM_NUMBERS = [
+  "12.928",
+  "12.901(b)(1)",
+  "12.901(b)(2)",
+  "12.901(b)(3)",
+  "12.902(d)",
+  "12.902(e)",
+  "12.995(a)",
+] as const;
+
 export const OFFICIAL_FILING_FORMS: readonly FilingFormEntry[] = [
   {
     form: {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Alert, Button, Card, buttonClasses } from "@/components/ui";
+import { buildFilingReadiness, POPULATED_OFFICIAL_FORM_NUMBERS } from "@/domain/forms";
 import {
   buildReviewedDraft,
   createLocalStorageIntakeDraftStorage,
@@ -124,6 +125,18 @@ export function ResultsExperience() {
   // Read from the reviewed snapshot rather than the live draft, so the offer
   // matches the answers the packet would actually be built from.
   const wantsFilingPacket = reviewed?.data.filingDetails?.wantsFilingPacket === "yes";
+  const officialFormGaps = useMemo(() => {
+    if (!reviewed || !viewModel || !wantsFilingPacket) return [];
+    const populated = new Set<string>(POPULATED_OFFICIAL_FORM_NUMBERS);
+    return buildFilingReadiness({
+      data: reviewed.data,
+      asOfIso: viewModel.generatedAt.slice(0, 10),
+    }).forms
+      .filter((form) => populated.has(form.entry.form.formNumber) && form.status === "needsInformation")
+      .flatMap((form) =>
+        form.missing.map((missing) => `Form ${form.entry.form.formNumber}: ${missing}`),
+      );
+  }, [reviewed, viewModel, wantsFilingPacket]);
 
   /**
    * One download path for the packet and every worksheet. They all post the
@@ -314,12 +327,31 @@ export function ResultsExperience() {
                   )
                 }
                 loading={downloadState === "downloading" && downloadTarget === "court-forms"}
-                disabled={isStale || downloadState === "downloading"}
+                disabled={isStale || downloadState === "downloading" || officialFormGaps.length > 0}
               >
                 Download populated court forms
               </Button>
             </div>
           </div>
+          {officialFormGaps.length > 0 ? (
+            <Alert variant="warning" emphasis title="Finish the remaining court-form questions">
+              <p className="text-sm">
+                The official-form download stays disabled so unanswered fields cannot be mistaken for completed
+                answers.
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {officialFormGaps.map((gap) => (
+                  <li key={gap}>{gap}</li>
+                ))}
+              </ul>
+              <Link
+                href="/intake?step=filingDetails"
+                className="mt-3 inline-block font-semibold text-primary underline underline-offset-4"
+              >
+                Answer the court-form questions
+              </Link>
+            </Alert>
+          ) : null}
         </Card>
       )}
 

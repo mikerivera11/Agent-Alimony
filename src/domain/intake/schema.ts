@@ -730,6 +730,8 @@ const partyFilingDetailsSchema = z.object({
   fullLegalName: shortTextSchema.optional(),
   dateOfBirth: optionalIsoDateSchema,
   address: addressSchema.default({}),
+  phoneNumber: shortTextSchema.optional(),
+  emailAddress: shortTextSchema.optional(),
   employerName: shortTextSchema.optional(),
   employerAddress: shortTextSchema.optional(),
   /**
@@ -741,21 +743,105 @@ const partyFilingDetailsSchema = z.object({
 
 export type PartyFilingDetails = z.infer<typeof partyFilingDetailsSchema>;
 
+const childResidenceSchema = z
+  .object({
+    address: requiredShortTextSchema,
+    fromDate: isoDateSchema,
+    untilDate: optionalIsoDateSchema,
+    livedWithNameAndAddress: requiredShortTextSchema,
+    relationship: requiredShortTextSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (value.untilDate && Date.parse(value.untilDate) < Date.parse(value.fromDate)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["untilDate"],
+        message: "The end date cannot be before the start date",
+      });
+    }
+  });
+
+export type ChildResidence = z.infer<typeof childResidenceSchema>;
+
 /** Per-child details a filing needs that the support calculation does not. */
-const childFilingDetailsSchema = z.object({
-  /** Matches `childSchema.id` so this never has to guess which child it means. */
-  childId: z.string().min(1),
-  fullLegalName: shortTextSchema.optional(),
-  /**
-   * The UCCJEA affidavit asks where the child has lived, with whom, for the
-   * period the form specifies. Free text, because real histories do not fit a
-   * fixed set of fields and a truncated history on a sworn document is worse
-   * than a full one an attorney can transcribe.
-   */
-  addressHistory: longTextSchema.optional(),
-});
+const childFilingDetailsSchema = z
+  .object({
+    /** Matches `childSchema.id` so this never has to guess which child it means. */
+    childId: z.string().min(1),
+    fullLegalName: shortTextSchema.optional(),
+    placeOfBirth: shortTextSchema.optional(),
+    sex: z.enum(["female", "male", "another_or_not_listed"]).optional(),
+    residences: z.array(childResidenceSchema).max(6, "The official form has room for six residences per child").default([]),
+    /** Retained only so drafts saved before structured residence rows still load. */
+    addressHistory: longTextSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.residences.length === 0) return;
+    if (value.residences[0]?.untilDate) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["residences", 0, "untilDate"],
+        message: "The first row is the current residence, so its end date must be blank",
+      });
+    }
+    for (let index = 1; index < value.residences.length; index += 1) {
+      const newer = value.residences[index - 1];
+      const older = value.residences[index];
+      if (!older?.untilDate) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["residences", index, "untilDate"],
+          message: "Enter when this previous residence ended",
+        });
+      } else if (newer && older.untilDate !== newer.fromDate) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["residences", index, "untilDate"],
+          message: "Residence dates must connect without an unexplained gap",
+        });
+      }
+    }
+    const oldest = value.residences.at(-1);
+    if (oldest) {
+      const fiveYearsAgo = new Date();
+      fiveYearsAgo.setUTCFullYear(fiveYearsAgo.getUTCFullYear() - 5);
+      if (Date.parse(oldest.fromDate) > fiveYearsAgo.getTime()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["residences", value.residences.length - 1, "fromDate"],
+          message: "Add earlier residences until the history covers at least five years",
+        });
+      }
+    }
+  });
 
 export type ChildFilingDetails = z.infer<typeof childFilingDetailsSchema>;
+
+const priorCustodyProceedingDetailsSchema = z.object({
+  childNames: shortTextSchema.optional(),
+  proceedingType: shortTextSchema.optional(),
+  courtAndState: shortTextSchema.optional(),
+  orderDate: optionalIsoDateSchema.optional(),
+});
+
+const pendingCustodyProceedingDetailsSchema = priorCustodyProceedingDetailsSchema.extend({
+  caseNumber: shortTextSchema.optional(),
+});
+
+const thirdPartyCustodyClaimDetailsSchema = z.object({
+  nameAndAddress: shortTextSchema.optional(),
+  childNames: shortTextSchema.optional(),
+  relationshipToChildren: shortTextSchema.optional(),
+  claimType: z.enum(["physical_custody", "custody_rights", "visitation_or_time_sharing"]).optional(),
+});
+
+const existingChildSupportOrderDetailsSchema = z.object({
+  childNames: shortTextSchema.optional(),
+  proceedingType: shortTextSchema.optional(),
+  courtAndAddress: shortTextSchema.optional(),
+  orderDate: optionalIsoDateSchema.optional(),
+  amountAndPayer: shortTextSchema.optional(),
+});
 
 export const filingDetailsSchema = z
   .object({
@@ -763,6 +849,10 @@ export const filingDetailsSchema = z
     you: partyFilingDetailsSchema.default(() => ({ address: {}, dateOfBirth: undefined })),
     spouse: partyFilingDetailsSchema.default(() => ({ address: {}, dateOfBirth: undefined })),
     children: z.array(childFilingDetailsSchema).default([]),
+    judicialCircuit: shortTextSchema.optional(),
+    caseNumber: shortTextSchema.optional(),
+    division: shortTextSchema.optional(),
+    relatedCasesStatus: z.enum(["none", "listed_separately", "not_sure"]).optional(),
     marriagePlaceCity: shortTextSchema.optional(),
     marriagePlaceStateOrCountry: shortTextSchema.optional(),
     /**
@@ -775,6 +865,14 @@ export const filingDetailsSchema = z
     /** Whether a spouse asks the court to restore a former name. */
     formerNameRestorationRequested: yesNoSchema.optional(),
     formerNameToRestore: shortTextSchema.optional(),
+    priorCustodyProceedingStatus: z.enum(["none", "exists", "not_sure"]).optional(),
+    priorCustodyProceedingDetails: priorCustodyProceedingDetailsSchema.default({}),
+    pendingCustodyProceedingStatus: z.enum(["none", "exists", "not_sure"]).optional(),
+    pendingCustodyProceedingDetails: pendingCustodyProceedingDetailsSchema.default({}),
+    thirdPartyCustodyClaimStatus: z.enum(["none", "exists", "not_sure"]).optional(),
+    thirdPartyCustodyClaimDetails: thirdPartyCustodyClaimDetailsSchema.default({}),
+    existingChildSupportOrderStatus: z.enum(["none", "exists", "not_sure"]).optional(),
+    existingChildSupportOrderDetails: existingChildSupportOrderDetailsSchema.default({}),
   })
   .superRefine((value, ctx) => {
     // Nothing below is required unless the person actually wants the packet.
@@ -792,6 +890,53 @@ export const filingDetailsSchema = z
         code: "custom",
         path: ["spouse", "fullLegalName"],
         message: "Enter your spouse's full legal name",
+      });
+    }
+    for (const [party, path, label] of [
+      [value.you, "you", "your"],
+      [value.spouse, "spouse", "your spouse's"],
+    ] as const) {
+      if (!party.militaryService) {
+        ctx.addIssue({
+          code: "custom",
+          path: [path, "militaryService"],
+          message: `Choose ${label} military-service status`,
+        });
+      }
+    }
+    if (!value.you.address.street?.trim() || !value.you.address.city?.trim() || !value.you.address.state?.trim() || !value.you.address.postalCode?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["you", "address", "street"],
+        message: "Enter your complete mailing address",
+      });
+    }
+    if (!value.you.phoneNumber?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["you", "phoneNumber"],
+        message: "Enter the telephone number used on court forms",
+      });
+    }
+    if (!value.you.emailAddress?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["you", "emailAddress"],
+        message: "Enter the designated email address used on court forms",
+      });
+    }
+    if (!value.marriagePlaceCity?.trim() || !value.marriagePlaceStateOrCountry?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["marriagePlaceCity"],
+        message: "Enter where the marriage took place",
+      });
+    }
+    if (!value.relatedCasesStatus) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["relatedCasesStatus"],
+        message: "Choose whether related family cases exist",
       });
     }
     if (!value.whichPartyIsFloridaResident) {
@@ -814,6 +959,118 @@ export const filingDetailsSchema = z
         path: ["formerNameToRestore"],
         message: "Enter the former name to restore",
       });
+    }
+    for (const [index, child] of value.children.entries()) {
+      if (!child.fullLegalName?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["children", index, "fullLegalName"],
+          message: "Enter this child's full legal name",
+        });
+      }
+      if (!child.placeOfBirth?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["children", index, "placeOfBirth"],
+          message: "Enter this child's place of birth",
+        });
+      }
+      if (!child.sex) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["children", index, "sex"],
+          message: "Choose the entry to place in the form's sex field",
+        });
+      }
+      if (child.residences.length === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["children", index, "residences"],
+          message: "Add this child's residences covering the last five years",
+        });
+      }
+    }
+    if (value.children.length > 0) {
+      for (const [field, label] of [
+        ["priorCustodyProceedingStatus", "prior custody or time-sharing proceedings"],
+        ["pendingCustodyProceedingStatus", "pending custody or time-sharing proceedings"],
+        ["thirdPartyCustodyClaimStatus", "non-party custody or time-sharing claims"],
+        ["existingChildSupportOrderStatus", "existing child-support orders"],
+      ] as const) {
+        const status = value[field];
+        if (!status) {
+          ctx.addIssue({ code: "custom", path: [field], message: `Answer the question about ${label}` });
+        }
+      }
+      if (value.priorCustodyProceedingStatus === "exists") {
+        for (const [field, label] of [
+          ["childNames", "child name(s)"],
+          ["proceedingType", "type of proceeding"],
+          ["courtAndState", "court and state"],
+        ] as const) {
+          if (!value.priorCustodyProceedingDetails[field]?.trim()) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["priorCustodyProceedingDetails", field],
+              message: `Enter the ${label}`,
+            });
+          }
+        }
+      }
+      if (value.pendingCustodyProceedingStatus === "exists") {
+        for (const [field, label] of [
+          ["childNames", "child name(s)"],
+          ["proceedingType", "type of proceeding"],
+          ["courtAndState", "court and state"],
+          ["caseNumber", "case number"],
+        ] as const) {
+          if (!value.pendingCustodyProceedingDetails[field]?.trim()) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["pendingCustodyProceedingDetails", field],
+              message: `Enter the ${label}`,
+            });
+          }
+        }
+      }
+      if (value.thirdPartyCustodyClaimStatus === "exists") {
+        for (const [field, label] of [
+          ["nameAndAddress", "person's name and address"],
+          ["childNames", "affected child name(s)"],
+          ["relationshipToChildren", "relationship to the child or children"],
+        ] as const) {
+          if (!value.thirdPartyCustodyClaimDetails[field]?.trim()) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["thirdPartyCustodyClaimDetails", field],
+              message: `Enter the ${label}`,
+            });
+          }
+        }
+        if (!value.thirdPartyCustodyClaimDetails.claimType) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["thirdPartyCustodyClaimDetails", "claimType"],
+            message: "Choose the type of custody or time-sharing claim",
+          });
+        }
+      }
+      if (value.existingChildSupportOrderStatus === "exists") {
+        for (const [field, label] of [
+          ["childNames", "child name(s)"],
+          ["proceedingType", "type of proceeding"],
+          ["courtAndAddress", "court and address"],
+          ["amountAndPayer", "support amount and who pays"],
+        ] as const) {
+          if (!value.existingChildSupportOrderDetails[field]?.trim()) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["existingChildSupportOrderDetails", field],
+              message: `Enter the ${label}`,
+            });
+          }
+        }
+      }
     }
   });
 

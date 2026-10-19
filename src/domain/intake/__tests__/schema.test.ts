@@ -7,11 +7,13 @@ import {
   childrenSchema,
   documentReadinessSchema,
   DEFAULT_HOLIDAY_SCHEDULES,
+  filingDetailsSchema,
   marriageSchema,
   parentingPlanSchema,
   parentingTimeSchema,
   safetyComplexitySchema,
 } from "../schema";
+import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 
 describe("caseBasicsSchema", () => {
   it("requires a filing or planning date for both filed and not-filed cases", () => {
@@ -51,6 +53,23 @@ describe("caseBasicsSchema", () => {
       hasAttorney: "no",
     });
     expect(notFiledWithPlanningDate.success).toBe(true);
+  });
+});
+
+describe("filingDetailsSchema", () => {
+  it("requires a structured child residence history covering at least five years", () => {
+    const filing = createSampleDraft().data.filingDetails;
+    if (!filing.children?.[0]?.residences?.[0]) throw new Error("Expected sample residence.");
+    filing.children[0].residences[0].fromDate = "2025-01-01";
+
+    const result = filingDetailsSchema.safeParse(filing);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toContain(
+        "Add earlier residences until the history covers at least five years",
+      );
+    }
   });
 });
 
