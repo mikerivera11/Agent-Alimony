@@ -107,6 +107,19 @@ describe("buildFilingReadiness", () => {
     expect(numbers).not.toContain("12.902(d)");
   });
 
+  it("uses the childless petition with alimony terms even when there is no property", () => {
+    const data = draftData();
+    data.children = { hasChildren: "no", children: [] };
+    data.assetsDebts = { ...data.assetsDebts, items: [] };
+
+    const numbers = buildFilingReadiness({ data, asOfIso: AS_OF }).forms.map(
+      (form) => form.entry.form.formNumber,
+    );
+
+    expect(numbers).toContain("12.901(b)(2)");
+    expect(numbers).not.toContain("12.901(b)(3)");
+  });
+
   it("names the specific answer that is missing rather than saying 'incomplete'", () => {
     const data = draftData();
     data.filingDetails = { ...data.filingDetails, spouse: { address: {}, dateOfBirth: undefined } };
@@ -246,7 +259,7 @@ describe("buildSettlementTermSheet", () => {
     const alimony = sheet.sections.find((section) => section.id === "alimony");
     const property = sheet.sections.find((section) => section.id === "equitableDistribution");
 
-    expect(alimony?.attorneyDecisions.join(" ")).toMatch(/modifiable/i);
+    expect(alimony?.attorneyDecisions.join(" ")).toMatch(/draft|enforceability/i);
     expect(property?.attorneyDecisions.join(" ")).toMatch(/Qualified Domestic Relations Order/i);
   });
 
@@ -259,9 +272,38 @@ describe("buildSettlementTermSheet", () => {
     expect(childSupport?.unavailable).toMatch(/No children/i);
   });
 
-  it("presents alimony as a range, never as a single predicted figure", () => {
+  it("uses the parties' agreed alimony amount and never the calculated estimate", () => {
     const alimony = termSheet().sections.find((section) => section.id === "alimony");
-    const amount = alimony?.items.find((item) => item.label === "Estimated monthly amount");
-    expect(amount?.value).toMatch(/ to /);
+    const amount = alimony?.items.find((item) => item.label === "Agreed payment");
+
+    expect(amount?.value).toBe("$1,000.00 monthly");
+    expect(alimony?.items.some((item) => /estimated/i.test(item.label))).toBe(false);
+  });
+
+  it("excludes the estimate when no agreement has been reached", () => {
+    const data = draftData();
+    data.alimonyFactors = {
+      ...data.alimonyFactors,
+      alimonyAgreementStatus: "not_agreed",
+      agreedAlimonyAmount: 0,
+    };
+
+    const alimony = termSheet(data).sections.find((section) => section.id === "alimony");
+
+    expect(alimony?.items).toHaveLength(0);
+    expect(alimony?.unavailable).toMatch(/estimate is intentionally excluded/i);
+  });
+
+  it("records an agreed waiver without inventing payment terms", () => {
+    const data = draftData();
+    data.alimonyFactors = {
+      ...data.alimonyFactors,
+      alimonyAgreementStatus: "agreed_waiver",
+      agreedAlimonyAmount: 0,
+    };
+
+    const alimony = termSheet(data).sections.find((section) => section.id === "alimony");
+
+    expect(alimony?.items[0]?.value).toBe("No alimony will be paid");
   });
 });

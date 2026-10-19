@@ -363,4 +363,50 @@ describe("alimonyFactorsSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("requires complete payment terms when the parties report an agreement", () => {
+    const factors = createSampleDraft().data.alimonyFactors;
+    factors.agreedAlimonyAmount = 0;
+    factors.agreedAlimonyEndCondition = "";
+
+    const result = alimonyFactorsSchema.safeParse(factors);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const messages = result.error.issues.map((issue) => issue.message);
+      expect(messages).toContain("Enter the agreed payment amount");
+      expect(messages).toContain("Enter the agreed duration or ending condition");
+    }
+  });
+
+  it("does not require payment fields for an agreed no-alimony disposition", () => {
+    const factors = {
+      ...createSampleDraft().data.alimonyFactors,
+      alimonyAgreementStatus: "agreed_waiver",
+      agreedAlimonyAmount: 0,
+      agreedAlimonyType: undefined,
+      agreedAlimonyFrequency: undefined,
+      agreedAlimonyStartDate: undefined,
+      agreedAlimonyEndCondition: "",
+      agreedAlimonyModifiability: undefined,
+      agreedAlimonyPaymentMethod: undefined,
+      agreedAlimonySecurity: undefined,
+    };
+
+    expect(alimonyFactorsSchema.safeParse(factors).success).toBe(true);
+  });
+
+  it("keeps drafts saved before agreed-term fields were added valid", () => {
+    const factors = { ...createSampleDraft().data.alimonyFactors } as Record<string, unknown>;
+    delete factors.alimonyAgreementStatus;
+    delete factors.agreedAlimonyAmount;
+
+    const result = alimonyFactorsSchema.safeParse(factors);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.alimonyAgreementStatus).toBe("not_agreed");
+      expect(result.data.agreedAlimonyAmount).toBe(0);
+    }
+  });
 });

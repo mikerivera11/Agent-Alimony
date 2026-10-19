@@ -67,6 +67,12 @@ describe("official court forms", () => {
     expect(form.getCheckBox("there are marital assets or liabilities").isChecked()).toBe(true);
     expect(form.getTextField("Telephone Number").getText()).toBe("407-555-0100");
     expect(form.getTextField("designated email address").getText()).toBe("alex@example.invalid");
+    expect(form.getTextField("indicate amount of payment").getText()).toBe("1000.00");
+    expect(form.getTextField("check for every month").getText()).toBe("X");
+    expect(
+      form.getCheckBox("Respondent requests that the Court order the other spouse to pay the following").isChecked(),
+    ).toBe(true);
+    expect(form.getCheckBox("check for payment by petitioner").isChecked()).toBe(true);
   });
 
   it("writes structured child residence and UCCJEA history answers into the affidavit", async () => {
@@ -155,6 +161,14 @@ describe("official court forms", () => {
     expect(form.getTextField("County Name").getText()).toBe("Sample County (fictional)");
     expect(form.getTextField("Full Legal Name").getText()).toBe("Alex Rivera (fictional)");
     expect(form.getTextField(placeField).getText()).toBe("Orlando, Florida");
+    if (formNumber === "12.901(b)(2)") {
+      expect(form.getTextField("Spousal support (alimony) Amount").getText()).toBe("1000.00");
+      expect(
+        form
+          .getTextField("type of alimony (temporary, permanent, bridge-the-gap, durational, rehabilitative, and/or lump sum)")
+          .getText(),
+      ).toBe("Durational");
+    }
   });
 
   it("writes deterministic support results into the official child-support worksheet", async () => {

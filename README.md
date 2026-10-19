@@ -436,12 +436,26 @@ five-year residence and UCCJEA proceeding history.
 - **A term sheet** covering alimony, child support, equitable distribution, and
   parenting, with the statutory basis printed under every figure.
 
+The alimony portion of that term sheet is populated only from the conditional
+**Agreed alimony terms** questions in the intake. It records the parties'
+confirmed amount, frequency, start date, duration/end condition, type,
+modifiability, payment method, security, and drafting notes. If no agreement
+has been reached, the packet says so and deliberately excludes the app's
+calculated alimony estimate. The estimate remains visible on the results page
+for comparison.
+
 The results page also offers a separate **Populated Florida court forms**
 download. It inserts confirmed answers into revision-locked copies of the
 Florida Supreme Court Approved Family Law Forms using verified AcroForm field
 mappings. The download includes the applicable petition, cover sheet,
 child-related forms when relevant, child-support worksheet when the
 deterministic calculation completed, and parenting plan.
+
+When payment terms are agreed, the same confirmed amount, cadence, start date,
+duration/end condition, and alimony type are inserted into the verified
+alimony controls of the applicable dissolution petition. The app still does
+not generate a binding marital settlement agreement or proposed final
+judgment; an attorney must draft those instruments from the term sheet.
 
 The court-form download is disabled until every mapped, applicable factual
 question has a confirmed answer. The results page lists each remaining answer

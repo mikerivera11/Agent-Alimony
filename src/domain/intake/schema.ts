@@ -636,6 +636,28 @@ export const alimonyFactorsSchema = z
       ["not_sure", "bridge_the_gap", "rehabilitative", "durational", "permanent", "none"],
       { message: "Choose the option closest to what you're looking for" },
     ),
+    alimonyAgreementStatus: z
+      .enum(["agreed_payment", "agreed_waiver", "not_agreed"], {
+        message: "Choose whether you and your spouse have agreed on alimony",
+      })
+      .default("not_agreed"),
+    agreedAlimonyType: z
+      .enum(["bridge_the_gap", "rehabilitative", "durational", "lump_sum", "other"])
+      .optional(),
+    agreedAlimonyAmount: addedMoneySchema,
+    agreedAlimonyFrequency: z
+      .enum(["weekly", "every_two_weeks", "twice_monthly", "monthly", "one_time", "other"])
+      .optional(),
+    agreedAlimonyStartDate: optionalIsoDateSchema,
+    agreedAlimonyEndCondition: shortTextSchema.optional(),
+    agreedAlimonyModifiability: z.enum(["modifiable", "nonmodifiable", "attorney_to_confirm"]).optional(),
+    agreedAlimonyPaymentMethod: z
+      .enum(["direct", "state_disbursement_unit", "income_withholding", "other", "attorney_to_confirm"])
+      .optional(),
+    agreedAlimonySecurity: z
+      .enum(["none", "life_insurance", "other", "attorney_to_confirm"])
+      .optional(),
+    agreedAlimonyNotes: longTextSchema.optional(),
   })
   .superRefine((value, ctx) => {
     if (value.requestedAlimonyType === "none" && value.potentialAlimonyRecipient !== "none") {
@@ -651,6 +673,35 @@ export const alimonyFactorsSchema = z
         path: ["requestedAlimonyType"],
         message: "Choose 'I'm not requesting alimony,' or identify a potential recipient",
       });
+    }
+    if (value.alimonyAgreementStatus === "agreed_payment") {
+      if (value.potentialAlimonyRecipient === "none" || value.potentialAlimonyRecipient === "not_sure") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["potentialAlimonyRecipient"],
+          message: "Identify who will receive the agreed alimony payment",
+        });
+      }
+      if (value.agreedAlimonyAmount <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["agreedAlimonyAmount"],
+          message: "Enter the agreed payment amount",
+        });
+      }
+      for (const [field, message] of [
+        ["agreedAlimonyType", "Choose the agreed type of alimony"],
+        ["agreedAlimonyFrequency", "Choose how often the agreed amount will be paid"],
+        ["agreedAlimonyStartDate", "Enter when the agreed payments begin"],
+        ["agreedAlimonyEndCondition", "Enter the agreed duration or ending condition"],
+        ["agreedAlimonyModifiability", "Choose the agreed modification treatment"],
+        ["agreedAlimonyPaymentMethod", "Choose the agreed payment method"],
+        ["agreedAlimonySecurity", "Choose whether the obligation is secured"],
+      ] as const) {
+        if (!value[field] || (typeof value[field] === "string" && !value[field].trim())) {
+          ctx.addIssue({ code: "custom", path: [field], message });
+        }
+      }
     }
   });
 

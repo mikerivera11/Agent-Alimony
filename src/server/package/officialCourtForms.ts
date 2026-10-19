@@ -180,6 +180,52 @@ function formatDate(iso: string | undefined): string {
   return year && month && day ? `${month}/${day}/${year}` : iso;
 }
 
+const ALIMONY_TYPE_LABELS = {
+  bridge_the_gap: "Bridge-the-gap",
+  rehabilitative: "Rehabilitative",
+  durational: "Durational",
+  lump_sum: "Lump sum",
+  other: "Other",
+} as const;
+
+const ALIMONY_FREQUENCY_LABELS = {
+  weekly: "weekly",
+  every_two_weeks: "every two weeks",
+  twice_monthly: "twice monthly",
+  monthly: "monthly",
+  one_time: "one-time",
+  other: "other frequency",
+} as const;
+
+function agreedAlimonySummary(context: PopulationContext): string {
+  const factors = context.draft.data.alimonyFactors;
+  if (factors.alimonyAgreementStatus !== "agreed_payment") return "";
+  const amount = `$${factors.agreedAlimonyAmount.toFixed(2)}`;
+  const frequency = factors.agreedAlimonyFrequency
+    ? ALIMONY_FREQUENCY_LABELS[factors.agreedAlimonyFrequency]
+    : "frequency not entered";
+  return [
+    `${amount} ${frequency}`,
+    factors.agreedAlimonyType ? ALIMONY_TYPE_LABELS[factors.agreedAlimonyType] : "",
+    factors.agreedAlimonyEndCondition,
+    factors.agreedAlimonyModifiability === "nonmodifiable"
+      ? "nonmodifiable"
+      : factors.agreedAlimonyModifiability === "modifiable"
+        ? "modifiable"
+        : "modifiability for attorney to confirm",
+    factors.agreedAlimonyNotes,
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
+function selfIsAgreedAlimonyRecipient(context: PopulationContext): boolean | null {
+  const recipient = context.draft.data.alimonyFactors.potentialAlimonyRecipient;
+  if (recipient === "self") return true;
+  if (recipient === "spouse") return false;
+  return null;
+}
+
 function setText(
   form: PDFForm,
   name: string,
@@ -311,6 +357,44 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
     if (data.parentingPlan?.planStatus === "in_dispute") {
       check(form, "parties have not agreed to a parenting plan");
     }
+    if (data.alimonyFactors.alimonyAgreementStatus === "agreed_payment") {
+      const selfIsRecipient = selfIsAgreedAlimonyRecipient(context);
+      const recipientIsPetitioner =
+        selfIsRecipient === null || context.parties.selfIsPetitioner === null
+          ? null
+          : selfIsRecipient === context.parties.selfIsPetitioner;
+      if (recipientIsPetitioner === true) {
+        check(form, "Petitioner requests that the Court order the other spouse to pay the following");
+        check(form, "check for payment by respondent");
+      } else if (recipientIsPetitioner === false) {
+        check(form, "Respondent requests that the Court order the other spouse to pay the following");
+        check(form, "check for payment by petitioner");
+      }
+      setText(form, "indicate amount of payment", data.alimonyFactors.agreedAlimonyAmount.toFixed(2), context.warnings);
+      if (data.alimonyFactors.agreedAlimonyFrequency === "weekly") check(form, "check for every week");
+      else if (data.alimonyFactors.agreedAlimonyFrequency === "every_two_weeks") {
+        check(form, "check for every other week");
+      } else if (data.alimonyFactors.agreedAlimonyFrequency === "monthly") {
+        setText(form, "check for every month", "X", context.warnings);
+      } else {
+        setText(
+          form,
+          "enter other payment period",
+          data.alimonyFactors.agreedAlimonyFrequency
+            ? ALIMONY_FREQUENCY_LABELS[data.alimonyFactors.agreedAlimonyFrequency]
+            : "",
+          context.warnings,
+        );
+      }
+      setText(form, "beginning date of support", formatDate(data.alimonyFactors.agreedAlimonyStartDate), context.warnings);
+      setText(form, "payment made until this date", data.alimonyFactors.agreedAlimonyEndCondition, context.warnings);
+      setText(
+        form,
+        "Explain why the Court should order Petitioner or Respondent to pay, and any specific request(s) for type of alimony",
+        agreedAlimonySummary(context),
+        context.warnings,
+      );
+    }
     setText(form, "Printed Name", petitioner?.name, context.warnings);
     setText(form, "Address", petitioner?.street, context.warnings);
     setText(form, "City State Zip", petitioner?.cityStateZip, context.warnings);
@@ -335,6 +419,40 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
   );
   if (formNumber === "12.901(b)(2)") {
     setText(form, "Date of separation: {month, day, year}", formatDate(data.marriage.separationDate), context.warnings);
+    if (data.alimonyFactors.alimonyAgreementStatus === "agreed_payment") {
+      setText(
+        form,
+        "Spousal support (alimony) Amount",
+        data.alimonyFactors.agreedAlimonyAmount.toFixed(2),
+        context.warnings,
+      );
+      setText(
+        form,
+        "Spousal support (alimony) amount beginning date month",
+        formatDate(data.alimonyFactors.agreedAlimonyStartDate),
+        context.warnings,
+      );
+      setText(
+        form,
+        "Spousal support (alimony) amount continuing until {date or event}",
+        data.alimonyFactors.agreedAlimonyEndCondition,
+        context.warnings,
+      );
+      setText(
+        form,
+        "type of alimony (temporary, permanent, bridge-the-gap, durational, rehabilitative, and/or lump sum)",
+        data.alimonyFactors.agreedAlimonyType
+          ? ALIMONY_TYPE_LABELS[data.alimonyFactors.agreedAlimonyType]
+          : "",
+        context.warnings,
+      );
+      setText(
+        form,
+        "Other provisions relating to alimony including any tax treatment and consequences1",
+        agreedAlimonySummary(context),
+        context.warnings,
+      );
+    }
   }
   setText(form, "Printed Name of Petitioner", petitioner?.name, context.warnings);
   setText(form, "Address of Petitioner", petitioner?.street, context.warnings);

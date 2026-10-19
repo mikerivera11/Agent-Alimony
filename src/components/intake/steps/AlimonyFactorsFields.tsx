@@ -1,9 +1,13 @@
+import { useWatch } from "react-hook-form";
+
 import type { AlimonyFactors } from "@/domain/intake";
 
-import { MoneyField, RadioGroupField, TextareaField, YesNoField } from "../fields";
+import { DateField, MoneyField, RadioGroupField, TextareaField, TextField, YesNoField } from "../fields";
 import type { StepFieldsProps } from "./StepFieldsProps";
 
-export function AlimonyFactorsFields({ register, errors }: StepFieldsProps<AlimonyFactors>) {
+export function AlimonyFactorsFields({ register, errors, control }: StepFieldsProps<AlimonyFactors>) {
+  const agreementStatus = useWatch({ control, name: "alimonyAgreementStatus" });
+
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-ink-muted">
@@ -113,6 +117,133 @@ export function AlimonyFactorsFields({ register, errors }: StepFieldsProps<Alimo
           { value: "none", label: "I'm not requesting alimony" },
         ]}
       />
+      <fieldset className="flex flex-col gap-5 rounded-xl border border-line p-5">
+        <legend className="px-2 text-base font-semibold text-ink">Agreed alimony terms for the attorney packet</legend>
+        <p className="text-sm text-ink-muted">
+          The filing packet uses only the agreement entered here. The calculated estimate remains on the results
+          screen for comparison and is not inserted into the attorney packet or court-form draft.
+        </p>
+        <RadioGroupField
+          id="alimonyAgreementStatus"
+          legend="Have you and your spouse reached an agreement about alimony?"
+          required
+          registration={register("alimonyAgreementStatus")}
+          error={errors.alimonyAgreementStatus?.message}
+          options={[
+            { value: "agreed_payment", label: "Yes — alimony will be paid" },
+            { value: "agreed_waiver", label: "Yes — the agreement is that no alimony will be paid" },
+            { value: "not_agreed", label: "No — terms are not agreed yet" },
+          ]}
+        />
+        {agreementStatus === "agreed_payment" ? (
+          <>
+            <RadioGroupField
+              id="agreedAlimonyType"
+              legend="Agreed type of alimony"
+              required
+              registration={register("agreedAlimonyType")}
+              error={errors.agreedAlimonyType?.message}
+              options={[
+                { value: "bridge_the_gap", label: "Bridge-the-gap" },
+                { value: "rehabilitative", label: "Rehabilitative" },
+                { value: "durational", label: "Durational" },
+                { value: "lump_sum", label: "Lump sum" },
+                { value: "other", label: "Other — explain in notes" },
+              ]}
+            />
+            <MoneyField
+              id="agreedAlimonyAmount"
+              label="Agreed payment amount"
+              hint="Enter the amount of each payment, or the full amount for a one-time lump sum."
+              required
+              registration={register("agreedAlimonyAmount")}
+              error={errors.agreedAlimonyAmount?.message}
+            />
+            <RadioGroupField
+              id="agreedAlimonyFrequency"
+              legend="How often will that amount be paid?"
+              required
+              registration={register("agreedAlimonyFrequency")}
+              error={errors.agreedAlimonyFrequency?.message}
+              options={[
+                { value: "weekly", label: "Weekly" },
+                { value: "every_two_weeks", label: "Every two weeks" },
+                { value: "twice_monthly", label: "Twice monthly" },
+                { value: "monthly", label: "Monthly" },
+                { value: "one_time", label: "One-time payment" },
+                { value: "other", label: "Other — explain in notes" },
+              ]}
+            />
+            <DateField
+              id="agreedAlimonyStartDate"
+              label="Payment start date"
+              required
+              registration={register("agreedAlimonyStartDate")}
+              error={errors.agreedAlimonyStartDate?.message}
+            />
+            <TextField
+              id="agreedAlimonyEndCondition"
+              label="Duration or ending condition"
+              hint="For example: 60 monthly payments, through August 2031, or one payment due on the start date."
+              required
+              registration={register("agreedAlimonyEndCondition")}
+              error={errors.agreedAlimonyEndCondition?.message}
+            />
+            <RadioGroupField
+              id="agreedAlimonyModifiability"
+              legend="Can the agreed alimony terms be modified later?"
+              required
+              registration={register("agreedAlimonyModifiability")}
+              error={errors.agreedAlimonyModifiability?.message}
+              options={[
+                { value: "modifiable", label: "Modifiable" },
+                { value: "nonmodifiable", label: "Nonmodifiable" },
+                { value: "attorney_to_confirm", label: "Attorney must confirm the language" },
+              ]}
+            />
+            <RadioGroupField
+              id="agreedAlimonyPaymentMethod"
+              legend="Agreed payment method"
+              required
+              registration={register("agreedAlimonyPaymentMethod")}
+              error={errors.agreedAlimonyPaymentMethod?.message}
+              options={[
+                { value: "direct", label: "Direct payment between spouses" },
+                { value: "state_disbursement_unit", label: "State Disbursement Unit" },
+                { value: "income_withholding", label: "Income withholding" },
+                { value: "other", label: "Other — explain in notes" },
+                { value: "attorney_to_confirm", label: "Attorney must confirm" },
+              ]}
+            />
+            <RadioGroupField
+              id="agreedAlimonySecurity"
+              legend="Is security required for the alimony obligation?"
+              required
+              registration={register("agreedAlimonySecurity")}
+              error={errors.agreedAlimonySecurity?.message}
+              options={[
+                { value: "none", label: "No security" },
+                { value: "life_insurance", label: "Life insurance" },
+                { value: "other", label: "Other security — explain in notes" },
+                { value: "attorney_to_confirm", label: "Attorney must confirm" },
+              ]}
+            />
+            <TextareaField
+              id="agreedAlimonyNotes"
+              label="Other agreed alimony terms or drafting notes"
+              hint="Include any payment-day details, security amount, special termination event, or other term the attorney should address."
+              registration={register("agreedAlimonyNotes")}
+              error={errors.agreedAlimonyNotes?.message}
+            />
+          </>
+        ) : null}
+        {agreementStatus === "agreed_waiver" ? (
+          <p className="rounded-lg bg-surface-muted p-4 text-sm text-ink-muted">
+            The packet will state that the parties report an agreement for no alimony. An attorney must draft the
+            exact waiver and confirm whether it is permanent and nonmodifiable.
+          </p>
+        ) : null}
+      </fieldset>
     </div>
   );
 }

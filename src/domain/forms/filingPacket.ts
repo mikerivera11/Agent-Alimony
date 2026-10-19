@@ -25,7 +25,6 @@
 import type { IntakeDraftData } from "@/domain/intake";
 import { formatCentsAsDollars } from "@/domain/package/formatting";
 import type { PackageViewModel } from "@/domain/package/types";
-import { ALIMONY_FORM_LABELS } from "@/domain/rules";
 
 import { OFFICIAL_FILING_FORMS, type FilingFormEntry } from "./officialForms";
 
@@ -158,6 +157,10 @@ function selectedFormNumbers(data: FilingPacketDraftData): Set<string> {
   const hasChildren = data.children?.hasChildren === "yes";
   const items = data.assetsDebts?.items ?? [];
   const hasPropertyOrDebt = Array.isArray(items) && items.length > 0;
+  const hasAlimonyTerms =
+    data.alimonyFactors?.alimonyAgreementStatus === "agreed_payment" ||
+    (data.alimonyFactors?.potentialAlimonyRecipient !== undefined &&
+      data.alimonyFactors.potentialAlimonyRecipient !== "none");
 
   const selected = new Set<string>(["12.928", "12.902(j)", "12.932"]);
 
@@ -168,7 +171,7 @@ function selectedFormNumbers(data: FilingPacketDraftData): Set<string> {
     selected.add("12.995(a)");
     selected.add("12.902(d)");
     selected.add("12.990(c)(1)");
-  } else if (hasPropertyOrDebt) {
+  } else if (hasPropertyOrDebt || hasAlimonyTerms) {
     selected.add("12.901(b)(2)");
     selected.add("12.902(f)(2)");
   } else {
@@ -304,6 +307,10 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
 
   if (formNumber.startsWith("12.902(f)")) {
     needsBothNames();
+    const agreement = data.alimonyFactors?.alimonyAgreementStatus;
+    if (agreement === "not_agreed" && data.alimonyFactors?.potentialAlimonyRecipient !== "none") {
+      missing.push("The parties' agreed alimony terms, or confirmation that alimony is waived");
+    }
   }
 
   return Array.from(new Set(missing));
@@ -399,34 +406,90 @@ export interface SettlementTermSheet {
 }
 
 export const TERM_SHEET_DISCLAIMER =
-  "This term sheet is a summary of estimated figures and stated preferences. It is not a marital settlement " +
+  "This term sheet is a summary of stated agreements and calculated support/property information. It is not a marital settlement " +
   "agreement, it is not signed, and it binds nobody. It exists so a Florida attorney can draft the actual " +
-  "agreement without re-gathering everything. Every figure is an estimate produced from the answers given, not a " +
-  "prediction of what a court would order.";
+  "agreement without re-gathering everything. The alimony section contains only terms the parties reported as agreed; " +
+  "it never substitutes the app's alimony estimate for an agreement.";
 
-function alimonySection(pkg: PackageViewModel): TermSheetSection {
+const AGREED_ALIMONY_TYPE_LABELS = {
+  bridge_the_gap: "Bridge-the-gap",
+  rehabilitative: "Rehabilitative",
+  durational: "Durational",
+  lump_sum: "Lump sum",
+  other: "Other",
+} as const;
+
+const AGREED_ALIMONY_FREQUENCY_LABELS = {
+  weekly: "weekly",
+  every_two_weeks: "every two weeks",
+  twice_monthly: "twice monthly",
+  monthly: "monthly",
+  one_time: "one-time payment",
+  other: "other frequency",
+} as const;
+
+const AGREED_ALIMONY_MODIFIABILITY_LABELS = {
+  modifiable: "Modifiable",
+  nonmodifiable: "Nonmodifiable",
+  attorney_to_confirm: "Attorney to confirm",
+} as const;
+
+const AGREED_ALIMONY_PAYMENT_METHOD_LABELS = {
+  direct: "Direct payment between spouses",
+  state_disbursement_unit: "State Disbursement Unit",
+  income_withholding: "Income withholding",
+  other: "Other method",
+  attorney_to_confirm: "Attorney to confirm",
+} as const;
+
+const AGREED_ALIMONY_SECURITY_LABELS = {
+  none: "None",
+  life_insurance: "Life insurance",
+  other: "Other security",
+  attorney_to_confirm: "Attorney to confirm",
+} as const;
+
+function alimonySection(data: FilingPacketDraftData): TermSheetSection {
   const attorneyDecisions = [
-    "Which form of alimony is appropriate, and for how long.",
-    "Whether alimony is modifiable or non-modifiable, and whether either spouse waives it permanently.",
-    "How alimony is treated for tax purposes.",
-    "Whether life insurance must secure the obligation, and who pays for it.",
+    "Draft the agreed terms into the applicable marital settlement agreement and proposed final judgment.",
+    "Confirm enforceability, statutory limits, termination events, and any tax consequences.",
   ];
 
-  if (pkg.alimony.kind !== "calculated") {
+  const factors = data.alimonyFactors;
+  if (factors?.alimonyAgreementStatus === "agreed_waiver") {
+    return {
+      id: "alimony",
+      title: "Alimony",
+      items: [
+        {
+          label: "Parties' stated agreement",
+          value: "No alimony will be paid",
+          basis: "Confirmed answer in the Agreed alimony terms section of the intake.",
+        },
+      ],
+      attorneyDecisions,
+    };
+  }
+
+  if (factors?.alimonyAgreementStatus !== "agreed_payment") {
     return {
       id: "alimony",
       title: "Alimony",
       items: [],
       attorneyDecisions,
       unavailable:
-        pkg.alimony.kind === "needsInput"
-          ? `Not stated: ${pkg.alimony.message}`
-          : `Not stated: ${"reason" in pkg.alimony ? pkg.alimony.reason : "the alimony calculation did not complete."}`,
+        "No agreed alimony terms were entered. The calculated alimony estimate is intentionally excluded from this filing packet.",
     };
   }
 
-  const result = pkg.alimony.result;
-  const availableForms = result.formAvailability.filter((form) => form.available);
+  const recipientIsSelf = factors.potentialAlimonyRecipient === "self";
+  const recipient = recipientIsSelf
+    ? data.filingDetails?.you?.fullLegalName || "You"
+    : data.filingDetails?.spouse?.fullLegalName || "Your spouse";
+  const payer = recipientIsSelf
+    ? data.filingDetails?.spouse?.fullLegalName || "Your spouse"
+    : data.filingDetails?.you?.fullLegalName || "You";
+  const amount = formatCentsAsDollars(Math.round((factors.agreedAlimonyAmount ?? 0) * 100));
 
   return {
     id: "alimony",
@@ -434,33 +497,71 @@ function alimonySection(pkg: PackageViewModel): TermSheetSection {
     attorneyDecisions,
     items: [
       {
-        label: "Length of marriage",
-        value: `${result.marriageDurationMonths} months (${result.marriageDurationCategory})`,
-        basis: "Marriage date to petition filing date, §61.08(4).",
+        label: "Parties' stated agreement",
+        value: "Alimony will be paid under the terms below",
+        basis: "Confirmed answer in the Agreed alimony terms section of the intake.",
       },
       {
-        label: "Estimated monthly amount",
-        value: `${formatCentsAsDollars(result.amountCeiling.rangeFloorCents)} to ${formatCentsAsDollars(
-          result.amountCeiling.rangeCeilingCents,
-        )} per month`,
-        basis:
-          result.amountCeiling.limitingFactor === "reasonableNeed"
-            ? "Capped by the recipient's documented reasonable need, §61.08(8)."
-            : "Capped by 35% of the difference in the spouses' net incomes, §61.08(8).",
+        label: "Payer",
+        value: payer,
+        basis: "Derived from the confirmed recipient.",
       },
       {
-        label: "Forms of alimony available",
-        value:
-          availableForms.length > 0
-            ? availableForms
-                .map((form) =>
-                  form.maxDurationMonths === null
-                    ? ALIMONY_FORM_LABELS[form.form]
-                    : `${ALIMONY_FORM_LABELS[form.form]} (up to ${form.maxDurationMonths} months)`,
-                )
-                .join("; ")
-            : "None available on these facts",
-        basis: "§61.08(5)-(8), by length of marriage.",
+        label: "Recipient",
+        value: recipient,
+        basis: "Confirmed answer in the intake.",
+      },
+      {
+        label: "Agreed type",
+        value: factors.agreedAlimonyType
+          ? AGREED_ALIMONY_TYPE_LABELS[factors.agreedAlimonyType]
+          : "Not entered",
+        basis: "Parties' stated agreement.",
+      },
+      {
+        label: "Agreed payment",
+        value: `${amount} ${
+          factors.agreedAlimonyFrequency
+            ? AGREED_ALIMONY_FREQUENCY_LABELS[factors.agreedAlimonyFrequency]
+            : "frequency not entered"
+        }`,
+        basis: "Parties' stated agreement; not the app's calculated estimate.",
+      },
+      {
+        label: "Start date",
+        value: factors.agreedAlimonyStartDate || "Not entered",
+        basis: "Parties' stated agreement.",
+      },
+      {
+        label: "Duration or ending condition",
+        value: factors.agreedAlimonyEndCondition || "Not entered",
+        basis: "Parties' stated agreement.",
+      },
+      {
+        label: "Modification treatment",
+        value: factors.agreedAlimonyModifiability
+          ? AGREED_ALIMONY_MODIFIABILITY_LABELS[factors.agreedAlimonyModifiability]
+          : "Not entered",
+        basis: "Parties' stated agreement, subject to attorney drafting and enforceability review.",
+      },
+      {
+        label: "Payment method",
+        value: factors.agreedAlimonyPaymentMethod
+          ? AGREED_ALIMONY_PAYMENT_METHOD_LABELS[factors.agreedAlimonyPaymentMethod]
+          : "Not entered",
+        basis: "Parties' stated agreement.",
+      },
+      {
+        label: "Security",
+        value: factors.agreedAlimonySecurity
+          ? AGREED_ALIMONY_SECURITY_LABELS[factors.agreedAlimonySecurity]
+          : "Not entered",
+        basis: "Parties' stated agreement.",
+      },
+      {
+        label: "Additional terms",
+        value: factors.agreedAlimonyNotes?.trim() || "None entered",
+        basis: "Parties' stated drafting notes.",
       },
     ],
   };
@@ -644,7 +745,7 @@ export function buildSettlementTermSheet(options: {
     generatedAt,
     disclaimer: TERM_SHEET_DISCLAIMER,
     sections: [
-      alimonySection(packageViewModel),
+      alimonySection(data),
       childSupportSection(packageViewModel, data),
       equitableDistributionSection(packageViewModel),
       parentingSection(data),

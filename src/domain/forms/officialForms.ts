@@ -103,7 +103,7 @@ export const OFFICIAL_FILING_FORMS: readonly FilingFormEntry[] = [
       note: note("Use this version when there are no minor children but there is property or debt to divide."),
     },
     requirement: "situational",
-    whenItApplies: "No dependent or minor children, but there is property or debt to divide.",
+    whenItApplies: "No dependent or minor children, but there is property, debt, or an alimony request to resolve.",
     whyItMatters: "The document that opens the case and states what you are asking the court to order.",
   },
   {
