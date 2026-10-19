@@ -169,10 +169,7 @@ cat >&2 <<SUMMARY
   PostgreSQL private networking: ${IS_PRIVATE}
 
 Next steps:
-  1. Enable Local Git and add the git remote:
-       ENVIRONMENT_NAME=${ENVIRONMENT_NAME} ./scripts/azure/enable-local-git.sh
-  2. Push the app once you're ready to release:
-       git push azure-${ENVIRONMENT_NAME} HEAD:master
-  3. Smoke test the running app (safe, no private data sent):
-       ENVIRONMENT_NAME=${ENVIRONMENT_NAME} ./scripts/azure/smoke-test.sh
+  1. Build and deploy the standalone application package:
+       ENVIRONMENT_NAME=${ENVIRONMENT_NAME} ./scripts/azure/deploy-app.sh
+  2. The deployment script automatically smoke-tests the running app.
 SUMMARY

@@ -66,21 +66,20 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
       minTlsVersion: '1.2'
       http20Enabled: true
       healthCheckPath: '/api/health'
-      appCommandLine: 'npm run start'
+      // Releases contain Next's prebuilt standalone server, so startup never
+      // waits for dependency extraction or a remote Oryx build.
+      appCommandLine: 'node server.js'
     }
   }
 }
 
-// Local Git deployment (this project's chosen release mechanism) goes
-// through SCM/Kudu basic auth, so it must stay explicitly enabled even
-// though FTP/FTPS is fully disabled above. Declaring both policies
-// explicitly (rather than relying on the platform default) keeps this
-// tenant-auditable instead of implicit.
+// Application releases use ARM-authenticated ZipDeploy, not publishing
+// credentials. Keep both SCM and FTP basic authentication disabled.
 resource scmBasicAuthPolicy 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
   parent: webApp
   name: 'scm'
   properties: {
-    allow: true
+    allow: false
   }
 }
 

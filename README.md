@@ -672,7 +672,7 @@ The Azure deployment targets **Central US** in whichever Azure AD tenant/subscri
 - Azure Storage with shared-key access disabled, public blob access disabled, and private `case-documents`/`generated-packages` containers (seven-day lifecycle deletion of source documents only)
 - Azure Key Vault (RBAC, soft delete, purge protection) holding `DATABASE_URL` and `SESSION_SIGNING_SECRET`, referenced by the App Service via Key Vault references
 - Application Insights + Log Analytics, with no application code assuming or requiring sensitive-data logging
-- Azure CLI + Bicep for infrastructure (`infra/`) and **App Service Deployment Center Local Git** for application releases (`scripts/azure/`) — there is intentionally no GitHub Actions workflow
+- Azure CLI + Bicep for infrastructure (`infra/`) and ARM-authenticated deployment of a locally built Next.js standalone package (`scripts/azure/`) — there is intentionally no GitHub Actions workflow
 
 Azure deployment is performed only after the local vertical slice passes, and only manually, by an operator with access to the target tenant. Tenant and subscription selection is driven entirely by `az login --tenant` and `az account set --subscription`, using environment variables supplied at deploy time — no tenant ID, subscription ID, or secret is ever hard-coded in Bicep or committed to source control.
 
@@ -685,11 +685,11 @@ infra/modules/network.bicep         VNet, App Service/PostgreSQL delegated subne
 infra/modules/postgres.bicep        PostgreSQL Flexible Server + database (private by default)
 infra/modules/storage.bicep         Storage account, containers, 7-day source-document lifecycle policy
 infra/modules/keyvault.bicep        Key Vault (RBAC) + DATABASE_URL/SESSION_SIGNING_SECRET secrets
-infra/modules/app-service.bicep     Linux App Service Plan + Web App (Node 24), Local Git basic-auth policy
+infra/modules/app-service.bicep     Linux App Service Plan + Web App (Node 24), publishing basic auth disabled
 infra/modules/monitoring.bicep      Log Analytics workspace + Application Insights
 infra/main.parameters.example.json  Placeholder-only parameters file (copy to main.parameters.json, gitignored)
 scripts/azure/deploy-infra.sh       Login, validate, deploy Bicep; saves non-secret deployment outputs
-scripts/azure/enable-local-git.sh   Enables Local Git; configures a named git remote (no credentials committed)
+scripts/azure/deploy-app.sh         Builds and deploys the Next.js standalone package through Azure ARM auth
 scripts/azure/smoke-test.sh         GET-only checks of /api/health, /, /documents, /results
 scripts/azure/lib.sh                Shared helpers (logging, env checks, reading deployment outputs)
 ```
@@ -698,7 +698,7 @@ scripts/azure/lib.sh                Shared helpers (logging, env checks, reading
 
 - Access to the target Azure AD tenant and an Azure subscription in it, with App Service quota in the chosen region
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (this project was validated against CLI 2.88 and Bicep CLI 0.45; run `az bicep install`/`az bicep upgrade` if you don't already have the Bicep CLI)
-- `git`, `curl`, `openssl`, and `python3` (used only by `scripts/azure/*.sh` to parse deployment-output JSON — no extra npm/pip packages required)
+- `git`, `curl`, `zip`, `openssl`, and `python3` (used by `scripts/azure/*.sh`; no extra npm/pip packages required)
 - The local vertical slice already passing (`npm run typecheck && npm run lint && npm test && npm run build`)
 
 None of this requires GitHub Actions, a service principal, or CI secrets: every command below is run interactively, from an operator's machine, using their own Azure AD sign-in.
@@ -739,50 +739,40 @@ export AZURE_SUBSCRIPTION=<your-subscription-id-or-name>
 
 This logs in (`az login --tenant`), sets the subscription context (`az account set --subscription`), runs `az bicep build` and `az deployment sub validate`, asks for confirmation, then runs `az deployment sub create` against `infra/main.bicep` at **subscription scope** — the template itself creates the `<namePrefix>-<environmentName>-rg` resource group in the chosen region and deploys every resource into it. Non-secret outputs (resource group, web app name/URL, Key Vault/storage names) are saved to `infra/.deployment-outputs.<environmentName>.json` (gitignored) for the other two scripts to read.
 
-### Releasing the application (Local Git)
+### Releasing the application (standalone ZipDeploy)
 
 ```bash
 export AZURE_TENANT_ID=<your-tenant-guid>
 export AZURE_SUBSCRIPTION=<your-subscription-id-or-name>
 export ENVIRONMENT_NAME=<same environmentName as above>
 
-./scripts/azure/enable-local-git.sh
-git push azure-<environmentName> HEAD:master   # App Service always deploys from "master"
+./scripts/azure/deploy-app.sh
 ```
 
-`enable-local-git.sh` runs `az webapp deployment source config-local-git`, adds/updates a git remote named `azure-<environmentName>`, and prints next steps. It never prints a password: the returned Local Git URL carries only a deployment *username* (Azure's documented behavior), and git prompts for the password interactively on first push, letting your OS/Git credential manager cache it outside this repository. Set a deployment password once beforehand with `az webapp deployment user set --user-name <name>` if you haven't already (also prompts interactively).
+`deploy-app.sh` installs the lockfile exactly with `npm ci`, runs the
+production build locally, packages `.next/standalone` together with
+`.next/static` and `public`, and sends that immutable ZIP through
+`az webapp deploy`. Azure does not run Oryx, reinstall dependencies, or need a
+publishing password. The App Service runs `node server.js`; SCM and FTP basic
+authentication stay disabled.
 
-On push, Azure's Oryx build system runs `npm install` and `npm run build` for you (via `SCM_DO_BUILD_DURING_DEPLOYMENT=true`), then the App Service runs `npm run start`. A full build typically takes several minutes; watch progress with:
-
-```bash
-az webapp log tail --name <web-app-name> --resource-group <resource-group-name>
-```
-
-Then confirm the release:
-
-```bash
-ENVIRONMENT_NAME=<environmentName> ./scripts/azure/smoke-test.sh
-```
-
-### Local Git limitations
-
-- Local Git deployment requires **SCM basic authentication** on the App Service (`infra/modules/app-service.bicep` enables it explicitly, alongside FTP basic auth left explicitly disabled). If an Azure Policy at the tenant level disables SCM basic auth platform-wide, `enable-local-git.sh` will fail with a clear error and Local Git cannot be used until that policy is relaxed for this app.
-- App Service always deploys Local Git pushes from the **`master`** branch, regardless of your local repository's default branch name — push with `git push <remote> HEAD:master`.
-- There is exactly one App Service instance with no deployment slot in this MVP topology, so a push causes a brief restart (not a zero-downtime swap). `alwaysOn: true` keeps the app warm between pushes but does not eliminate the restart window during a deploy.
-- Local Git has no separate build log storage beyond Kudu's own deployment history; `az webapp log tail` only shows live output, so tail it during the push if you want to see build errors as they happen.
+There is exactly one App Service instance with no deployment slot in this MVP
+topology, so deployment causes a brief restart rather than a zero-downtime
+slot swap. The script waits for Azure's deployment status and then runs the
+GET-only smoke test automatically.
 
 ### Rollback
 
-Local Git deployment history is retained by Kudu. To roll back:
+ZipDeploy history is retained by App Service. To roll back:
 
-1. **Preferred:** `git revert` the problematic commit(s) locally and `git push azure-<environmentName> HEAD:master` again — this is the same release path as a forward fix and keeps the deployment log linear.
-2. **Alternative:** open the app's **Deployment Center > Logs** blade in the Azure portal, find a prior successful deployment, and use **Redeploy** — Kudu re-runs the build for that historical commit without requiring a local git operation.
+1. **Preferred:** `git revert` the problematic commit(s) locally and run `scripts/azure/deploy-app.sh` again — this is the same release path as a forward fix and keeps the deployment history linear.
+2. **Alternative:** open the app's **Deployment Center > Logs** blade in the Azure portal, find a prior successful deployment, and use **Redeploy**.
 
 Because there is no deployment slot, both options briefly restart the running instance; there is no slot-swap rollback in this MVP topology.
 
 ### Database migration caveat
 
-Local Git/Oryx only runs `npm install && npm run build` on push — **it does not run `npm run db:migrate`**, and nothing in this template wires Drizzle migrations into the release path automatically. When `enablePrivateNetworking` is `true` (the default), the PostgreSQL server also has no public endpoint, so a plain operator laptop cannot reach it directly to run migrations either. Run migrations from inside the VNet-integrated App Service itself instead:
+The standalone release script does **not run `npm run db:migrate`**, and nothing in this template wires Drizzle migrations into the release path automatically. When `enablePrivateNetworking` is `true` (the default), the PostgreSQL server also has no public endpoint, so a plain operator laptop cannot reach it directly to run migrations either. Run migrations from inside the VNet-integrated App Service itself instead:
 
 ```bash
 az webapp ssh --name <web-app-name> --resource-group <resource-group-name>

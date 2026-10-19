@@ -1,7 +1,7 @@
 // Resource-group-scoped orchestrator. Deployed by infra/main.bicep (which
 // creates the resource group at subscription scope) or directly against an
-// existing resource group — see README "Local Git and infrastructure
-// deployment" for both invocation styles.
+// existing resource group — see the README infrastructure deployment section
+// for both invocation styles.
 targetScope = 'resourceGroup'
 
 @description('Name prefix shared by every resource in this deployment (tenant-independent, 3-10 lowercase alphanumeric characters, e.g. "fsg").')
@@ -338,7 +338,10 @@ resource appSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     // above (and the Postgres one); without it lookups go to public DNS and
     // return the public IP, which is blocked.
     WEBSITE_DNS_SERVER: '168.63.129.16'
-    SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
+    // The release script builds Next.js locally and deploys the standalone
+    // artifact. Avoid Oryx reinstalling dependencies on the single production
+    // instance, which otherwise creates a long outage.
+    SCM_DO_BUILD_DURING_DEPLOYMENT: 'false'
     APP_BASE_URL: 'https://${appService.outputs.webAppDefaultHostName}'
     STORAGE_PROVIDER: 'azure'
     AZURE_STORAGE_ACCOUNT_NAME: storage.outputs.storageAccountName
