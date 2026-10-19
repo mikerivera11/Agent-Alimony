@@ -4,7 +4,7 @@ import { createSampleDraft } from "@/test/fixtures/sampleDraft";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildReviewedDraft, } from "@/domain/intake";
+import { buildReviewedDraft } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
 
 import { ResultsExperience } from "../ResultsExperience";
@@ -35,5 +35,41 @@ describe("ResultsExperience", () => {
     expect(screen.getByText(/alimony \(estimate\)/i)).toBeInTheDocument();
     expect(screen.getByText(/estimated monthly amount range/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download pdf/i })).toBeInTheDocument();
+  });
+
+  it("links outstanding court-form questions to the questionnaire section that answers them", async () => {
+    const reviewed = buildReviewedDraft(createSampleDraft());
+    const parentingPlan = reviewed.data.parentingPlan!;
+    await createLocalStorageReviewedSnapshotStorage().save({
+      ...reviewed,
+      data: {
+        ...reviewed.data,
+        filingDetails: {
+          ...reviewed.data.filingDetails!,
+          judicialCircuit: "",
+        },
+        parentingPlan: {
+          ...parentingPlan,
+          holidaySchedules: parentingPlan.holidaySchedules.map((holiday) => ({
+        ...holiday,
+        beginEndTime: "",
+          })),
+        },
+      },
+    });
+
+    render(<ResultsExperience />);
+
+    expect(await screen.findByText(/finish the remaining court-form questions/i)).toBeInTheDocument();
+    expect(screen.getAllByText("The judicial circuit")).toHaveLength(1);
+    expect(screen.getByText(/forms 12\.928, 12\.901\(b\)\(1\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /answer in attorney filing packet \(optional\)/i }),
+    ).toHaveAttribute("href", "/intake?step=filingDetails");
+    expect(screen.getByText("Beginning and ending time for Thanksgiving")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /answer in parenting plan/i })).toHaveAttribute(
+      "href",
+      "/intake?step=parentingPlan",
+    );
   });
 });

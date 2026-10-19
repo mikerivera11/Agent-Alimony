@@ -6,11 +6,13 @@ import Link from "next/link";
 import { Alert, Button, Card, buttonClasses } from "@/components/ui";
 import { buildFilingReadiness, POPULATED_OFFICIAL_FORM_NUMBERS } from "@/domain/forms";
 import {
+  INTAKE_STEPS,
   buildReviewedDraft,
   createLocalStorageIntakeDraftStorage,
   isDraftReadyForReview,
   isReviewedSnapshotStale,
   type IntakeDraft,
+  type IntakeStepId,
   type ReviewedIntakeDraft,
 } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
@@ -34,6 +36,69 @@ type LoadState =
   | { status: "ready"; reviewed: ReviewedIntakeDraft };
 
 type DownloadState = "idle" | "downloading" | "error";
+
+interface OfficialFormQuestion {
+  readonly question: string;
+  readonly formNumbers: readonly string[];
+}
+
+interface OfficialFormQuestionGroup {
+  readonly stepId: IntakeStepId;
+  readonly title: string;
+  readonly questions: readonly OfficialFormQuestion[];
+}
+
+function stepForOfficialFormQuestion(question: string): IntakeStepId {
+  if (question === "Whether you are the petitioner or respondent") return "spouses";
+  if (question === "The date you married") return "marriage";
+  if (question === "Your income by category") return "income";
+  if (question === "Your monthly household expenses") return "householdExpenses";
+  if (question === "Your assets and debts") return "assetsDebts";
+  if (question.includes("alimony terms") || question.includes("alimony is waived")) {
+    return "alimonyFactors";
+  }
+  if (
+    question.includes("parenting plan") ||
+    question.includes("holiday") ||
+    question.startsWith("Who has the children") ||
+    question.startsWith("Beginning and ending time")
+  ) {
+    return "parentingPlan";
+  }
+  return "filingDetails";
+}
+
+function groupOfficialFormQuestions(
+  forms: ReadonlyArray<{
+    readonly formNumber: string;
+    readonly missing: readonly string[];
+  }>,
+): OfficialFormQuestionGroup[] {
+  const groups = new Map<
+    IntakeStepId,
+    Map<string, Set<string>>
+  >();
+
+  for (const form of forms) {
+    for (const question of form.missing) {
+      const stepId = stepForOfficialFormQuestion(question);
+      const questions = groups.get(stepId) ?? new Map<string, Set<string>>();
+      const formNumbers = questions.get(question) ?? new Set<string>();
+      formNumbers.add(form.formNumber);
+      questions.set(question, formNumbers);
+      groups.set(stepId, questions);
+    }
+  }
+
+  return Array.from(groups, ([stepId, questions]) => ({
+    stepId,
+    title: INTAKE_STEPS[stepId].title,
+    questions: Array.from(questions, ([question, formNumbers]) => ({
+      question,
+      formNumbers: Array.from(formNumbers),
+    })),
+  }));
+}
 
 /** Which download is in flight, so one button's spinner never appears on another. */
 type DownloadTarget =
@@ -125,18 +190,21 @@ export function ResultsExperience() {
   // Read from the reviewed snapshot rather than the live draft, so the offer
   // matches the answers the packet would actually be built from.
   const wantsFilingPacket = reviewed?.data.filingDetails?.wantsFilingPacket === "yes";
-  const officialFormGaps = useMemo(() => {
+  const officialFormQuestionGroups = useMemo(() => {
     if (!reviewed || !viewModel || !wantsFilingPacket) return [];
     const populated = new Set<string>(POPULATED_OFFICIAL_FORM_NUMBERS);
-    return buildFilingReadiness({
+    const forms = buildFilingReadiness({
       data: reviewed.data,
       asOfIso: viewModel.generatedAt.slice(0, 10),
     }).forms
       .filter((form) => populated.has(form.entry.form.formNumber) && form.status === "needsInformation")
-      .flatMap((form) =>
-        form.missing.map((missing) => `Form ${form.entry.form.formNumber}: ${missing}`),
-      );
+      .map((form) => ({
+        formNumber: form.entry.form.formNumber,
+        missing: form.missing,
+      }));
+    return groupOfficialFormQuestions(forms);
   }, [reviewed, viewModel, wantsFilingPacket]);
+  const hasOfficialFormGaps = officialFormQuestionGroups.length > 0;
 
   /**
    * One download path for the packet and every worksheet. They all post the
@@ -327,29 +395,41 @@ export function ResultsExperience() {
                   )
                 }
                 loading={downloadState === "downloading" && downloadTarget === "court-forms"}
-                disabled={isStale || downloadState === "downloading" || officialFormGaps.length > 0}
+                disabled={isStale || downloadState === "downloading" || hasOfficialFormGaps}
               >
                 Download populated court forms
               </Button>
             </div>
           </div>
-          {officialFormGaps.length > 0 ? (
+          {hasOfficialFormGaps ? (
             <Alert variant="warning" emphasis title="Finish the remaining court-form questions">
               <p className="text-sm">
                 The official-form download stays disabled so unanswered fields cannot be mistaken for completed
                 answers.
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                {officialFormGaps.map((gap) => (
-                  <li key={gap}>{gap}</li>
+              <div className="mt-3 space-y-4">
+                {officialFormQuestionGroups.map((group) => (
+                  <div key={group.stepId}>
+                    <h3 className="font-semibold">{group.title}</h3>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+                      {group.questions.map((item) => (
+                        <li key={item.question}>
+                          {item.question}{" "}
+                          <span className="text-ink-muted">
+                            (Form{item.formNumbers.length > 1 ? "s" : ""} {item.formNumbers.join(", ")})
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      href={`/intake?step=${group.stepId}`}
+                      className="mt-2 inline-block font-semibold text-primary underline underline-offset-4"
+                    >
+                      Answer in {group.title}
+                    </Link>
+                  </div>
                 ))}
-              </ul>
-              <Link
-                href="/intake?step=filingDetails"
-                className="mt-3 inline-block font-semibold text-primary underline underline-offset-4"
-              >
-                Answer the court-form questions
-              </Link>
+              </div>
             </Alert>
           ) : null}
         </Card>
