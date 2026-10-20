@@ -1,11 +1,7 @@
 import { buildFilingReadiness } from "@/domain/forms";
 import type { ReviewedIntakeDraft } from "@/domain/intake";
 import { buildPackageViewModel } from "@/domain/package";
-import {
-  generateOfficialCourtFormsPdf,
-  getOfficialCourtFormsBlockingGaps,
-  packageRequestSchema,
-} from "@/server/package";
+import { generateOfficialCourtFormsPdf, packageRequestSchema } from "@/server/package";
 
 export const runtime = "nodejs";
 
@@ -46,17 +42,6 @@ export async function POST(request: Request): Promise<Response> {
       { status: 409 },
     );
   }
-  const blockingGaps = getOfficialCourtFormsBlockingGaps(readiness);
-  if (blockingGaps.length > 0) {
-    return Response.json(
-      {
-        error: "Answer the remaining court-form questions before generating populated forms.",
-        missing: blockingGaps,
-      },
-      { status: 409 },
-    );
-  }
-
   const pdfBytes = await generateOfficialCourtFormsPdf({ draft, readiness, viewModel });
   return new Response(new Uint8Array(pdfBytes), {
     status: 200,

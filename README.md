@@ -457,10 +457,11 @@ alimony controls of the applicable dissolution petition. The app still does
 not generate a binding marital settlement agreement or proposed final
 judgment; an attorney must draft those instruments from the term sheet.
 
-The court-form download is disabled until every mapped, applicable factual
-question has a confirmed answer. The results page lists each remaining answer
-by form number and links directly back to the filing-details questions, so a
-blank cannot be mistaken for a completed response.
+The court-form download lists every unresolved mapped answer by form number and
+links directly to the intake section where it can be completed. A partially
+populated draft can still be downloaded: unanswered controls remain blank and
+the PDF cover page prominently lists them for manual or attorney completion, so
+a blank cannot be mistaken for a completed response.
 
 The official-forms download starts with a review cover sheet and is not
 filing-ready:

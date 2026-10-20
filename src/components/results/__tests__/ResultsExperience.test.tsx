@@ -71,6 +71,9 @@ describe("ResultsExperience", () => {
       "href",
       "/intake?step=parentingPlan",
     );
+    expect(
+      screen.getByRole("button", { name: /download partially populated court forms/i }),
+    ).toBeEnabled();
   });
 
   it("shows how to refresh stale court forms and enables download after updating", async () => {

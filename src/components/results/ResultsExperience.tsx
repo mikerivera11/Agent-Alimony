@@ -395,9 +395,9 @@ export function ResultsExperience() {
                   )
                 }
                 loading={downloadState === "downloading" && downloadTarget === "court-forms"}
-                disabled={isStale || downloadState === "downloading" || hasOfficialFormGaps}
+                disabled={isStale || downloadState === "downloading"}
               >
-                Download populated court forms
+                {hasOfficialFormGaps ? "Download partially populated court forms" : "Download populated court forms"}
               </Button>
             </div>
           </div>
@@ -425,8 +425,8 @@ export function ResultsExperience() {
           {hasOfficialFormGaps ? (
             <Alert variant="warning" emphasis title="Finish the remaining court-form questions">
               <p className="text-sm">
-                The official-form download stays disabled so unanswered fields cannot be mistaken for completed
-                answers.
+                You can download the forms now. These unanswered items will remain blank and will also be listed on
+                the PDF cover page so they cannot be mistaken for completed answers.
               </p>
               <div className="mt-3 space-y-4">
                 {officialFormQuestionGroups.map((group) => (

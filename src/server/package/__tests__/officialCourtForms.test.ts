@@ -49,6 +49,22 @@ describe("official court forms", () => {
     expect(manifest.omitted.join(" ")).toContain("settlement agreement");
   });
 
+  it("lists unresolved answers as blanks to complete before filing", () => {
+    const draftData = createSampleDraft();
+    draftData.data.filingDetails.judicialCircuit = "";
+    const draft = buildReviewedDraft(draftData);
+    const viewModel = buildPackageViewModel(draft);
+    const readiness = buildFilingReadiness({
+      data: draft.data,
+      asOfIso: viewModel.generatedAt.slice(0, 10),
+    });
+
+    const manifest = buildOfficialCourtFormsManifest({ draft, viewModel, readiness });
+
+    expect(manifest.warnings.join(" ")).toMatch(/partially populated draft/i);
+    expect(manifest.warnings.join(" ")).toContain("Form 12.928: The judicial circuit");
+  });
+
   it("writes confirmed caption and child facts into the official petition", async () => {
     const { draft, viewModel } = sampleInputs();
     const bytes = await __testing.populateForm({

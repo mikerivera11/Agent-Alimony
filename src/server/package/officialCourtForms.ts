@@ -918,6 +918,13 @@ export function buildOfficialCourtFormsManifest(options: {
     "No form is signed, notarized, witnessed, or electronically filed by this application.",
     "Case number, division, judicial circuit, service details, and facts not collected in the intake remain blank.",
   ];
+  const missingAnswers = getOfficialCourtFormsMissingAnswers(options.readiness);
+  if (missingAnswers.length > 0) {
+    warnings.push(
+      "This is a partially populated draft. The unanswered items listed below remain blank and must be completed before signing or filing.",
+      ...missingAnswers.map((missing) => `Complete before filing: ${missing}.`),
+    );
+  }
   if (options.draft.data.spouses.yourRole === "not_sure") {
     warnings.push(
       "Petitioner and respondent were not assigned because you selected 'not sure' for your role. Confirm the roles before using these forms.",
@@ -1059,7 +1066,7 @@ export async function generateOfficialCourtFormsPdf(options: {
   return doc.save();
 }
 
-export function getOfficialCourtFormsBlockingGaps(readiness: FilingReadiness): string[] {
+export function getOfficialCourtFormsMissingAnswers(readiness: FilingReadiness): string[] {
   const populated = new Set<string>(POPULATED_OFFICIAL_FORM_NUMBERS);
   return readiness.forms
     .filter((form) => populated.has(form.entry.form.formNumber) && form.status === "needsInformation")
