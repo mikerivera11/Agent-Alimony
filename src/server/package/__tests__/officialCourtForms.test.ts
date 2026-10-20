@@ -80,6 +80,7 @@ describe("official court forms", () => {
     expect(form.getTextField("name and date of birth child 1").getText()).toContain(
       "Taylor Rivera (fictional)",
     );
+    expect(form.getCheckBox("check if minor child common to both").isChecked()).toBe(true);
     expect(form.getCheckBox("there are marital assets or liabilities").isChecked()).toBe(true);
     expect(form.getTextField("Telephone Number").getText()).toBe("407-555-0100");
     expect(form.getTextField("designated email address").getText()).toBe("alex@example.invalid");

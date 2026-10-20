@@ -336,6 +336,9 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
     else if (respondentResident) check(form, "check if repondent is");
 
     const childDetails = new Map((filing?.children ?? []).map((child) => [child.childId, child]));
+    if (data.children.children.length > 0) {
+      check(form, "check if minor child common to both");
+    }
     data.children.children.slice(0, 6).forEach((child, index) => {
       const name = childDetails.get(child.id)?.fullLegalName || child.nameOrInitials;
       setText(
