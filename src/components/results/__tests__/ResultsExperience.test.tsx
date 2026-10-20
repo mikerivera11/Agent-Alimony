@@ -1,10 +1,10 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest";
 import { createSampleDraft } from "@/test/fixtures/sampleDraft";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildReviewedDraft } from "@/domain/intake";
+import { buildReviewedDraft, createLocalStorageIntakeDraftStorage } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
 
 import { ResultsExperience } from "../ResultsExperience";
@@ -71,5 +71,33 @@ describe("ResultsExperience", () => {
       "href",
       "/intake?step=parentingPlan",
     );
+  });
+
+  it("shows how to refresh stale court forms and enables download after updating", async () => {
+    const draft = createSampleDraft();
+    const reviewed = {
+      ...buildReviewedDraft(draft),
+      reviewedAt: new Date(Date.now() - 60_000).toISOString(),
+    };
+    await createLocalStorageReviewedSnapshotStorage().save(reviewed);
+    if (!draft.data.income.self) throw new Error("Expected sample income.");
+    draft.data.income.self.wages += 100;
+    draft.updatedAt = new Date().toISOString();
+    await createLocalStorageIntakeDraftStorage().save(draft);
+
+    render(<ResultsExperience />);
+
+    const downloadButton = await screen.findByRole("button", {
+      name: /download populated court forms/i,
+    });
+    expect(downloadButton).toBeDisabled();
+    expect(screen.getByText(/update the forms with your latest answers/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /update court forms with latest answers/i }),
+    );
+
+    await waitFor(() => expect(downloadButton).toBeEnabled());
+    expect(screen.queryByText(/update the forms with your latest answers/i)).not.toBeInTheDocument();
   });
 });

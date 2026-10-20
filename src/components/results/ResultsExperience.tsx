@@ -401,6 +401,27 @@ export function ResultsExperience() {
               </Button>
             </div>
           </div>
+          {isStale ? (
+            <Alert variant="warning" emphasis title="Update the forms with your latest answers">
+              <div className="flex flex-col gap-3">
+                <p className="text-sm">
+                  You answered or changed questionnaire items after these results were generated. Refresh the reviewed
+                  answers before downloading so the court forms use what you entered most recently.
+                </p>
+                <div>
+                  {canRecalculate ? (
+                    <Button type="button" onClick={handleRecalculate}>
+                      Update court forms with latest answers
+                    </Button>
+                  ) : (
+                    <Link href="/intake?step=review" className={buttonClasses("primary", "md")}>
+                      Finish and review the latest answers
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </Alert>
+          ) : null}
           {hasOfficialFormGaps ? (
             <Alert variant="warning" emphasis title="Finish the remaining court-form questions">
               <p className="text-sm">
