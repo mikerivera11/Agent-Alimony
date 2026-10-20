@@ -99,6 +99,7 @@ describe("official court forms", () => {
       draft,
       viewModel,
     });
+
     const form = (await PDFDocument.load(bytes)).getForm();
 
     expect(form.getTextField("Place of Birth for child 1").getText()).toBe("Orlando, Florida");
@@ -116,6 +117,29 @@ describe("official court forms", () => {
         )
         .isChecked(),
     ).toBe(true);
+  });
+
+  it("fits worksheet amounts inside their official form cells", async () => {
+    const { draft, viewModel } = sampleInputs();
+    const bytes = await __testing.populateForm({
+      formNumber: "12.902(e)",
+      draft,
+      viewModel,
+    });
+    const form = (await PDFDocument.load(bytes)).getForm();
+
+    for (const fieldName of [
+      "Petitioner Present Gross Monthly Income",
+      "Respondent Present Gross Monthly Income",
+      "Petitioner Present Net Monthly Income",
+      "Respondent Present Net Monthly Income",
+      "Total Present Net Monthly Income",
+    ]) {
+      const appearance = form.getTextField(fieldName).acroField.getDefaultAppearance() ?? "";
+      const fontSize = Number(appearance.match(/\/Helvetica ([\d.]+) Tf/)?.[1]);
+      expect(fontSize).toBeGreaterThanOrEqual(5);
+      expect(fontSize).toBeLessThanOrEqual(10);
+    }
   });
 
   it("maps affirmative UCCJEA proceeding answers into their separate verified fields", async () => {

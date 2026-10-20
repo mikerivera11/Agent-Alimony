@@ -6,6 +6,7 @@ import {
   PDFCheckBox,
   PDFDocument,
   PDFForm,
+  type PDFFont,
   PDFTextField,
   StandardFonts,
   rgb,
@@ -253,6 +254,26 @@ function check(form: PDFForm, name: string): void {
     throw new Error(`Verified checkbox "${name}" is missing from the official PDF.`);
   }
   field.check();
+}
+
+function fitPopulatedTextFieldFonts(form: PDFForm, font: PDFFont): void {
+  for (const field of form.getFields()) {
+    if (!(field instanceof PDFTextField) || !field.getText()?.trim()) continue;
+
+    if (field.isMultiline()) {
+      field.acroField.setDefaultAppearance("/Helvetica 8 Tf 0 g");
+      continue;
+    }
+
+    const availableWidth = Math.min(
+      ...field.acroField.getWidgets().map((widget) => Math.max(1, widget.getRectangle().width - 6)),
+    );
+    let fontSize = 10;
+    while (fontSize > 5 && font.widthOfTextAtSize(field.getText() ?? "", fontSize) > availableWidth) {
+      fontSize -= 0.25;
+    }
+    field.acroField.setDefaultAppearance(`/Helvetica ${fontSize} Tf 0 g`);
+  }
 }
 
 function fillCaption(form: PDFForm, context: PopulationContext, fields: {
@@ -964,6 +985,7 @@ async function populateFormBytes(options: {
   form.deleteXFA();
   fillForm(options.formNumber, form, options.context);
   const font = await doc.embedFont(StandardFonts.Helvetica);
+  fitPopulatedTextFieldFonts(form, font);
   form.updateFieldAppearances(font);
   if (options.flatten) form.flatten({ updateFieldAppearances: false });
   doc.setTitle(`Florida Form ${asset.formNumber} — populated draft`);
