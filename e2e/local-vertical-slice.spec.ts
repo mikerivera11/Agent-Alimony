@@ -96,6 +96,39 @@ test("offers the attorney filing packet only when it was asked for", async ({ pa
   expect(download.suggestedFilename()).toBe("populated-florida-court-forms-review-draft.pdf");
 });
 
+test("downloads partially populated court forms with unresolved answers left blank", async ({ page }) => {
+  await seedCompleteDraft(page);
+  await page.goto("/intake");
+  await advanceGuidedIntakeToReview(page);
+  await page.getByRole("button", { name: "Confirm and finish" }).click();
+  await expect(page).toHaveURL(/\/results$/);
+
+  await page.evaluate(() => {
+    const key = "florida-support-guide.reviewed.v1";
+    const raw = window.localStorage.getItem(key);
+    if (!raw) throw new Error("Expected reviewed snapshot.");
+    const reviewed = JSON.parse(raw);
+    reviewed.data.filingDetails.judicialCircuit = "";
+    reviewed.data.parentingPlan.holidaySchedules = reviewed.data.parentingPlan.holidaySchedules.map(
+      (holiday: Record<string, unknown>) => ({ ...holiday, beginEndTime: "" }),
+    );
+    window.localStorage.setItem(key, JSON.stringify(reviewed));
+  });
+  await page.reload();
+
+  const partialDownload = page.getByRole("button", {
+    name: "Download partially populated court forms",
+  });
+  await expect(partialDownload).toBeEnabled();
+  await expect(page.getByText("The judicial circuit")).toBeVisible();
+  await expect(page.getByText("Beginning and ending time for Thanksgiving")).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await partialDownload.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("populated-florida-court-forms-review-draft.pdf");
+});
+
 test("hides the filing packet for someone who only wanted an estimate", async ({ page }) => {
   await seedCompleteDraft(page);
   // Registered after the seed so it runs after it: init scripts run in the
