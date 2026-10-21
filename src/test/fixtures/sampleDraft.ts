@@ -177,6 +177,7 @@ export function createSampleDraft(): IntakeDraft {
           value: 210000,
           classification: "marital",
           owner: "joint",
+          agreedRecipient: "spouse",
           excludedByWrittenAgreement: false,
       commingledWithMaritalFunds: false,
         },
@@ -188,6 +189,7 @@ export function createSampleDraft(): IntakeDraft {
           value: 60000,
           classification: "marital",
           owner: "a",
+          agreedRecipient: "you",
           // Demonstrates a §61.075(6)(b)4 exclusion honored by a confirmed
           // written agreement — and the resulting QDRO warning.
           excludedByWrittenAgreement: true,
@@ -201,6 +203,7 @@ export function createSampleDraft(): IntakeDraft {
           value: 18000,
           classification: "marital",
           owner: "joint",
+          agreedRecipient: "you",
           excludedByWrittenAgreement: false,
       commingledWithMaritalFunds: false,
         },
@@ -213,6 +216,7 @@ export function createSampleDraft(): IntakeDraft {
           classification: "nonmarital",
           nonmaritalBasis: "separateGiftOrInheritance",
           owner: "b",
+          agreedRecipient: "spouse",
           excludedByWrittenAgreement: false,
       commingledWithMaritalFunds: false,
         },

@@ -640,7 +640,10 @@ function childSupportSection(pkg: PackageViewModel, data: FilingPacketDraftData)
   };
 }
 
-function equitableDistributionSection(pkg: PackageViewModel): TermSheetSection {
+function equitableDistributionSection(
+  pkg: PackageViewModel,
+  data: FilingPacketDraftData,
+): TermSheetSection {
   const attorneyDecisions = [
     "How the family home is transferred — deed, refinance, sale, or continued joint ownership — and by when.",
     "Whether dividing any retirement account needs a Qualified Domestic Relations Order.",
@@ -668,6 +671,30 @@ function equitableDistributionSection(pkg: PackageViewModel): TermSheetSection {
   const result = pkg.equitableDistribution.result;
   const scenario = result.distributionWithExclusions;
   const payment = scenario.equalizingPayment;
+  const assignmentLabel = (recipient: string | undefined): string => {
+    switch (recipient) {
+      case "you":
+        return data.filingDetails?.you?.fullLegalName || "You";
+      case "spouse":
+        return data.filingDetails?.spouse?.fullLegalName || "Your spouse";
+      case "joint":
+        return "Both parties jointly";
+      case "sell_and_divide":
+        return "Sell and divide the proceeds";
+      default:
+        return "Not agreed yet";
+    }
+  };
+  const agreedAssignments = (data.assetsDebts?.items ?? []).map((item) => ({
+    label: item.label || "Unnamed item",
+    value: `${assignmentLabel(item.agreedRecipient)}; ${
+      item.type === "liability" ? "balance" : "estimated value"
+    } ${formatCentsAsDollars(Math.round((item.value ?? 0) * 100))}`,
+    basis:
+      item.agreedRecipient && item.agreedRecipient !== "not_agreed"
+        ? "Reported settlement assignment for attorney drafting; not a binding transfer."
+        : "No settlement assignment was entered.",
+  }));
 
   return {
     id: "equitableDistribution",
@@ -694,6 +721,7 @@ function equitableDistributionSection(pkg: PackageViewModel): TermSheetSection {
             : `${formatCentsAsDollars(payment.amountCents)} from ${payment.fromSpouse} to ${payment.toSpouse}`,
         basis: "The cash payment that brings both sides to an equal share.",
       },
+      ...agreedAssignments,
     ],
   };
 }
@@ -747,7 +775,7 @@ export function buildSettlementTermSheet(options: {
     sections: [
       alimonySection(data),
       childSupportSection(packageViewModel, data),
-      equitableDistributionSection(packageViewModel),
+      equitableDistributionSection(packageViewModel, data),
       parentingSection(data),
     ],
   };

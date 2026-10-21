@@ -465,6 +465,14 @@ export const assetDebtItemSchema = z
     nonmaritalBasis: z.enum(ED_NONMARITAL_BASES).optional(),
     owner: z.enum(ED_OWNERS),
     /**
+     * The parties' reported settlement assignment for this item. This is
+     * drafting input for the attorney packet only; it never changes the
+     * deterministic §61.075 classification or equal-distribution baseline.
+     */
+    agreedRecipient: z
+      .enum(["not_agreed", "you", "spouse", "joint", "sell_and_divide"])
+      .default("not_agreed"),
+    /**
      * The parties agree in a written agreement to exclude this item from the
      * marital estate (Fla. Stat. §61.075(6)(b)4). Only honored downstream when
      * the step-level `writtenAgreementConfirmed` flag is also true.
@@ -500,6 +508,13 @@ export const assetDebtItemSchema = z
         code: "custom",
         path: ["excludedByWrittenAgreement"],
         message: "Separate property is already set aside — it can't also be excluded by agreement",
+      });
+    }
+    if (item.type === "liability" && item.agreedRecipient === "sell_and_divide") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["agreedRecipient"],
+        message: "A debt cannot be sold and divided",
       });
     }
   });

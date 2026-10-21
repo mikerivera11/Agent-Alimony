@@ -297,6 +297,40 @@ describe("assetsDebtsSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("defaults older asset rows to no agreed settlement assignment", () => {
+    const source = createSampleDraft().data.assetsDebts;
+    const items = source.items;
+    expect(items).toBeDefined();
+    if (!items) throw new Error("Sample draft must include asset and debt items");
+    const legacyItem = { ...items[0] } as Record<string, unknown>;
+    delete legacyItem.agreedRecipient;
+
+    const result = assetsDebtsSchema.parse({
+      ...source,
+      items: [legacyItem],
+    });
+
+    expect(result.items[0]?.agreedRecipient).toBe("not_agreed");
+  });
+
+  it("does not allow a debt to use the sell-and-divide asset disposition", () => {
+    const source = createSampleDraft().data.assetsDebts;
+    const items = source.items;
+    expect(items).toBeDefined();
+    if (!items) throw new Error("Sample draft must include asset and debt items");
+    const result = assetsDebtsSchema.safeParse({
+      ...source,
+      items: [
+        {
+          ...items.find((item) => item.type === "liability"),
+          agreedRecipient: "sell_and_divide",
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("safetyComplexitySchema", () => {

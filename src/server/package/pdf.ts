@@ -30,6 +30,8 @@ const INK = rgb(0.06, 0.09, 0.16);
 const MUTED = rgb(0.35, 0.4, 0.47);
 const DISCLAIMER_BG = rgb(0.9, 0.94, 1);
 const DISCLAIMER_BORDER = rgb(0.05, 0.2, 0.55);
+const SECTION_BG = rgb(0.93, 0.95, 0.98);
+const RULE_COLOR = rgb(0.8, 0.84, 0.9);
 
 function wrapLine(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
@@ -37,6 +39,24 @@ function wrapLine(text: string, font: PDFFont, size: number, maxWidth: number): 
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
+    if (font.widthOfTextAtSize(word, size) > maxWidth) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      let chunk = "";
+      for (const character of word) {
+        const candidate = `${chunk}${character}`;
+        if (font.widthOfTextAtSize(candidate, size) > maxWidth && chunk) {
+          lines.push(chunk);
+          chunk = character;
+        } else {
+          chunk = candidate;
+        }
+      }
+      current = chunk;
+      continue;
+    }
     const candidate = current ? `${current} ${word}` : word;
     if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
       lines.push(current);
@@ -80,6 +100,12 @@ class PdfWriter {
     this.y -= height;
   }
 
+  newPage(): void {
+    this.page = this.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    this.pages.push(this.page);
+    this.y = PAGE_HEIGHT - MARGIN;
+  }
+
   title(text: string): void {
     this.ensureSpace(TITLE_SIZE * LINE_HEIGHT_FACTOR + 10);
     this.page.drawText(text, { x: MARGIN, y: this.y, size: TITLE_SIZE, font: this.fonts.bold, color: INK });
@@ -93,10 +119,45 @@ class PdfWriter {
     this.y -= HEADING_SIZE * LINE_HEIGHT_FACTOR;
   }
 
+  packetSection(text: string): void {
+    const height = 28;
+    this.ensureSpace(height + 8);
+    this.y -= 4;
+    this.page.drawRectangle({
+      x: MARGIN,
+      y: this.y - height + 7,
+      width: CONTENT_WIDTH,
+      height,
+      color: SECTION_BG,
+      borderColor: RULE_COLOR,
+      borderWidth: 0.75,
+    });
+    this.page.drawText(text, {
+      x: MARGIN + 10,
+      y: this.y - 10,
+      size: HEADING_SIZE,
+      font: this.fonts.bold,
+      color: INK,
+    });
+    this.y -= height + 4;
+  }
+
   subheading(text: string): void {
-    this.ensureSpace(SUBHEADING_SIZE * LINE_HEIGHT_FACTOR + 4);
-    this.page.drawText(text, { x: MARGIN, y: this.y, size: SUBHEADING_SIZE, font: this.fonts.bold, color: INK });
-    this.y -= SUBHEADING_SIZE * LINE_HEIGHT_FACTOR;
+    const lines = wrapLine(text, this.fonts.bold, SUBHEADING_SIZE, CONTENT_WIDTH);
+    const lineHeight = SUBHEADING_SIZE * LINE_HEIGHT_FACTOR;
+    // Keep the heading with enough following text to avoid an orphaned title
+    // at the bottom of a page and a contextless continuation on the next.
+    this.ensureSpace(lines.length * lineHeight + BODY_SIZE * LINE_HEIGHT_FACTOR * 6);
+    for (const line of lines) {
+      this.page.drawText(line, {
+        x: MARGIN,
+        y: this.y,
+        size: SUBHEADING_SIZE,
+        font: this.fonts.bold,
+        color: INK,
+      });
+      this.y -= lineHeight;
+    }
   }
 
   paragraph(text: string, options: { indent?: number; bold?: boolean; color?: ReturnType<typeof rgb> } = {}): void {
@@ -564,22 +625,40 @@ export async function generateFilingPacketPdf(options: {
       "estimate produced from the answers given.",
   );
 
-  writer.heading("Florida residence requirement");
+  const readyForms = readiness.forms.filter((form) => form.status === "ready").length;
+  const missingForms = readiness.forms.filter((form) => form.status === "needsInformation").length;
+  const handForms = readiness.forms.filter((form) => form.status === "completeByHand").length;
+
+  writer.packetSection("Case readiness summary");
+  writer.bullet(`${readiness.forms.length} likely forms identified`);
+  writer.bullet(`${readyForms} ready from the answers provided`);
+  writer.bullet(`${missingForms} need additional factual answers`);
+  writer.bullet(`${handForms} must be completed or reviewed by hand`);
+
+  writer.subheading("Florida residence requirement");
   writer.paragraph(readiness.residency.message, { indent: 8 });
 
   if (readiness.generalGaps.length > 0) {
-    writer.heading("Read this first");
+    writer.subheading("Read this first");
     for (const gap of readiness.generalGaps) writer.bullet(gap, 8);
   }
 
-  writer.heading("Forms this case is likely to need");
+  writer.newPage();
+  writer.packetSection("Forms this case is likely to need");
   writer.paragraph(
     "Revisions below were read from the footer of the court's own PDF. Check the copy you file matches.",
     { color: MUTED },
   );
   for (const form of readiness.forms) {
     const revision = form.entry.form.revision ? ` (rev. ${form.entry.form.revision})` : "";
+    const status =
+      form.status === "ready"
+        ? "READY"
+        : form.status === "completeByHand"
+          ? "COMPLETE BY HAND"
+          : "MISSING ANSWERS";
     writer.subheading(`${form.entry.form.formNumber} — ${form.entry.form.title}${revision}`);
+    writer.paragraph(`Status: ${status}`, { indent: 8, bold: true });
     writer.paragraph(form.entry.whyItMatters, { indent: 8, color: MUTED });
     writer.bullet(`When it applies: ${form.reason}`, 8);
     if (form.status === "ready") {
@@ -588,17 +667,24 @@ export async function generateFilingPacketPdf(options: {
       writer.bullet("Must be completed by hand.", 8);
     }
     for (const missing of form.missing) writer.bullet(`Still needed: ${missing}`, 16);
-    if (form.entry.form.url) writer.paragraph(form.entry.form.url, { indent: 8, color: MUTED });
+    if (form.entry.form.url) {
+      writer.paragraph(`Official source: ${form.entry.form.url}`, { indent: 8, color: MUTED });
+    }
+    writer.spacer(6);
   }
 
-  writer.heading("Proposed terms");
+  writer.newPage();
+  writer.packetSection("Proposed terms for attorney drafting");
   writer.paragraph(termSheet.disclaimer, { color: MUTED });
   for (const section of termSheet.sections) {
     writer.subheading(section.title);
     if (section.unavailable) {
       writer.paragraph(section.unavailable, { indent: 8, color: MUTED });
     }
-    for (const item of section.items) {
+    for (const [index, item] of section.items.entries()) {
+      if (section.id === "equitableDistribution" && index === 3) {
+        writer.paragraph("Item-by-item settlement assignments:", { indent: 8, bold: true });
+      }
       writer.bullet(`${item.label}: ${item.value}`, 8);
       writer.paragraph(item.basis, { indent: 22, color: MUTED });
     }
@@ -606,7 +692,35 @@ export async function generateFilingPacketPdf(options: {
       writer.paragraph("For the attorney to decide:", { indent: 8, bold: true });
       for (const decision of section.attorneyDecisions) writer.bullet(decision, 16);
     }
+    writer.spacer(8);
   }
+
+  const pages = doc.getPages();
+  const generatedDate = new Date(termSheet.generatedAt).toLocaleDateString("en-US");
+  pages.forEach((page, index) => {
+    page.drawLine({
+      start: { x: MARGIN, y: MARGIN / 2 + 12 },
+      end: { x: PAGE_WIDTH - MARGIN, y: MARGIN / 2 + 12 },
+      thickness: 0.5,
+      color: RULE_COLOR,
+    });
+    const left = `Attorney filing packet — Generated ${generatedDate} — Not a court filing`;
+    const right = `Page ${index + 1} of ${pages.length}`;
+    page.drawText(left, {
+      x: MARGIN,
+      y: MARGIN / 2,
+      size: FOOTER_SIZE,
+      font: writer.fonts.regular,
+      color: MUTED,
+    });
+    page.drawText(right, {
+      x: PAGE_WIDTH - MARGIN - writer.fonts.regular.widthOfTextAtSize(right, FOOTER_SIZE),
+      y: MARGIN / 2,
+      size: FOOTER_SIZE,
+      font: writer.fonts.regular,
+      color: MUTED,
+    });
+  });
 
   return doc.save();
 }

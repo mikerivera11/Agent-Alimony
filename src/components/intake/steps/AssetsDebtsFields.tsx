@@ -43,6 +43,13 @@ const OWNER_OPTIONS = [
   { value: "joint", label: "Both (joint)" },
 ];
 
+const AGREED_RECIPIENT_OPTIONS = [
+  { value: "not_agreed", label: "Not agreed yet" },
+  { value: "you", label: "You will keep it / be responsible" },
+  { value: "spouse", label: "Your spouse will keep it / be responsible" },
+  { value: "joint", label: "Both will keep it / remain responsible" },
+];
+
 const NONMARITAL_BASIS_OPTIONS = [
   { value: "acquiredBeforeMarriage", label: "Owned before the marriage" },
   { value: "separateGiftOrInheritance", label: "A gift or inheritance to one spouse only" },
@@ -84,6 +91,8 @@ function AssetDebtItemFields({
   const classification = useWatch({ control, name: `items.${index}.classification` });
   const excluded = useWatch({ control, name: `items.${index}.excludedByWrittenAgreement` });
   const commingled = useWatch({ control, name: `items.${index}.commingledWithMaritalFunds` });
+  const itemType = useWatch({ control, name: `items.${index}.type` });
+  const agreedRecipient = useWatch({ control, name: `items.${index}.agreedRecipient` });
   const isNonmarital = classification === "nonmarital";
   const itemErrors = errors.items?.[index];
 
@@ -101,7 +110,10 @@ function AssetDebtItemFields({
       // the estate. A stale flag here would wrongly escalate the whole case.
       setValue(`items.${index}.commingledWithMaritalFunds`, false);
     }
-  }, [isNonmarital, excluded, index, setValue]);
+    if (itemType === "liability" && agreedRecipient === "sell_and_divide") {
+      setValue(`items.${index}.agreedRecipient`, "not_agreed");
+    }
+  }, [isNonmarital, excluded, itemType, agreedRecipient, index, setValue]);
 
   return (
     <fieldset className="flex flex-col gap-4 rounded-xl border border-border p-4">
@@ -146,6 +158,24 @@ function AssetDebtItemFields({
         options={OWNER_OPTIONS}
         registration={register(`items.${index}.owner`)}
         error={itemErrors?.owner?.message}
+      />
+
+      <SelectField
+        id={`items.${index}.agreedRecipient`}
+        label={
+          itemType === "liability"
+            ? "Who will be responsible for this debt under the agreement?"
+            : "Who will keep this asset under the agreement?"
+        }
+        hint="This is separate from who holds it now. It will be carried into the attorney filing packet as a proposed settlement term."
+        options={[
+          ...AGREED_RECIPIENT_OPTIONS,
+          ...(itemType === "liability"
+            ? []
+            : [{ value: "sell_and_divide", label: "Sell it and divide the proceeds" }]),
+        ]}
+        registration={register(`items.${index}.agreedRecipient`)}
+        error={itemErrors?.agreedRecipient?.message}
       />
 
       <SelectField
@@ -256,8 +286,9 @@ export function AssetsDebtsFields({ register, errors, control, setValue }: StepF
               value: 0,
               classification: "marital",
               owner: "joint",
+              agreedRecipient: "not_agreed",
               excludedByWrittenAgreement: false,
-      commingledWithMaritalFunds: false,
+              commingledWithMaritalFunds: false,
             })
           }
           className={`${secondaryButtonClasses} self-start`}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PDFDocument } from "pdf-lib";
 
 import { buildReviewedDraft } from "@/domain/intake";
 import { createSampleDraft } from "@/test/fixtures/sampleDraft";
@@ -25,7 +26,11 @@ describe("POST /api/package/filing-packet", () => {
     // The packet contains full legal names and home addresses, so it must
     // never sit in a shared cache.
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+    const bytes = await response.arrayBuffer();
+    expect(bytes.byteLength).toBeGreaterThan(1000);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getTitle()).toBe("Attorney filing packet");
+    expect(pdf.getPageCount()).toBeGreaterThanOrEqual(3);
   });
 
   it("refuses rather than producing a blank packet when it was not requested", async () => {

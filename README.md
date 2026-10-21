@@ -444,6 +444,19 @@ has been reached, the packet says so and deliberately excludes the app's
 calculated alimony estimate. The estimate remains visible on the results page
 for comparison.
 
+Each item in **Assets, debts, and support obligations** also records a separate
+reported settlement assignment: who will keep the asset, who will remain
+responsible for a debt, whether it stays joint, or whether an asset will be
+sold and the proceeds divided. Those choices do not alter the deterministic
+§61.075 equal-distribution baseline; they appear item by item in the attorney
+packet as nonbinding drafting instructions for the marital settlement
+agreement.
+
+The attorney packet uses a cover/readiness summary, a paginated form checklist,
+and a separate proposed-terms section. Long form titles and source URLs wrap
+within the page, headings stay with their following content, and every page has
+a generated-date/legal-status footer and page number.
+
 The results page also offers a separate **Populated Florida court forms**
 download. It inserts confirmed answers into revision-locked copies of the
 Florida Supreme Court Approved Family Law Forms using verified AcroForm field

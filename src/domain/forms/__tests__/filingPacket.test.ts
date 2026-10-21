@@ -306,4 +306,14 @@ describe("buildSettlementTermSheet", () => {
 
     expect(alimony?.items[0]?.value).toBe("No alimony will be paid");
   });
+
+  it("carries item-by-item agreed property assignments into the attorney term sheet", () => {
+    const property = termSheet().sections.find((section) => section.id === "equitableDistribution");
+    const home = property?.items.find((item) => item.label === "Marital home (fictional)");
+    const retirement = property?.items.find((item) => item.label === "J.R.'s 401(k) (fictional)");
+
+    expect(home?.value).toMatch(/Jordan Rivera \(fictional\).*estimated value \$210,000\.00/i);
+    expect(home?.basis).toMatch(/reported settlement assignment/i);
+    expect(retirement?.value).toMatch(/Alex Rivera \(fictional\)/i);
+  });
 });
