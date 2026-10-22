@@ -763,6 +763,51 @@ function fillHolidayRow(
   setText(form, fields.time, holiday.beginEndTime, context.warnings);
 }
 
+const STANDARD_HOLIDAYS = [
+  { aliases: ["mother's day", "mothers day"], row: 1, even: "Mothers Day" },
+  { aliases: ["father's day", "fathers day"], row: 2, even: "Fathers Day" },
+  { aliases: ["president's day", "presidents day"], row: 3, even: "Presidents Day" },
+  { aliases: ["martin luther king jr. day", "martin luther king day", "mlk day"], row: 4, even: "M L King Day" },
+  { aliases: ["easter"], row: 5, even: "Easter" },
+  { aliases: ["passover"], row: 6, even: "Passover" },
+  { aliases: ["memorial day", "memorial day weekend"], row: 7, even: "Memorial Day Wkd" },
+  { aliases: ["4th of july", "fourth of july", "independence day"], row: 8, even: "4th of July" },
+  { aliases: ["labor day", "labor day weekend"], row: 9, even: "Labor Day Wkd" },
+  { aliases: ["columbus day", "columbus day weekend"], row: 10, even: "Columbus Day Wkd" },
+  { aliases: ["halloween"], row: 11, even: "Halloween" },
+  { aliases: ["thanksgiving"], row: 12, even: "Thanksgiving" },
+  { aliases: ["veterans day", "veteran's day"], row: 13, even: "Veterans Day" },
+  { aliases: ["hanukkah"], row: 14, even: "Hanukkah" },
+  { aliases: ["yom kippur"], row: 15, even: "Yom Kippur" },
+  { aliases: ["rosh hashanah"], row: 16, even: "Rosh Hashanah" },
+] as const;
+
+function standardHolidayFields(name: string): { even: string; odd: string; every: string; time: string } | null {
+  const normalized = name.trim().toLowerCase();
+  if (["birthday", "birthdays", "children's birthdays"].includes(normalized)) {
+    return { even: "Birthdays", odd: "Odd years 17", every: "Every Year 17", time: "BeginEnd Time 17" };
+  }
+  const holiday = STANDARD_HOLIDAYS.find((candidate) =>
+    (candidate.aliases as readonly string[]).includes(normalized),
+  );
+  if (!holiday) return null;
+  return {
+    even: holiday.even,
+    odd: `Odd Years ${holiday.row}`,
+    every: `Every Year ${holiday.row}`,
+    time: `BeginEnd Time ${holiday.row}`,
+  };
+}
+
+function decisionMaker(
+  choice: "shared" | "you" | "other_parent" | "undecided",
+  context: PopulationContext,
+): string {
+  if (choice === "you") return context.parties.self.name;
+  if (choice === "other_parent") return context.parties.spouse.name;
+  return "";
+}
+
 function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   const data = context.draft.data;
   const plan = data.parentingPlan;
@@ -778,6 +823,8 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   });
   setText(form, "Name of Petitioner", context.parties.petitioner?.name, context.warnings);
   setText(form, "Name of Respondent", context.parties.respondent?.name, context.warnings);
+  setText(form, "Petitioner, hereinafter referred to in this Parenting Plan as Parent", "Petitioner", context.warnings);
+  setText(form, "Respondent, hereinafter referred to in this Parenting Plan as Parent", "Respondent", context.warnings);
   setText(form, "address of Petitioner", context.parties.petitioner?.street, context.warnings);
   setText(form, "telephone of Petitioner", context.parties.petitioner?.phone, context.warnings);
   setText(form, "email of Petitioner", context.parties.petitioner?.email, context.warnings);
@@ -794,6 +841,13 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   setText(form, "City State Zip of Respondent/Parent", context.parties.respondent?.cityStateZip, context.warnings);
   setText(form, "Telephone Number of Respondent/Parent", context.parties.respondent?.phone, context.warnings);
   setText(form, "Designated Email Addresses of Respondent/Parent", context.parties.respondent?.email, context.warnings);
+
+  if (plan?.planStatus === "agreed") {
+    check(form, "Check Box1");
+  } else if (plan?.planStatus === "proposed" || plan?.planStatus === "in_dispute") {
+    check(form, "Check Box2");
+    setText(form, "parent's name", context.parties.self.name, context.warnings);
+  }
 
   const filingChildren = new Map(
     (data.filingDetails?.children ?? []).map((child) => [child.childId, child.fullLegalName ?? ""]),
@@ -814,6 +868,25 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
     );
   });
 
+  if (plan) {
+    const decisions = [
+      plan.decisionMakingEducation,
+      plan.decisionMakingHealthcare,
+      plan.decisionMakingReligion,
+    ];
+    if (decisions.every((choice) => choice === "shared")) {
+      check(form, "Check Box15");
+    } else if (decisions.some((choice) => choice === "you" || choice === "other_parent")) {
+      check(form, "Check Box16");
+      setText(form, "Parent 1", decisionMaker(plan.decisionMakingEducation, context), context.warnings);
+      setText(form, "Parent 2", decisionMaker(plan.decisionMakingHealthcare, context), context.warnings);
+      if (plan.decisionMakingReligion === "you" || plan.decisionMakingReligion === "other_parent") {
+        setText(form, "other activity", "Religious upbringing", context.warnings);
+        setText(form, "Parent 3", decisionMaker(plan.decisionMakingReligion, context), context.warnings);
+      }
+    }
+  }
+
   setText(
     form,
     "For purposes of school boundary determination and registration, the address of Parent {name or designation} shall be used",
@@ -824,11 +897,39 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
         : "",
     context.warnings,
   );
-  setText(form, "make note of other provisions", [plan?.weekdaySchedule, plan?.weekendSchedule].filter(Boolean).join("\n"), context.warnings);
-  setText(form, "Indicate other winter break date variations", plan?.holidaySchedule, context.warnings);
-  setText(form, "Parent that shall have the entire Summer Break from school", plan?.summerSchedule, context.warnings);
-  setText(form, "Explain where exchanges shall occur", plan?.exchangeArrangements, context.warnings);
-  setText(form, "child has communication with other parent explain", plan?.communicationBetweenChildAndParent, context.warnings);
+  const regularSchedule = [
+    plan?.weekdaySchedule?.trim() ? `Weekdays: ${plan.weekdaySchedule.trim()}` : "",
+    plan?.weekendSchedule?.trim() ? `Weekends: ${plan.weekendSchedule.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  setText(form, "The children shall spend time with Parent", context.parties.petitioner?.name, context.warnings);
+  setText(form, "dates and times children shall spend time with the Parent", context.parties.respondent?.name, context.warnings);
+  setText(form, "Other 5", regularSchedule, context.warnings);
+  setText(form, "Other 7", regularSchedule, context.warnings);
+
+  if (plan?.holidaySchedule?.trim()) {
+    check(form, "Check Box52");
+    setText(form, "Indicate other winter break date variations", plan.holidaySchedule, context.warnings);
+    check(form, "Check Box102");
+    setText(form, "spring break other share time", plan.holidaySchedule, context.warnings);
+  }
+  if (plan?.summerSchedule?.trim()) {
+    check(form, "Check Box117");
+    setText(form, "date for summer break 4", plan.summerSchedule, context.warnings);
+  }
+  if (plan?.exchangeArrangements?.trim()) {
+    check(form, "Check Box122");
+    setText(form, "explain other time sharing transportation options", plan.exchangeArrangements, context.warnings);
+    check(form, "Check Box127");
+    setText(form, "Exchanges shall occur at other place", plan.exchangeArrangements, context.warnings);
+  }
+  if (plan?.communicationBetweenChildAndParent?.trim()) {
+    check(form, "Check Box152");
+    setText(form, "child has communication with other parent explain", plan.communicationBetweenChildAndParent, context.warnings);
+    check(form, "Check Box156");
+    setText(form, "communicate only on day - other, explain", plan.communicationBetweenChildAndParent, context.warnings);
+  }
 
   const overnights = parentOrder(
     context,
@@ -842,21 +943,24 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
     setText(form, "Based upon the time-sharing schedule Parent has overnights per year", overnights.respondent, context.warnings);
   }
 
-  const holidays = plan?.holidaySchedules ?? [];
-  const thanksgiving = holidays.find((holiday) => holiday.name.trim().toLowerCase() === "thanksgiving");
-  if (thanksgiving) {
-    fillHolidayRow(form, context, thanksgiving, {
-      even: "Thanksgiving",
-      odd: "Odd Years 12",
-      every: "Every Year 12",
-      time: "BeginEnd Time 12",
-    });
+  if (plan?.holidayScheduleMode === "regular_schedule") {
+    check(form, "Check Box41");
+  } else if (plan?.holidayScheduleMode === "as_agreed") {
+    check(form, "Check Box42");
+  } else if (plan?.holidayScheduleMode === "specific" && plan.holidayScheduleOverridesRegular) {
+    check(form, "Check Box43");
+  }
+  if (plan?.threeWeekendAdjustment) check(form, "Check Box44");
+  if (plan?.unspecifiedHolidayFollowsAdjacentWeekend) check(form, "Check Box45");
+
+  const otherHolidays: NonNullable<ReviewedIntakeDraft["data"]["parentingPlan"]>["holidaySchedules"] = [];
+  for (const holiday of plan?.holidaySchedules ?? []) {
+    const fields = standardHolidayFields(holiday.name);
+    if (fields) fillHolidayRow(form, context, holiday, fields);
+    else otherHolidays.push(holiday);
   }
 
-  const otherHolidays = holidays
-    .filter((holiday) => holiday !== thanksgiving)
-    .slice(0, 2);
-  otherHolidays.forEach((holiday, index) => {
+  otherHolidays.slice(0, 2).forEach((holiday, index) => {
     const number = index + 1;
     setText(form, `other special day ${number}`, holiday.name, context.warnings);
     fillHolidayRow(form, context, holiday, {

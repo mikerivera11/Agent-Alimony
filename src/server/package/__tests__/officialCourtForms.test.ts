@@ -229,7 +229,7 @@ describe("official court forms", () => {
     expect(form.getTextField("12. overnight stays with the Petitioner").getText()).toBe("219");
   });
 
-  it("writes structured holiday rotations into the official parenting plan", async () => {
+  it("writes the collected parenting-plan choices into the official form", async () => {
     const { draft, viewModel } = sampleInputs();
     const bytes = await __testing.populateForm({
       formNumber: "12.995(a)",
@@ -238,9 +238,56 @@ describe("official court forms", () => {
     });
     const form = (await PDFDocument.load(bytes)).getForm();
 
+    expect(form.getCheckBox("Check Box1").isChecked()).toBe(true);
+    expect(form.getTextField("Other 5").getText()).toContain("Monday through Thursday");
+    expect(form.getTextField("Other 7").getText()).toContain("Alternating weekends");
+    expect(form.getCheckBox("Check Box43").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box44").isChecked()).toBe(true);
     expect(form.getTextField("Thanksgiving").getText()).toBe("Jordan Rivera (fictional)");
     expect(form.getTextField("Odd Years 12").getText()).toBe("Alex Rivera (fictional)");
     expect(form.getTextField("other special day 1").getText()).toBe("Christmas");
     expect(form.getTextField("other special day 2").getText()).toBe("New Year's Day");
+    expect(form.getCheckBox("Check Box52").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box102").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box117").isChecked()).toBe(true);
+    expect(form.getTextField("date for summer break 4").getText()).toContain("Four consecutive weeks");
+    expect(form.getCheckBox("Check Box122").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box127").isChecked()).toBe(true);
+    expect(form.getTextField("Exchanges shall occur at other place").getText()).toContain("children's school");
+    expect(form.getCheckBox("Check Box152").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box156").isChecked()).toBe(true);
+    expect(form.getTextField("communicate only on day - other, explain").getText()).toContain("video call");
+  });
+
+  it("maps shared and allocated parental decision-making without inferring sole responsibility", async () => {
+    const sharedDraftData = createSampleDraft();
+    sharedDraftData.data.parentingPlan.decisionMakingReligion = "shared";
+    const sharedDraft = buildReviewedDraft(sharedDraftData);
+    const sharedBytes = await __testing.populateForm({
+      formNumber: "12.995(a)",
+      draft: sharedDraft,
+      viewModel: buildPackageViewModel(sharedDraft),
+    });
+    const sharedForm = (await PDFDocument.load(sharedBytes)).getForm();
+    expect(sharedForm.getCheckBox("Check Box15").isChecked()).toBe(true);
+    expect(sharedForm.getCheckBox("Check Box20").isChecked()).toBe(false);
+
+    const allocatedDraftData = createSampleDraft();
+    allocatedDraftData.data.parentingPlan.decisionMakingEducation = "you";
+    allocatedDraftData.data.parentingPlan.decisionMakingHealthcare = "other_parent";
+    allocatedDraftData.data.parentingPlan.decisionMakingReligion = "you";
+    const allocatedDraft = buildReviewedDraft(allocatedDraftData);
+    const allocatedBytes = await __testing.populateForm({
+      formNumber: "12.995(a)",
+      draft: allocatedDraft,
+      viewModel: buildPackageViewModel(allocatedDraft),
+    });
+    const allocatedForm = (await PDFDocument.load(allocatedBytes)).getForm();
+    expect(allocatedForm.getCheckBox("Check Box16").isChecked()).toBe(true);
+    expect(allocatedForm.getCheckBox("Check Box20").isChecked()).toBe(false);
+    expect(allocatedForm.getTextField("Parent 1").getText()).toBe("Alex Rivera (fictional)");
+    expect(allocatedForm.getTextField("Parent 2").getText()).toBe("Jordan Rivera (fictional)");
+    expect(allocatedForm.getTextField("other activity").getText()).toBe("Religious upbringing");
+    expect(allocatedForm.getTextField("Parent 3").getText()).toBe("Alex Rivera (fictional)");
   });
 });
