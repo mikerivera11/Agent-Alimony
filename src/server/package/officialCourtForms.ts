@@ -343,6 +343,7 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
     });
     setText(form, "full legal name", petitioner?.name, context.warnings);
     setText(form, "Date of marriage month day year", formatDate(data.marriage.marriageDate), context.warnings);
+    setText(form, "date of separation1", formatDate(data.marriage.separationDate), context.warnings);
     setText(
       form,
       "Place of marriage county state country",
@@ -364,6 +365,21 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
     else if (petitionerResident) check(form, "check jurisdiction if petitioner");
     else if (respondentResident) check(form, "check if repondent is");
 
+    const petitionerMilitary = selfIsPetitioner ? filing?.you?.militaryService : filing?.spouse?.militaryService;
+    const respondentMilitary = selfIsPetitioner ? filing?.spouse?.militaryService : filing?.you?.militaryService;
+    if (petitionerMilitary === "none") check(form, "check if petitioner is not");
+    else if (petitionerMilitary && petitionerMilitary !== "not_sure") check(form, "check if petitioner is");
+    if (respondentMilitary === "none") check(form, "check if respondent is not");
+    else if (respondentMilitary && respondentMilitary !== "not_sure") check(form, "check if repondent is");
+
+    if (filing?.pregnancyStatus === "petitioner") {
+      check(form, "check if petitioner is pregnant");
+      setText(form, "Baby is due on date", formatDate(filing.pregnancyDueDate), context.warnings);
+    } else if (filing?.pregnancyStatus === "respondent") {
+      check(form, "check if respondent is pregnant");
+      setText(form, "Baby is due on date-2", formatDate(filing.pregnancyDueDate), context.warnings);
+    }
+
     const childDetails = new Map((filing?.children ?? []).map((child) => [child.childId, child]));
     if (data.children.children.length > 0) {
       check(form, "check if minor child common to both");
@@ -377,18 +393,114 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
         context.warnings,
       );
     });
+    if (filing?.nonCommonMinorChildrenStatus === "yes") {
+      check(form, "check if child not common to both parties");
+      setText(form, "child not common to both 1", filing.nonCommonMinorChildrenDetails, context.warnings);
+      setText(
+        form,
+        "The birth parent (s) of the above minor children is are name and address 1",
+        filing.nonCommonMinorChildrenDetails,
+        context.warnings,
+      );
+    }
+    if (filing?.adultDependentChildrenStatus === "yes") {
+      check(form, "check if child(ren) common to both parties who are 18 or older but who are dependent");
+      setText(form, "child name and birth date with disability 1", filing.adultDependentChildrenDetails, context.warnings);
+    }
+    if (filing?.financialAffidavitStatus === "filed_with_petition") check(form, "filed with this petition");
+    if (filing?.financialAffidavitStatus === "will_be_timely_filed") check(form, "will be timely filed");
+    if (filing?.marriageGround === "irretrievably_broken") check(form, "the marriage is irretrievably broken");
+    if (filing?.marriageGround === "mental_incapacity") {
+      check(form, "check if one of the parties has been adjudged mentally incapacitated for a period of 3 years");
+    }
 
     if ((data.assetsDebts?.items ?? []).length > 0) check(form, "there are marital assets or liabilities");
     else check(form, "no marital assests or liabilities");
+    if (filing?.propertyDistributionRequest === "written_agreement") {
+      check(form, "all marital assets or liabilities have been divided by written agreement");
+    } else if (filing?.propertyDistributionRequest === "court_determination") {
+      check(form, "The Court should determine how the assets and liabilities of this marriage are to be distributed");
+    } else if (filing?.propertyDistributionRequest === "other_property_interest") {
+      if (filing.propertyInterestRecipient === "petitioner") {
+        check(form, "check if petitioner should be awarded an interest in the other spouse’s property");
+      } else if (filing.propertyInterestRecipient === "respondent") {
+        check(form, "check if respondent should be awarded an interest in the other spouse’s property");
+      }
+      setText(
+        form,
+        "an interest in the other spouse’s property should be awarded because",
+        filing.propertyInterestExplanation,
+        context.warnings,
+      );
+    }
 
-    if (data.parentingPlan?.planStatus === "agreed") check(form, "parties agreed to having a parenting plan");
-    if (data.parentingPlan?.planStatus === "proposed") {
+    const parentingPlan = data.parentingPlan;
+    if (filing?.childrenCurrentResidence === "petitioner") check(form, "minor resides with petitioner");
+    if (filing?.childrenCurrentResidence === "respondent") check(form, "minor resides with respondent");
+    if (filing?.childrenCurrentResidence === "other") {
+      check(form, "minor resides with other circumstance");
+      setText(
+        form,
+        "explain minor residence here if needed",
+        filing.childrenCurrentResidenceExplanation,
+        context.warnings,
+      );
+    }
+    if (filing?.parentalResponsibilityRequest === "shared") {
+      check(form, "parental responsibility shall be shared by both parents");
+    } else if (
+      filing?.parentalResponsibilityRequest === "sole_petitioner" ||
+      filing?.parentalResponsibilityRequest === "sole_respondent"
+    ) {
+      check(form, "parental responsibility shall be awarded to petitioner or respondent. A choice required");
+      check(
+        form,
+        filing.parentalResponsibilityRequest === "sole_petitioner"
+          ? "responsibility awarded solely to petitioner"
+          : "responsibility awarded solely to respondent",
+      );
+      setText(
+        form,
+        "shared parental responsibility would be detrimental to the children because",
+        filing.soleResponsibilityDetrimentExplanation,
+        context.warnings,
+      );
+    }
+    if (filing?.parentingPlanIncludesTimeSharing === "yes") {
+      check(form, "parenting plan includes time sharing");
+      setText(
+        form,
+        "Petitioner will be referred to as",
+        context.parties.petitioner?.name,
+        context.warnings,
+      );
+      setText(
+        form,
+        "Respondent will be referred to as",
+        context.parties.respondent?.name,
+        context.warnings,
+      );
+    } else if (filing?.parentingPlanIncludesTimeSharing === "no") {
+      check(form, "parenting plan does not include time sharing");
+    }
+
+    if (parentingPlan?.planStatus === "agreed") {
+      check(form, "Check if attached proposed parenting plan should be adopted by the court");
+      check(form, "parties agreed to having a parenting plan");
+    }
+    if (parentingPlan?.planStatus === "proposed") {
       check(form, "parties have not agreed to a parenting plan");
       check(form, "Check if attached proposed parenting plan should be adopted by the court");
     }
-    if (data.parentingPlan?.planStatus === "in_dispute") {
+    if (parentingPlan?.planStatus === "in_dispute") {
       check(form, "parties have not agreed to a parenting plan");
     }
+    setText(
+      form,
+      "Explain why this request is in the best interests of the children",
+      filing?.parentingBestInterestsExplanation,
+      context.warnings,
+    );
     if (data.alimonyFactors.alimonyAgreementStatus === "agreed_payment") {
       const selfIsRecipient = selfIsAgreedAlimonyRecipient(context);
       const recipientIsPetitioner =
@@ -426,7 +538,94 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
         agreedAlimonySummary(context),
         context.warnings,
       );
+    } else if (data.alimonyFactors.alimonyAgreementStatus === "agreed_waiver") {
+      check(form, "Petitioner forever gives up any right to spousal support (alimony) from the other spouse");
+      check(form, "Respondent forever gives up any right to spousal support (alimony) from the other spouse");
     }
+
+    check(form, "request to award child support by petitioner");
+    if (filing?.childSupportWorksheetStatus === "filed_with_petition") check(form, "guidelines are filed");
+    if (filing?.childSupportWorksheetStatus === "will_be_timely_filed") check(form, "guidelines will be filed");
+    if (filing?.retroactiveChildSupportStart === "separation") {
+      check(form, "check for date of separation");
+      setText(form, "date of separation2", formatDate(data.marriage.separationDate), context.warnings);
+    } else if (filing?.retroactiveChildSupportStart === "filing") {
+      check(form, "check for date of filing");
+    } else if (filing?.retroactiveChildSupportStart === "other") {
+      check(form, "check for date of other");
+      setText(
+        form,
+        "indicate other date here",
+        formatDate(filing.retroactiveChildSupportOtherDate),
+        context.warnings,
+      );
+      setText(
+        form,
+        "explain other date of filing",
+        filing.retroactiveChildSupportOtherExplanation,
+        context.warnings,
+      );
+    }
+    if (filing?.supportBeyondEighteen === "incapacity") {
+      check(form, "petitioner requests that the Court award child support to be paid beyond the age of 18");
+      check(form, "check because dependent has mental or physical incapacity");
+      setText(
+        form,
+        "name(s) of dependent who has mental or physical incapacity",
+        filing.supportBeyondEighteenDetails,
+        context.warnings,
+      );
+      setText(form, "explain incapacity", filing.supportBeyondEighteenDetails, context.warnings);
+    } else if (filing?.supportBeyondEighteen === "high_school") {
+      check(form, "petitioner requests that the Court award child support to be paid beyond the age of 18");
+      check(form, "check if children are dependent due to age as follows");
+      setText(form, "names of children dependent due to age", filing.supportBeyondEighteenDetails, context.warnings);
+    }
+    if (filing?.childSupportDeviationRequested === "yes") check(form, "check if this is a petitioner request");
+
+    const terms = data.settlementTerms;
+    if (terms) {
+      const healthIsPetitioner =
+        terms.healthInsuranceProvider === "not_available"
+          ? null
+          : partyChoiceIsPetitioner(terms.healthInsuranceProvider, context);
+      if (healthIsPetitioner !== null) {
+        check(form, "check if this is a petitioner request on insurance");
+        check(
+          form,
+          healthIsPetitioner ? "insurance provided by petitioner" : "insurance provided by respondent",
+        );
+      }
+      check(form, "Check Box111");
+      if (terms.uninsuredMedicalSplit === "equal") {
+        check(form, "To be paid by both spouses equally");
+      } else if (terms.uninsuredMedicalSplit === "guideline_percentages") {
+        check(form, "To be paid according to the percentages in the Child Support Guidelines Worksheet, Florida Family");
+      } else {
+        check(form, "Other {explain}");
+        setText(form, "Explaination of other payment arrangements", terms.uninsuredMedicalDetails, context.warnings);
+      }
+      if (terms.childSupportLifeInsuranceProvider !== "none") check(form, "Check Box118");
+    }
+
+    if (filing?.formerNameRestorationRequested === "yes") {
+      setText(form, "former legal name", filing.formerNameToRestore, context.warnings);
+    }
+    setText(form, "Other relief specify 1", filing?.otherReliefRequested, context.warnings);
+    if ((data.assetsDebts?.items ?? []).length > 0) {
+      check(form, "check this and any of the following five that apply");
+    }
+    if (
+      data.alimonyFactors.alimonyAgreementStatus === "agreed_payment" ||
+      data.alimonyFactors.alimonyAgreementStatus === "agreed_waiver"
+    ) {
+      check(form, "check if this applies");
+    }
+    check(form, "check if this applies 2");
+    check(form, "check if this applies 3");
+    if (filing?.formerNameRestorationRequested === "yes") check(form, "check if this applies 4");
+    if (filing?.otherReliefRequested?.trim()) check(form, "check if this applies 5");
+
     setText(form, "Printed Name", petitioner?.name, context.warnings);
     setText(form, "Address", petitioner?.street, context.warnings);
     setText(form, "City State Zip", petitioner?.cityStateZip, context.warnings);

@@ -152,6 +152,14 @@ function ChildFilingDetailsBlock({
 export function FilingDetailsFields({ register, errors, control }: StepFieldsProps<FilingDetails>) {
   const wantsPacket = useWatch({ control, name: "wantsFilingPacket" });
   const residency = useWatch({ control, name: "whichPartyIsFloridaResident" });
+  const pregnancy = useWatch({ control, name: "pregnancyStatus" });
+  const nonCommonChildren = useWatch({ control, name: "nonCommonMinorChildrenStatus" });
+  const adultDependentChildren = useWatch({ control, name: "adultDependentChildrenStatus" });
+  const propertyRequest = useWatch({ control, name: "propertyDistributionRequest" });
+  const currentResidence = useWatch({ control, name: "childrenCurrentResidence" });
+  const responsibility = useWatch({ control, name: "parentalResponsibilityRequest" });
+  const retroactiveSupport = useWatch({ control, name: "retroactiveChildSupportStart" });
+  const supportBeyondEighteen = useWatch({ control, name: "supportBeyondEighteen" });
   const restoreName = useWatch({ control, name: "formerNameRestorationRequested" });
   const priorProceeding = useWatch({ control, name: "priorCustodyProceedingStatus" });
   const pendingProceeding = useWatch({ control, name: "pendingCustodyProceedingStatus" });
@@ -386,6 +394,31 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
               registration={register("marriagePlaceStateOrCountry")}
               error={errors.marriagePlaceStateOrCountry?.message}
             />
+            <RadioGroupField
+              id="marriageGround"
+              legend="Why should the marriage be dissolved?"
+              required
+              registration={register("marriageGround")}
+              error={errors.marriageGround?.message}
+              options={[
+                { value: "irretrievably_broken", label: "The marriage is irretrievably broken" },
+                {
+                  value: "mental_incapacity",
+                  label: "A party has been adjudged mentally incapacitated for at least three years",
+                },
+              ]}
+            />
+            <RadioGroupField
+              id="financialAffidavitStatus"
+              legend="When will the petitioner's financial affidavit be filed?"
+              required
+              registration={register("financialAffidavitStatus")}
+              error={errors.financialAffidavitStatus?.message}
+              options={[
+                { value: "filed_with_petition", label: "Filed with the petition" },
+                { value: "will_be_timely_filed", label: "Will be timely filed" },
+              ]}
+            />
           </fieldset>
 
           <fieldset className="flex flex-col gap-5">
@@ -420,10 +453,248 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
           </fieldset>
 
           <fieldset className="flex flex-col gap-5">
+            <legend className="text-base font-semibold text-ink">Petition child and pregnancy questions</legend>
+            <RadioGroupField
+              id="pregnancyStatus"
+              legend="Is either party pregnant?"
+              required
+              registration={register("pregnancyStatus")}
+              error={errors.pregnancyStatus?.message}
+              options={[
+                { value: "none", label: "No" },
+                { value: "petitioner", label: "Yes — the petitioner" },
+                { value: "respondent", label: "Yes — the respondent" },
+              ]}
+            />
+            {pregnancy && pregnancy !== "none" ? (
+              <DateField
+                id="pregnancyDueDate"
+                label="Expected due date"
+                required
+                registration={register("pregnancyDueDate")}
+                error={errors.pregnancyDueDate?.message}
+              />
+            ) : null}
+            <YesNoField
+              id="nonCommonMinorChildrenStatus"
+              legend="Were any minor children born or conceived during the marriage who are not common to both parties?"
+              required
+              registration={register("nonCommonMinorChildrenStatus")}
+              error={errors.nonCommonMinorChildrenStatus?.message}
+            />
+            {nonCommonChildren === "yes" ? (
+              <TextField
+                id="nonCommonMinorChildrenDetails"
+                label="Child names, birth dates, and each birth parent's name and address"
+                required
+                registration={register("nonCommonMinorChildrenDetails")}
+                error={errors.nonCommonMinorChildrenDetails?.message}
+              />
+            ) : null}
+            <YesNoField
+              id="adultDependentChildrenStatus"
+              legend="Are any children common to both parties age 18 or older and dependent because of a mental or physical disability?"
+              required
+              registration={register("adultDependentChildrenStatus")}
+              error={errors.adultDependentChildrenStatus?.message}
+            />
+            {adultDependentChildren === "yes" ? (
+              <TextField
+                id="adultDependentChildrenDetails"
+                label="Adult dependent child names, birth dates, and disability details"
+                required
+                registration={register("adultDependentChildrenDetails")}
+                error={errors.adultDependentChildrenDetails?.message}
+              />
+            ) : null}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-5">
+            <legend className="text-base font-semibold text-ink">Property request in the petition</legend>
+            <RadioGroupField
+              id="propertyDistributionRequest"
+              legend="How should the petition ask the court to address marital assets and liabilities?"
+              required
+              registration={register("propertyDistributionRequest")}
+              error={errors.propertyDistributionRequest?.message}
+              options={[
+                { value: "written_agreement", label: "Use the parties' attached written agreement" },
+                { value: "court_determination", label: "Ask the court to determine distribution" },
+                {
+                  value: "other_property_interest",
+                  label: "Also request an interest in the other spouse's property",
+                },
+              ]}
+            />
+            {propertyRequest === "other_property_interest" ? (
+              <>
+                <RadioGroupField
+                  id="propertyInterestRecipient"
+                  legend="Who should receive that property interest?"
+                  required
+                  registration={register("propertyInterestRecipient")}
+                  error={errors.propertyInterestRecipient?.message}
+                  options={[
+                    { value: "petitioner", label: "Petitioner" },
+                    { value: "respondent", label: "Respondent" },
+                  ]}
+                />
+                <TextField
+                  id="propertyInterestExplanation"
+                  label="Explain the requested interest"
+                  required
+                  registration={register("propertyInterestExplanation")}
+                  error={errors.propertyInterestExplanation?.message}
+                />
+              </>
+            ) : null}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-5">
+            <legend className="text-base font-semibold text-ink">Parenting request in the petition</legend>
+            <RadioGroupField
+              id="childrenCurrentResidence"
+              legend="With whom do the minor children currently reside?"
+              required
+              registration={register("childrenCurrentResidence")}
+              error={errors.childrenCurrentResidence?.message}
+              options={[
+                { value: "petitioner", label: "Petitioner" },
+                { value: "respondent", label: "Respondent" },
+                { value: "other", label: "Another arrangement" },
+              ]}
+            />
+            {currentResidence === "other" ? (
+              <TextField
+                id="childrenCurrentResidenceExplanation"
+                label="Explain the current residence arrangement"
+                required
+                registration={register("childrenCurrentResidenceExplanation")}
+                error={errors.childrenCurrentResidenceExplanation?.message}
+              />
+            ) : null}
+            <RadioGroupField
+              id="parentalResponsibilityRequest"
+              legend="What parental-responsibility arrangement should the petition request?"
+              required
+              registration={register("parentalResponsibilityRequest")}
+              error={errors.parentalResponsibilityRequest?.message}
+              options={[
+                { value: "shared", label: "Shared by both parents" },
+                { value: "sole_petitioner", label: "Solely to the petitioner" },
+                { value: "sole_respondent", label: "Solely to the respondent" },
+              ]}
+            />
+            {responsibility === "sole_petitioner" || responsibility === "sole_respondent" ? (
+              <TextField
+                id="soleResponsibilityDetrimentExplanation"
+                label="Why would shared parental responsibility be detrimental to the children?"
+                required
+                registration={register("soleResponsibilityDetrimentExplanation")}
+                error={errors.soleResponsibilityDetrimentExplanation?.message}
+              />
+            ) : null}
+            <YesNoField
+              id="parentingPlanIncludesTimeSharing"
+              legend="Does the requested parenting plan include parental time-sharing?"
+              required
+              registration={register("parentingPlanIncludesTimeSharing")}
+              error={errors.parentingPlanIncludesTimeSharing?.message}
+            />
+            <TextField
+              id="parentingBestInterestsExplanation"
+              label="Why is the requested parenting plan in the children's best interests?"
+              required
+              registration={register("parentingBestInterestsExplanation")}
+              error={errors.parentingBestInterestsExplanation?.message}
+            />
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-5">
+            <legend className="text-base font-semibold text-ink">Child-support request in the petition</legend>
+            <RadioGroupField
+              id="childSupportWorksheetStatus"
+              legend="When will the Child Support Guidelines Worksheet be filed?"
+              required
+              registration={register("childSupportWorksheetStatus")}
+              error={errors.childSupportWorksheetStatus?.message}
+              options={[
+                { value: "filed_with_petition", label: "Filed with the petition" },
+                { value: "will_be_timely_filed", label: "Will be timely filed" },
+              ]}
+            />
+            <RadioGroupField
+              id="retroactiveChildSupportStart"
+              legend="Is retroactive child support requested?"
+              required
+              registration={register("retroactiveChildSupportStart")}
+              error={errors.retroactiveChildSupportStart?.message}
+              options={[
+                { value: "none", label: "No" },
+                { value: "separation", label: "Yes — from the date of separation" },
+                { value: "filing", label: "Yes — from the petition filing date" },
+                { value: "other", label: "Yes — from another date" },
+              ]}
+            />
+            {retroactiveSupport === "other" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DateField
+                  id="retroactiveChildSupportOtherDate"
+                  label="Other requested start date"
+                  required
+                  registration={register("retroactiveChildSupportOtherDate")}
+                  error={errors.retroactiveChildSupportOtherDate?.message}
+                />
+                <TextField
+                  id="retroactiveChildSupportOtherExplanation"
+                  label="Why this date is requested"
+                  required
+                  registration={register("retroactiveChildSupportOtherExplanation")}
+                  error={errors.retroactiveChildSupportOtherExplanation?.message}
+                />
+              </div>
+            ) : null}
+            <RadioGroupField
+              id="supportBeyondEighteen"
+              legend="Is child support requested beyond age 18?"
+              required
+              registration={register("supportBeyondEighteen")}
+              error={errors.supportBeyondEighteen?.message}
+              options={[
+                { value: "none", label: "No" },
+                { value: "incapacity", label: "Yes — because of qualifying incapacity" },
+                { value: "high_school", label: "Yes — for a dependent child age 18 to 19 still in high school" },
+              ]}
+            />
+            {supportBeyondEighteen && supportBeyondEighteen !== "none" ? (
+              <TextField
+                id="supportBeyondEighteenDetails"
+                label="Identify the child and explain the request"
+                required
+                registration={register("supportBeyondEighteenDetails")}
+                error={errors.supportBeyondEighteenDetails?.message}
+              />
+            ) : null}
+            <YesNoField
+              id="childSupportDeviationRequested"
+              legend="Does the petitioner request child support above or below the guidelines?"
+              required
+              registration={register("childSupportDeviationRequested")}
+              error={errors.childSupportDeviationRequested?.message}
+            />
+            <TextField
+              id="otherReliefRequested"
+              label="Other relief requested, if any"
+              registration={register("otherReliefRequested")}
+              error={errors.otherReliefRequested?.message}
+            />
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-5">
             <legend className="text-base font-semibold text-ink">Former name</legend>
             <YesNoField
               id="formerNameRestorationRequested"
-              legend="Is either spouse asking the court to restore a former name?"
+              legend="Is the petitioner asking the court to restore a former name?"
               registration={register("formerNameRestorationRequested")}
               error={errors.formerNameRestorationRequested?.message}
             />

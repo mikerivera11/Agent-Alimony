@@ -1199,6 +1199,31 @@ export const filingDetailsSchema = z
      */
     floridaResidentSince: optionalIsoDateSchema,
     whichPartyIsFloridaResident: z.enum(["you", "spouse", "both", "neither"]).optional(),
+    marriageGround: z.enum(["irretrievably_broken", "mental_incapacity"]).optional(),
+    financialAffidavitStatus: z.enum(["filed_with_petition", "will_be_timely_filed"]).optional(),
+    pregnancyStatus: z.enum(["none", "petitioner", "respondent"]).optional(),
+    pregnancyDueDate: optionalIsoDateSchema,
+    nonCommonMinorChildrenStatus: yesNoSchema.optional(),
+    nonCommonMinorChildrenDetails: longTextSchema.optional(),
+    adultDependentChildrenStatus: yesNoSchema.optional(),
+    adultDependentChildrenDetails: longTextSchema.optional(),
+    propertyDistributionRequest: z.enum(["written_agreement", "court_determination", "other_property_interest"]).optional(),
+    propertyInterestRecipient: z.enum(["petitioner", "respondent"]).optional(),
+    propertyInterestExplanation: longTextSchema.optional(),
+    childrenCurrentResidence: z.enum(["petitioner", "respondent", "other"]).optional(),
+    childrenCurrentResidenceExplanation: longTextSchema.optional(),
+    parentalResponsibilityRequest: z.enum(["shared", "sole_petitioner", "sole_respondent"]).optional(),
+    soleResponsibilityDetrimentExplanation: longTextSchema.optional(),
+    parentingPlanIncludesTimeSharing: yesNoSchema.optional(),
+    parentingBestInterestsExplanation: longTextSchema.optional(),
+    childSupportWorksheetStatus: z.enum(["filed_with_petition", "will_be_timely_filed"]).optional(),
+    retroactiveChildSupportStart: z.enum(["none", "separation", "filing", "other"]).optional(),
+    retroactiveChildSupportOtherDate: optionalIsoDateSchema,
+    retroactiveChildSupportOtherExplanation: longTextSchema.optional(),
+    supportBeyondEighteen: z.enum(["none", "incapacity", "high_school"]).optional(),
+    supportBeyondEighteenDetails: longTextSchema.optional(),
+    childSupportDeviationRequested: yesNoSchema.optional(),
+    otherReliefRequested: longTextSchema.optional(),
     /** Whether a spouse asks the court to restore a former name. */
     formerNameRestorationRequested: yesNoSchema.optional(),
     formerNameToRestore: shortTextSchema.optional(),
@@ -1281,6 +1306,106 @@ export const filingDetailsSchema = z
         code: "custom",
         path: ["whichPartyIsFloridaResident"],
         message: "Choose who has lived in Florida",
+      });
+    }
+    for (const [field, label] of [
+      ["marriageGround", "the legal ground for dissolution"],
+      ["financialAffidavitStatus", "when the financial affidavit will be filed"],
+      ["pregnancyStatus", "whether either party is pregnant"],
+      ["nonCommonMinorChildrenStatus", "whether there are children not common to both parties"],
+      ["adultDependentChildrenStatus", "whether there are adult dependent children"],
+      ["propertyDistributionRequest", "how property division should be handled"],
+      ["childrenCurrentResidence", "where the children currently reside"],
+      ["parentalResponsibilityRequest", "the requested parental-responsibility arrangement"],
+      ["parentingPlanIncludesTimeSharing", "whether the proposed plan includes time-sharing"],
+      ["childSupportWorksheetStatus", "when the child-support worksheet will be filed"],
+      ["retroactiveChildSupportStart", "whether retroactive child support is requested"],
+      ["supportBeyondEighteen", "whether support beyond age 18 is requested"],
+      ["childSupportDeviationRequested", "whether a child-support deviation is requested"],
+    ] as const) {
+      if (!value[field]) {
+        ctx.addIssue({ code: "custom", path: [field], message: `Choose ${label}` });
+      }
+    }
+    if (value.pregnancyStatus && value.pregnancyStatus !== "none" && !value.pregnancyDueDate) {
+      ctx.addIssue({ code: "custom", path: ["pregnancyDueDate"], message: "Enter the expected due date" });
+    }
+    if (value.nonCommonMinorChildrenStatus === "yes" && !value.nonCommonMinorChildrenDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["nonCommonMinorChildrenDetails"],
+        message: "List each child, birth date, and birth parent's name and address",
+      });
+    }
+    if (value.adultDependentChildrenStatus === "yes" && !value.adultDependentChildrenDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["adultDependentChildrenDetails"],
+        message: "List each adult dependent child, birth date, and disability details",
+      });
+    }
+    if (value.propertyDistributionRequest === "other_property_interest") {
+      if (!value.propertyInterestRecipient) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["propertyInterestRecipient"],
+          message: "Choose who is requesting an interest in the other spouse's property",
+        });
+      }
+      if (!value.propertyInterestExplanation?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["propertyInterestExplanation"],
+          message: "Explain the requested interest in the other spouse's property",
+        });
+      }
+    }
+    if (value.childrenCurrentResidence === "other" && !value.childrenCurrentResidenceExplanation?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["childrenCurrentResidenceExplanation"],
+        message: "Explain where and with whom the children currently reside",
+      });
+    }
+    if (
+      (value.parentalResponsibilityRequest === "sole_petitioner" ||
+        value.parentalResponsibilityRequest === "sole_respondent") &&
+      !value.soleResponsibilityDetrimentExplanation?.trim()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["soleResponsibilityDetrimentExplanation"],
+        message: "Explain why shared parental responsibility would be detrimental to the children",
+      });
+    }
+    if (!value.parentingBestInterestsExplanation?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["parentingBestInterestsExplanation"],
+        message: "Explain why the requested parenting plan is in the children's best interests",
+      });
+    }
+    if (value.retroactiveChildSupportStart === "other") {
+      if (!value.retroactiveChildSupportOtherDate) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["retroactiveChildSupportOtherDate"],
+          message: "Enter the requested retroactive-support start date",
+        });
+      }
+      if (!value.retroactiveChildSupportOtherExplanation?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["retroactiveChildSupportOtherExplanation"],
+          message: "Explain the other requested retroactive-support date",
+        });
+      }
+    }
+    if (value.supportBeyondEighteen !== "none" && !value.supportBeyondEighteenDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["supportBeyondEighteenDetails"],
+        message: "Identify the child and explain the requested support beyond age 18",
       });
     }
     if (value.whichPartyIsFloridaResident && value.whichPartyIsFloridaResident !== "neither" && !value.floridaResidentSince) {

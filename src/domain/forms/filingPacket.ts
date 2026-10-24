@@ -221,6 +221,28 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
       if (isBlank(filing.caseNumber)) missing.push("The assigned case number");
       if (isBlank(filing.division)) missing.push("The assigned division");
     }
+    if (formNumber === "12.901(b)(1)") {
+      for (const [field, label] of [
+        ["marriageGround", "The requested ground for dissolution"],
+        ["financialAffidavitStatus", "When the financial affidavit will be filed"],
+        ["pregnancyStatus", "Whether either party is pregnant"],
+        ["nonCommonMinorChildrenStatus", "Whether there are minor children not common to both parties"],
+        ["adultDependentChildrenStatus", "Whether there are adult dependent children"],
+        ["propertyDistributionRequest", "How the petition should request property distribution"],
+        ["childrenCurrentResidence", "Where the minor children currently reside"],
+        ["parentalResponsibilityRequest", "The requested parental-responsibility arrangement"],
+        ["parentingPlanIncludesTimeSharing", "Whether the parenting plan includes time-sharing"],
+        ["childSupportWorksheetStatus", "When the child-support worksheet will be filed"],
+        ["retroactiveChildSupportStart", "Whether retroactive child support is requested"],
+        ["supportBeyondEighteen", "Whether support beyond age 18 is requested"],
+        ["childSupportDeviationRequested", "Whether a child-support deviation is requested"],
+      ] as const) {
+        if (!filing[field]) missing.push(label);
+      }
+      if (isBlank(filing.parentingBestInterestsExplanation)) {
+        missing.push("Why the requested parenting plan is in the children's best interests");
+      }
+    }
   }
 
   if (formNumber === "12.928") {

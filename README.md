@@ -474,6 +474,16 @@ with dependent or minor children, and the parenting plan.
 When payment terms are agreed, the same confirmed amount, cadence, start date,
 duration/end condition, and alimony type are inserted into the verified
 alimony controls of the applicable dissolution petition and Form 12.902(f)(1).
+For Form 12.901(b)(1), the filing-detail intake separately confirms the
+petition's pregnancy and dependent-child declarations, affidavit filing
+status, dissolution ground, property-distribution request, current child
+residence, parental-responsibility request, time-sharing election,
+best-interests explanation, child-support worksheet status, retroactive
+support date, support beyond age 18, guideline-deviation request, insurance
+provider, uncovered-expense allocation, former-name request, other relief, and
+the corresponding final-request checkboxes. Legal requests are never inferred
+from broad narratives; mutually exclusive petition choices come from explicit
+answers.
 The settlement intake also captures disclosure acknowledgment, contingent
 items, beneficiary designations, child-support payment and step-down terms,
 arrears, health/dental coverage, uncovered-expense allocation, support life

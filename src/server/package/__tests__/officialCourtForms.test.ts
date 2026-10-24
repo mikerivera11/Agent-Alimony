@@ -82,7 +82,49 @@ describe("official court forms", () => {
       "Taylor Rivera (fictional)",
     );
     expect(form.getCheckBox("check if minor child common to both").isChecked()).toBe(true);
+    expect(form.getTextField("date of separation1").getText()).toBe("01/10/2025");
+    expect(form.getCheckBox("check if petitioner is not").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if respondent is not").isChecked()).toBe(true);
+    expect(form.getCheckBox("will be timely filed").isChecked()).toBe(true);
+    expect(form.getCheckBox("the marriage is irretrievably broken").isChecked()).toBe(true);
     expect(form.getCheckBox("there are marital assets or liabilities").isChecked()).toBe(true);
+    expect(form.getCheckBox("all marital assets or liabilities have been divided by written agreement").isChecked()).toBe(
+      true,
+    );
+    expect(form.getCheckBox("minor resides with petitioner").isChecked()).toBe(true);
+    expect(form.getCheckBox("parental responsibility shall be shared by both parents").isChecked()).toBe(
+      true,
+    );
+    expect(form.getCheckBox("parenting plan includes time sharing").isChecked()).toBe(true);
+    expect(form.getCheckBox("parenting plan does not include time sharing").isChecked()).toBe(false);
+    expect(form.getTextField("Petitioner will be referred to as").getText()).toBe(
+      "Alex Rivera (fictional)",
+    );
+    expect(form.getTextField("Respondent will be referred to as").getText()).toBe(
+      "Jordan Rivera (fictional)",
+    );
+    expect(
+      form.getCheckBox("Check if attached proposed parenting plan should be adopted by the court").isChecked(),
+    ).toBe(true);
+    expect(form.getCheckBox("parties agreed to having a parenting plan").isChecked()).toBe(true);
+    expect(form.getCheckBox("parties have not agreed to a parenting plan").isChecked()).toBe(false);
+    expect(form.getTextField("Explain why this request is in the best interests of the children").getText()).toContain(
+      "frequent and continuing contact",
+    );
+    expect(form.getCheckBox("request to award child support by petitioner").isChecked()).toBe(true);
+    expect(form.getCheckBox("guidelines will be filed").isChecked()).toBe(true);
+    expect(form.getCheckBox("check for date of separation").isChecked()).toBe(true);
+    expect(form.getTextField("date of separation2").getText()).toBe("01/10/2025");
+    expect(form.getCheckBox("check if this is a petitioner request on insurance").isChecked()).toBe(true);
+    expect(form.getCheckBox("insurance provided by petitioner").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box111").isChecked()).toBe(true);
+    expect(form.getCheckBox("To be paid according to the percentages in the Child Support Guidelines Worksheet, Florida Family").isChecked()).toBe(
+      true,
+    );
+    expect(form.getCheckBox("check this and any of the following five that apply").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if this applies").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if this applies 2").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if this applies 3").isChecked()).toBe(true);
     expect(form.getTextField("Telephone Number").getText()).toBe("407-555-0100");
     expect(form.getTextField("designated email address").getText()).toBe("alex@example.invalid");
     expect(form.getTextField("indicate amount of payment").getText()).toBe("1000.00");
@@ -118,6 +160,61 @@ describe("official court forms", () => {
         )
         .isChecked(),
     ).toBe(true);
+  });
+
+  it("maps alternate petition elections without checking incompatible choices", async () => {
+    const source = createSampleDraft();
+    Object.assign(source.data.filingDetails, {
+      pregnancyStatus: "respondent",
+      pregnancyDueDate: "2026-11-15",
+      nonCommonMinorChildrenStatus: "yes",
+      nonCommonMinorChildrenDetails:
+        "Casey Example — 04/01/2018; birth parent: Morgan Example, 1 Example Road",
+      adultDependentChildrenStatus: "yes",
+      adultDependentChildrenDetails: "Jamie Example — 02/02/2004; qualifying physical disability",
+      propertyDistributionRequest: "court_determination",
+      childrenCurrentResidence: "other",
+      childrenCurrentResidenceExplanation: "The children currently reside with their maternal grandparent.",
+      parentalResponsibilityRequest: "sole_respondent",
+      soleResponsibilityDetrimentExplanation: "Attorney-reviewed detriment explanation for this fictional test.",
+      parentingPlanIncludesTimeSharing: "no",
+      childSupportWorksheetStatus: "filed_with_petition",
+      retroactiveChildSupportStart: "other",
+      retroactiveChildSupportOtherDate: "2025-02-01",
+      retroactiveChildSupportOtherExplanation: "The requested date follows the parties' written support arrangement.",
+      supportBeyondEighteen: "incapacity",
+      supportBeyondEighteenDetails: "Jamie Example; incapacity began before age 18.",
+      childSupportDeviationRequested: "yes",
+      formerNameRestorationRequested: "yes",
+      formerNameToRestore: "Alex Example",
+      otherReliefRequested: "Attorney-reviewed additional relief.",
+    });
+    const draft = buildReviewedDraft(source);
+    const viewModel = buildPackageViewModel(draft);
+    const bytes = await __testing.populateForm({ formNumber: "12.901(b)(1)", draft, viewModel });
+    const form = (await PDFDocument.load(bytes)).getForm();
+
+    expect(form.getCheckBox("check if respondent is pregnant").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if petitioner is pregnant").isChecked()).toBe(false);
+    expect(form.getCheckBox("check if child not common to both parties").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if child(ren) common to both parties who are 18 or older but who are dependent").isChecked()).toBe(true);
+    expect(form.getCheckBox("The Court should determine how the assets and liabilities of this marriage are to be distributed").isChecked()).toBe(true);
+    expect(form.getCheckBox("all marital assets or liabilities have been divided by written agreement").isChecked()).toBe(false);
+    expect(form.getCheckBox("minor resides with other circumstance").isChecked()).toBe(true);
+    expect(form.getCheckBox("parental responsibility shall be awarded to petitioner or respondent. A choice required").isChecked()).toBe(true);
+    expect(form.getCheckBox("responsibility awarded solely to respondent").isChecked()).toBe(true);
+    expect(form.getCheckBox("parental responsibility shall be shared by both parents").isChecked()).toBe(false);
+    expect(form.getCheckBox("parenting plan does not include time sharing").isChecked()).toBe(true);
+    expect(form.getCheckBox("parenting plan includes time sharing").isChecked()).toBe(false);
+    expect(form.getCheckBox("guidelines are filed").isChecked()).toBe(true);
+    expect(form.getCheckBox("guidelines will be filed").isChecked()).toBe(false);
+    expect(form.getCheckBox("check for date of other").isChecked()).toBe(true);
+    expect(form.getCheckBox("petitioner requests that the Court award child support to be paid beyond the age of 18").isChecked()).toBe(true);
+    expect(form.getCheckBox("check because dependent has mental or physical incapacity").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if this is a petitioner request").isChecked()).toBe(true);
+    expect(form.getTextField("former legal name").getText()).toBe("Alex Example");
+    expect(form.getCheckBox("check if this applies 4").isChecked()).toBe(true);
+    expect(form.getCheckBox("check if this applies 5").isChecked()).toBe(true);
   });
 
   it("fits worksheet amounts inside their official form cells", async () => {
