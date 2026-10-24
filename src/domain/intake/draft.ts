@@ -1,4 +1,5 @@
 import type {
+  AlimonyAdvance,
   AlimonyFactors,
   AssetsDebts,
   CaseBasics,
@@ -11,8 +12,10 @@ import type {
   Income,
   Marriage,
   ParentingPlan,
+  ParentingPlanDetails,
   ParentingTime,
   SafetyComplexity,
+  SettlementTerms,
   Spouses,
 } from "./schema";
 
@@ -29,12 +32,15 @@ export interface IntakeDraftData {
   children: Partial<Children>;
   parentingTime: Partial<ParentingTime>;
   parentingPlan: Partial<ParentingPlan>;
+  parentingPlanDetails: Partial<ParentingPlanDetails>;
   income: Partial<Income>;
   deductions: Partial<Deductions>;
   childCosts: Partial<ChildCosts>;
   householdExpenses: Partial<HouseholdExpenses>;
   assetsDebts: Partial<AssetsDebts>;
   alimonyFactors: Partial<AlimonyFactors>;
+  settlementTerms: Partial<SettlementTerms>;
+  alimonyAdvance: Partial<AlimonyAdvance>;
   safetyComplexity: Partial<SafetyComplexity>;
   documentReadiness: Partial<DocumentReadiness>;
   filingDetails: Partial<FilingDetails>;
@@ -75,12 +81,15 @@ export const EMPTY_INTAKE_DRAFT_DATA: IntakeDraftData = {
   children: { children: [] },
   parentingTime: {},
   parentingPlan: {},
+  parentingPlanDetails: {},
   income: {},
   deductions: {},
   childCosts: {},
   householdExpenses: {},
   assetsDebts: {},
   alimonyFactors: {},
+  settlementTerms: {},
+  alimonyAdvance: {},
   safetyComplexity: {},
   documentReadiness: {},
   filingDetails: {},

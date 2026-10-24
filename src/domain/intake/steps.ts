@@ -1,6 +1,7 @@
 import type { ZodType } from "zod";
 
 import {
+  alimonyAdvanceSchema,
   alimonyFactorsSchema,
   assetsDebtsSchema,
   caseBasicsSchema,
@@ -13,10 +14,13 @@ import {
   householdExpensesSchema,
   incomeSchema,
   marriageSchema,
+  parentingPlanDetailsSchema,
   parentingPlanSchema,
   parentingTimeSchema,
   safetyComplexitySchema,
+  settlementTermsSchema,
   spousesSchema,
+  type AlimonyAdvance,
   type AlimonyFactors,
   type AssetsDebts,
   type CaseBasics,
@@ -29,8 +33,10 @@ import {
   type Income,
   type Marriage,
   type ParentingPlan,
+  type ParentingPlanDetails,
   type ParentingTime,
   type SafetyComplexity,
+  type SettlementTerms,
   type Spouses,
 } from "./schema";
 import type { IntakeDraftData, IntakeStepId } from "./draft";
@@ -43,15 +49,18 @@ export const INTAKE_STEP_ORDER: IntakeStepId[] = [
   "children",
   "parentingTime",
   "parentingPlan",
+  "parentingPlanDetails",
   "income",
   "deductions",
   "childCosts",
   "householdExpenses",
   "assetsDebts",
   "alimonyFactors",
+  "filingDetails",
+  "settlementTerms",
+  "alimonyAdvance",
   "safetyComplexity",
   "documentReadiness",
-  "filingDetails",
 ];
 
 export interface IntakeStepConfig<T> {
@@ -86,6 +95,10 @@ export function getStepDefaultValues(stepId: IntakeStepId, data: IntakeDraftData
 
 const alwaysApplicable = () => true;
 const hasChildren = (data: IntakeDraftData) => data.children.hasChildren === "yes";
+const wantsChildCaseFilingPacket = (data: IntakeDraftData) =>
+  hasChildren(data) && data.filingDetails.wantsFilingPacket === "yes";
+const hasAgreedAlimonyPayment = (data: IntakeDraftData) =>
+  data.alimonyFactors.alimonyAgreementStatus === "agreed_payment";
 
 const emptyPersonIncome: Income["self"] = {
   wages: 0,
@@ -212,6 +225,65 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
     } satisfies ParentingPlan,
     isApplicable: hasChildren,
   },
+  parentingPlanDetails: {
+    id: "parentingPlanDetails",
+    title: "Parenting plan details",
+    summary: "The remaining choices in every section of Florida Form 12.995(a).",
+    whyWeAsk:
+      "The official parenting plan asks about school calendars, schedule changes, breaks, transportation, travel, communication, child care, and dispute resolution. Recording each choice prevents broad narrative answers from leaving hidden blanks.",
+    schema: parentingPlanDetailsSchema,
+    defaultValues: {
+      planOrderType: "final",
+      petitionerAddressStatus: "known",
+      respondentAddressStatus: "known",
+      extracurricularApproval: "mutual_agreement",
+      extracurricularTransportation: "parent_with_child",
+      extracurricularCosts: "",
+      extracurricularActivityCostPercentSelf: 50,
+      extracurricularEquipmentCostPercentSelf: 50,
+      informationSharingOther: "",
+      schoolCalendarBasis: "oldest_child",
+      schoolCalendarDetails: "",
+      scheduleChangeNotice: "At least 7 days, except in an emergency.",
+      scheduleChangeRequesterPaysCosts: "yes",
+      scheduleChangeOther: "",
+      scheduleStartDate: "",
+      differentChildSchedule: "no",
+      differentChildScheduleDetails: "",
+      winterBreakMode: "other",
+      winterBreakDetails: "",
+      springBreakMode: "other",
+      springBreakParent: "undecided",
+      springBreakDetails: "",
+      summerBreakMode: "other",
+      summerBreakParent: "undecided",
+      summerBreakDetails: "",
+      transportationMode: "beginning_parent",
+      transportationDetails: "",
+      lateExchangeMinutes: 30,
+      exchangeLocationMode: "parents_homes",
+      exchangeLocationDetails: "",
+      transportationCostsMode: "child_support_order",
+      transportationCostsDetails: "",
+      domesticTravelNoticeDays: 7,
+      internationalTravelNoticeDays: 30,
+      internationalTravelSecurity: "",
+      travelOther: "",
+      majorityDesignationParent: "undecided",
+      parentCommunicationMethods: ["email", "telephone"],
+      parentCommunicationOther: "",
+      childCommunicationMethods: ["telephone", "video"],
+      childCommunicationMode: "anytime",
+      childCommunicationDetails: "Reasonable telephone or video contact at age-appropriate times.",
+      electronicCommunicationCosts: "Each parent pays their own ordinary communication costs.",
+      childcareMode: "mutual_agreement",
+      rightOfFirstRefusalHours: 0,
+      childcareDetails: "",
+      disputeResolution: "The parents will first attempt direct discussion and then mediation before court action, unless an emergency or safety concern requires immediate relief.",
+      otherProvisions: "",
+    } satisfies ParentingPlanDetails,
+    isApplicable: hasChildren,
+  },
   income: {
     id: "income",
     title: "Gross income",
@@ -330,6 +402,86 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
       agreedAlimonyNotes: "",
     } satisfies AlimonyFactors,
     isApplicable: alwaysApplicable,
+  },
+  settlementTerms: {
+    id: "settlementTerms",
+    title: "Marital settlement terms",
+    summary: "The remaining agreement choices in Form 12.902(f)(1).",
+    whyWeAsk:
+      "A marital settlement agreement covers more than alimony and property. These questions capture child-support payment details, insurance, tax exemptions, contingent items, beneficiary designations, and anything still unresolved.",
+    schema: settlementTermsSchema,
+    defaultValues: {
+      fullDisclosureAcknowledged: false,
+      contingentAssetsLiabilities: "None known.",
+      beneficiaryDesignationMode: "none",
+      beneficiaryDesignationDetails: "",
+      parentingPlanExhibitLabel: "A",
+      childSupportObligor: "you",
+      agreedChildSupportMonthly: 0,
+      childSupportStartDate: "",
+      childSupportEndDate: "",
+      childSupportPaymentAmount: 0,
+      childSupportPaymentFrequency: "monthly",
+      childSupportStepDownSchedule: "The parties will use the statutory termination rules and obtain an updated order before changing the payment amount.",
+      childSupportDeviationReason: "No deviation from the guideline amount is requested.",
+      retroactiveChildSupport: 0,
+      childSupportArrearage: 0,
+      arrearsPaymentAmount: 0,
+      arrearsPaymentFrequency: "not_applicable",
+      arrearsPaymentStartDate: undefined,
+      healthInsuranceProvider: "not_available",
+      uninsuredMedicalSplit: "guideline_percentages",
+      uninsuredMedicalDetails: "",
+      dentalInsuranceProvider: "not_available",
+      uninsuredDentalSplit: "guideline_percentages",
+      uninsuredDentalDetails: "",
+      childSupportLifeInsuranceProvider: "none",
+      childSupportLifeInsuranceAmount: 0,
+      taxExemptionTerms: "To be confirmed by the parties and their tax advisers.",
+      otherChildSupportTerms: "None.",
+      otherSettlementTerms: "None.",
+      unresolvedIssues: "None.",
+    } satisfies SettlementTerms,
+    isApplicable: wantsChildCaseFilingPacket,
+  },
+  alimonyAdvance: {
+    id: "alimonyAdvance",
+    title: "Alimony advance credit agreement",
+    summary: "Document an upfront payment that will be credited against the final agreed settlement.",
+    whyWeAsk:
+      "An advance paid before final judgment needs a clear paper trail: amount, due date, payment method, when credit applies, and what happens if the final agreement or judgment is not entered.",
+    schema: alimonyAdvanceSchema,
+    defaultValues: {
+      wantsAdvanceAgreement: "no",
+      payerFullLegalName: "",
+      recipientFullLegalName: "",
+      advanceAmount: 0,
+      paymentDueDate: undefined,
+      paymentMethod: undefined,
+      paymentMethodDetails: "",
+      finalSettlementAmount: 0,
+      creditMethod: "dollar_for_dollar",
+      creditDetails: "",
+      ifFinalAgreementNotEntered: "attorney_to_confirm",
+      clearedFundsRequired: "yes",
+      advanceNotes: "",
+    } satisfies AlimonyAdvance,
+    deriveDefaults: (data) => ({
+      ...INTAKE_STEPS.alimonyAdvance.defaultValues,
+      payerFullLegalName:
+        data.alimonyFactors.potentialAlimonyRecipient === "self"
+          ? (data.filingDetails.spouse?.fullLegalName ?? "")
+          : (data.filingDetails.you?.fullLegalName ?? ""),
+      recipientFullLegalName:
+        data.alimonyFactors.potentialAlimonyRecipient === "self"
+          ? (data.filingDetails.you?.fullLegalName ?? "")
+          : (data.filingDetails.spouse?.fullLegalName ?? ""),
+      finalSettlementAmount:
+        data.alimonyFactors.agreedAlimonyFrequency === "one_time"
+          ? (data.alimonyFactors.agreedAlimonyAmount ?? 0)
+          : 0,
+    }) as AlimonyAdvance,
+    isApplicable: hasAgreedAlimonyPayment,
   },
   safetyComplexity: {
     id: "safetyComplexity",

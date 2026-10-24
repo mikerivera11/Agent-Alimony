@@ -2,6 +2,7 @@ import { INTAKE_STEPS, getApplicableStepIds } from "./steps";
 import { isDraftReadyForReview } from "./missingData";
 import type { IntakeDraft, IntakeDraftData, IntakeStepId } from "./draft";
 import type {
+  AlimonyAdvance,
   AlimonyFactors,
   AssetsDebts,
   CaseBasics,
@@ -14,8 +15,10 @@ import type {
   Income,
   Marriage,
   ParentingPlan,
+  ParentingPlanDetails,
   ParentingTime,
   SafetyComplexity,
+  SettlementTerms,
   Spouses,
 } from "./schema";
 
@@ -39,6 +42,7 @@ export interface ReviewedIntakeDraft {
     parentingTime: ParentingTime | undefined;
     /** Undefined when the household has no shared minor children. */
     parentingPlan: ParentingPlan | undefined;
+    parentingPlanDetails: ParentingPlanDetails | undefined;
     income: Income;
     deductions: Deductions;
     /** Undefined when the household has no shared minor children. */
@@ -46,6 +50,8 @@ export interface ReviewedIntakeDraft {
     householdExpenses: HouseholdExpenses;
     assetsDebts: AssetsDebts;
     alimonyFactors: AlimonyFactors;
+    settlementTerms: SettlementTerms | undefined;
+    alimonyAdvance: AlimonyAdvance | undefined;
     safetyComplexity: SafetyComplexity;
     documentReadiness: DocumentReadiness;
     filingDetails: FilingDetails;
@@ -125,12 +131,17 @@ export function buildReviewedDraft(draft: IntakeDraft): ReviewedIntakeDraft {
       children: parseStep("children", draft.data),
       parentingTime: applicable.has("parentingTime") ? parseStep("parentingTime", draft.data) : undefined,
       parentingPlan: applicable.has("parentingPlan") ? parseStep("parentingPlan", draft.data) : undefined,
+      parentingPlanDetails: applicable.has("parentingPlanDetails")
+        ? parseStep("parentingPlanDetails", draft.data)
+        : undefined,
       income: parseStep("income", draft.data),
       deductions: parseStep("deductions", draft.data),
       childCosts: applicable.has("childCosts") ? parseStep("childCosts", draft.data) : undefined,
       householdExpenses: parseStep("householdExpenses", draft.data),
       assetsDebts: parseStep("assetsDebts", draft.data),
       alimonyFactors: parseStep("alimonyFactors", draft.data),
+      settlementTerms: applicable.has("settlementTerms") ? parseStep("settlementTerms", draft.data) : undefined,
+      alimonyAdvance: applicable.has("alimonyAdvance") ? parseStep("alimonyAdvance", draft.data) : undefined,
       safetyComplexity: parseStep("safetyComplexity", draft.data),
       documentReadiness: parseStep("documentReadiness", draft.data),
       filingDetails: parseStep("filingDetails", draft.data),

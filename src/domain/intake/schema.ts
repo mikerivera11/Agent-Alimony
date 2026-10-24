@@ -320,6 +320,100 @@ export const parentingPlanSchema = z
 
 export type ParentingPlan = z.infer<typeof parentingPlanSchema>;
 
+// 5c. Parenting plan form details --------------------------------------------
+
+const parentChoiceSchema = z.enum(["you", "other_parent", "undecided"]);
+const percentageSchema = z.coerce.number().min(0).max(100);
+
+export const parentingPlanDetailsSchema = z
+  .object({
+    planOrderType: z.enum(["final", "temporary", "modification"]),
+    petitionerAddressStatus: z.enum(["known", "unknown", "confidential"]),
+    respondentAddressStatus: z.enum(["known", "unknown", "confidential"]),
+    extracurricularApproval: z.enum(["either_parent", "mutual_agreement", "other"]),
+    extracurricularTransportation: z.enum(["parent_with_child", "other"]),
+    extracurricularCosts: shortTextSchema,
+    extracurricularActivityCostPercentSelf: percentageSchema.default(50),
+    extracurricularEquipmentCostPercentSelf: percentageSchema.default(50),
+    informationSharingOther: longTextSchema.optional(),
+    schoolCalendarBasis: z.enum(["oldest_child", "youngest_child", "county", "school"]),
+    schoolCalendarDetails: shortTextSchema.optional(),
+    scheduleChangeNotice: shortTextSchema,
+    scheduleChangeRequesterPaysCosts: yesNoSchema,
+    scheduleChangeOther: longTextSchema.optional(),
+    scheduleStartDate: isoDateSchema,
+    differentChildSchedule: yesNoSchema,
+    differentChildScheduleDetails: longTextSchema.optional(),
+    winterBreakMode: z.enum(["split", "alternating_entire_break", "other"]),
+    winterBreakDetails: longTextSchema,
+    springBreakMode: z.enum(["regular_schedule", "alternating", "one_parent", "even_split", "other"]),
+    springBreakParent: parentChoiceSchema.optional(),
+    springBreakDetails: longTextSchema,
+    summerBreakMode: z.enum(["regular_schedule", "one_parent", "equal_split", "other"]),
+    summerBreakParent: parentChoiceSchema.optional(),
+    summerBreakDetails: longTextSchema,
+    transportationMode: z.enum(["you", "other_parent", "beginning_parent", "ending_parent", "other"]),
+    transportationDetails: longTextSchema.optional(),
+    lateExchangeMinutes: countSchema.max(240),
+    exchangeLocationMode: z.enum(["parents_homes", "specific_location", "other"]),
+    exchangeLocationDetails: longTextSchema.optional(),
+    transportationCostsMode: z.enum(["child_support_order", "split", "other"]),
+    transportationCostsDetails: longTextSchema.optional(),
+    domesticTravelNoticeDays: countSchema.max(365),
+    internationalTravelNoticeDays: countSchema.max(365),
+    internationalTravelSecurity: longTextSchema.optional(),
+    travelOther: longTextSchema.optional(),
+    majorityDesignationParent: parentChoiceSchema,
+    parentCommunicationMethods: z
+      .array(z.enum(["in_person", "telephone", "letter", "email", "other"]))
+      .min(1, "Choose at least one way the parents will communicate"),
+    parentCommunicationOther: shortTextSchema.optional(),
+    childCommunicationMethods: z
+      .array(z.enum(["telephone", "email", "video", "other"]))
+      .min(1, "Choose at least one way the child may communicate"),
+    childCommunicationMode: z.enum(["anytime", "daily", "specific_days", "other"]),
+    childCommunicationDetails: longTextSchema,
+    electronicCommunicationCosts: longTextSchema,
+    childcareMode: z.enum(["each_parent_selects", "mutual_agreement", "right_of_first_refusal", "other"]),
+    rightOfFirstRefusalHours: countSchema.max(168),
+    childcareDetails: longTextSchema.optional(),
+    disputeResolution: longTextSchema,
+    otherProvisions: longTextSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    for (const [field, label] of [
+      ["schoolCalendarDetails", "Enter the county or school calendar"] as const,
+      ["differentChildScheduleDetails", "Describe the different schedule"] as const,
+      ["transportationDetails", "Describe the transportation arrangement"] as const,
+      ["exchangeLocationDetails", "Enter the exchange location"] as const,
+      ["transportationCostsDetails", "Describe how transportation costs are divided"] as const,
+      ["parentCommunicationOther", "Describe the other communication method"] as const,
+      ["childcareDetails", "Describe the child-care arrangement"] as const,
+    ]) {
+      const needsValue =
+        (field === "schoolCalendarDetails" &&
+          (value.schoolCalendarBasis === "county" || value.schoolCalendarBasis === "school")) ||
+        (field === "differentChildScheduleDetails" && value.differentChildSchedule === "yes") ||
+        (field === "transportationDetails" && value.transportationMode === "other") ||
+        (field === "exchangeLocationDetails" && value.exchangeLocationMode !== "parents_homes") ||
+        (field === "transportationCostsDetails" && value.transportationCostsMode !== "child_support_order") ||
+        (field === "parentCommunicationOther" && value.parentCommunicationMethods.includes("other")) ||
+        (field === "childcareDetails" && value.childcareMode === "other");
+      if (needsValue && !value[field]?.trim()) {
+        ctx.addIssue({ code: "custom", path: [field], message: label });
+      }
+    }
+    if (value.childcareMode === "right_of_first_refusal" && value.rightOfFirstRefusalHours <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rightOfFirstRefusalHours"],
+        message: "Enter the number of hours that triggers the offer to the other parent",
+      });
+    }
+  });
+
+export type ParentingPlanDetails = z.infer<typeof parentingPlanDetailsSchema>;
+
 // 6. Gross income ---------------------------------------------------------
 
 /**
@@ -460,6 +554,8 @@ export const assetDebtItemSchema = z
     type: z.enum(ED_ITEM_TYPES),
     /** Non-negative dollar amount. Blank is treated as $0. */
     value: moneySchema,
+    /** Current required monthly payment for a liability; ignored for assets. */
+    monthlyPayment: moneySchema.default(0),
     classification: z.enum(ED_CLASSIFICATIONS),
     /** Only meaningful when `classification === "nonmarital"`. */
     nonmaritalBasis: z.enum(ED_NONMARITAL_BASES).optional(),
@@ -515,6 +611,13 @@ export const assetDebtItemSchema = z
         code: "custom",
         path: ["agreedRecipient"],
         message: "A debt cannot be sold and divided",
+      });
+    }
+    if (item.type === "asset" && item.monthlyPayment > 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["monthlyPayment"],
+        message: "Monthly payment applies only to debts",
       });
     }
   });
@@ -721,6 +824,174 @@ export const alimonyFactorsSchema = z
   });
 
 export type AlimonyFactors = z.infer<typeof alimonyFactorsSchema>;
+
+// 11b. Marital settlement agreement terms -----------------------------------
+
+export const settlementTermsSchema = z
+  .object({
+    fullDisclosureAcknowledged: z.boolean().refine(Boolean, {
+      message: "Confirm that both parties made full and fair financial disclosure",
+    }),
+    contingentAssetsLiabilities: longTextSchema,
+    beneficiaryDesignationMode: z.enum(["none", "maintain_for_spouse_or_children", "other"]),
+    beneficiaryDesignationDetails: longTextSchema.optional(),
+    parentingPlanExhibitLabel: shortTextSchema,
+    childSupportObligor: z.enum(["you", "other_parent"]),
+    agreedChildSupportMonthly: moneySchema,
+    childSupportStartDate: isoDateSchema,
+    childSupportEndDate: isoDateSchema,
+    childSupportPaymentAmount: moneySchema,
+    childSupportPaymentFrequency: z.enum(["weekly", "every_two_weeks", "twice_monthly", "monthly", "other"]),
+    childSupportStepDownSchedule: longTextSchema,
+    childSupportDeviationReason: longTextSchema,
+    retroactiveChildSupport: moneySchema,
+    childSupportArrearage: moneySchema,
+    arrearsPaymentAmount: moneySchema,
+    arrearsPaymentFrequency: z.enum(["weekly", "every_two_weeks", "monthly", "not_applicable"]),
+    arrearsPaymentStartDate: optionalIsoDateSchema,
+    healthInsuranceProvider: z.enum(["you", "other_parent", "not_available"]),
+    uninsuredMedicalSplit: z.enum(["equal", "guideline_percentages", "other"]),
+    uninsuredMedicalDetails: longTextSchema.optional(),
+    dentalInsuranceProvider: z.enum(["you", "other_parent", "not_available"]),
+    uninsuredDentalSplit: z.enum(["equal", "guideline_percentages", "other"]),
+    uninsuredDentalDetails: longTextSchema.optional(),
+    childSupportLifeInsuranceProvider: z.enum(["none", "you", "other_parent"]),
+    childSupportLifeInsuranceAmount: moneySchema,
+    taxExemptionTerms: longTextSchema,
+    otherChildSupportTerms: longTextSchema,
+    otherSettlementTerms: longTextSchema,
+    unresolvedIssues: longTextSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.beneficiaryDesignationMode !== "none" &&
+      !value.beneficiaryDesignationDetails?.trim()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["beneficiaryDesignationDetails"],
+        message: "Describe the beneficiary designation that continues after the final judgment",
+      });
+    }
+    if (value.uninsuredMedicalSplit === "other" && !value.uninsuredMedicalDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["uninsuredMedicalDetails"],
+        message: "Describe the agreed medical-expense split",
+      });
+    }
+    if (value.uninsuredDentalSplit === "other" && !value.uninsuredDentalDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["uninsuredDentalDetails"],
+        message: "Describe the agreed dental-expense split",
+      });
+    }
+    if (
+      value.childSupportLifeInsuranceProvider !== "none" &&
+      value.childSupportLifeInsuranceAmount <= 0
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["childSupportLifeInsuranceAmount"],
+        message: "Enter the agreed life-insurance amount",
+      });
+    }
+    if (
+      value.retroactiveChildSupport + value.childSupportArrearage > 0 &&
+      (value.arrearsPaymentAmount <= 0 ||
+        value.arrearsPaymentFrequency === "not_applicable" ||
+        !value.arrearsPaymentStartDate)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["arrearsPaymentAmount"],
+        message: "Enter the payment amount, frequency, and start date for retroactive support or arrears",
+      });
+    }
+  });
+
+export type SettlementTerms = z.infer<typeof settlementTermsSchema>;
+
+// 11c. Alimony advance and credit agreement ---------------------------------
+
+export const alimonyAdvanceSchema = z
+  .object({
+    wantsAdvanceAgreement: yesNoSchema,
+    payerFullLegalName: shortTextSchema.optional(),
+    recipientFullLegalName: shortTextSchema.optional(),
+    advanceAmount: moneySchema,
+    paymentDueDate: optionalIsoDateSchema,
+    paymentMethod: z.enum(["cashiers_check", "wire_transfer", "attorney_trust", "other"]).optional(),
+    paymentMethodDetails: shortTextSchema.optional(),
+    finalSettlementAmount: moneySchema,
+    creditMethod: z.enum(["dollar_for_dollar", "other"]).optional(),
+    creditDetails: longTextSchema.optional(),
+    ifFinalAgreementNotEntered: z
+      .enum(["refund", "escrow_pending_agreement", "nonrefundable", "attorney_to_confirm"])
+      .optional(),
+    clearedFundsRequired: yesNoSchema.optional(),
+    advanceNotes: longTextSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.wantsAdvanceAgreement !== "yes") return;
+    if (!value.payerFullLegalName?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["payerFullLegalName"],
+        message: "Enter the paying spouse's full legal name",
+      });
+    }
+    if (!value.recipientFullLegalName?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["recipientFullLegalName"],
+        message: "Enter the receiving spouse's full legal name",
+      });
+    }
+    if (value.advanceAmount <= 0) {
+      ctx.addIssue({ code: "custom", path: ["advanceAmount"], message: "Enter the advance payment amount" });
+    }
+    if (value.finalSettlementAmount <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["finalSettlementAmount"],
+        message: "Enter the total agreed alimony settlement amount",
+      });
+    }
+    if (value.advanceAmount > value.finalSettlementAmount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["advanceAmount"],
+        message: "The advance cannot exceed the total agreed settlement amount",
+      });
+    }
+    for (const [field, message] of [
+      ["paymentDueDate", "Enter when the advance payment is due"],
+      ["paymentMethod", "Choose how the advance will be paid"],
+      ["creditMethod", "Choose how the advance is credited"],
+      ["ifFinalAgreementNotEntered", "Choose what happens if no final agreement or judgment is entered"],
+      ["clearedFundsRequired", "Choose whether credit applies only after funds clear"],
+    ] as const) {
+      if (!value[field]) ctx.addIssue({ code: "custom", path: [field], message });
+    }
+    if (value.paymentMethod === "other" && !value.paymentMethodDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["paymentMethodDetails"],
+        message: "Describe the payment method",
+      });
+    }
+    if (value.creditMethod === "other" && !value.creditDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["creditDetails"],
+        message: "Describe how the advance is credited",
+      });
+    }
+  });
+
+export type AlimonyAdvance = z.infer<typeof alimonyAdvanceSchema>;
 
 // 12. Safety and complexity flags ----------------------------------------------
 

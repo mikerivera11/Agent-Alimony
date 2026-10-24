@@ -3,9 +3,9 @@ import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 
 import { buildPackageViewModel } from "@/domain/package";
-import { buildReviewedDraft, } from "@/domain/intake";
+import { buildReviewedDraft } from "@/domain/intake";
 
-import { generatePackagePdf } from "../pdf";
+import { generateAlimonyAdvanceAgreementPdf, generatePackagePdf } from "../pdf";
 
 describe("generatePackagePdf", () => {
   it("produces bytes with a valid PDF header that pdf-lib can reload", async () => {
@@ -46,5 +46,38 @@ describe("generatePackagePdf", () => {
     expect(header).toBe("%PDF-");
     const reloaded = await PDFDocument.load(bytes);
     expect(reloaded.getPageCount()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("generates the separate alimony advance and credit acknowledgment", async () => {
+    const reviewed = buildReviewedDraft(createSampleDraft());
+
+    const bytes = await generateAlimonyAdvanceAgreementPdf(reviewed);
+    const reloaded = await PDFDocument.load(bytes);
+
+    expect(Buffer.from(bytes.slice(0, 5)).toString("latin1")).toBe("%PDF-");
+    expect(reloaded.getTitle()).toBe(
+      "Alimony Settlement Advance and Credit Acknowledgment — Attorney-Review Draft",
+    );
+    expect(reloaded.getSubject()).toBe("Pre-judgment alimony settlement advance and credit terms");
+    expect(reloaded.getPageCount()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("refuses to generate an advance agreement unless the reviewed answers request one", async () => {
+    const draft = createSampleDraft();
+    draft.data.alimonyAdvance = {
+      wantsAdvanceAgreement: "no",
+      payerFullLegalName: "",
+      recipientFullLegalName: "",
+      advanceAmount: 0,
+      finalSettlementAmount: 0,
+      creditMethod: "dollar_for_dollar",
+      ifFinalAgreementNotEntered: "attorney_to_confirm",
+      clearedFundsRequired: "yes",
+    };
+    const reviewed = buildReviewedDraft(draft);
+
+    await expect(generateAlimonyAdvanceAgreementPdf(reviewed)).rejects.toThrow(
+      "does not request an alimony advance agreement",
+    );
   });
 });

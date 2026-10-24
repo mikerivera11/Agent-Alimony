@@ -62,6 +62,7 @@ export const POPULATED_OFFICIAL_FORM_NUMBERS = [
   "12.901(b)(3)",
   "12.902(d)",
   "12.902(e)",
+  "12.902(f)(1)",
   "12.995(a)",
 ] as const;
 
@@ -247,7 +248,10 @@ export const OFFICIAL_FILING_FORMS: readonly FilingFormEntry[] = [
       revision: "02/18",
       url: "https://www.flcourts.gov/content/download/685816/7661218?version=3",
       verified: true,
-      note: note("This app does not draft this agreement. It produces a term sheet an attorney can draft it from."),
+      note: note(
+        "The app can populate an attorney-review draft from confirmed terms. Both parties must review, sign, and " +
+          "have their signatures notarized or witnessed by a deputy clerk; the app does not make the draft binding.",
+      ),
     },
     requirement: "situational",
     whenItApplies: "The case is uncontested and involves dependent or minor children.",

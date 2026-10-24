@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import type { IntakeStepId } from "@/domain/intake";
 
 import {
+  AlimonyAdvanceFields,
   AlimonyFactorsFields,
   AssetsDebtsFields,
   CaseBasicsFields,
@@ -15,8 +16,10 @@ import {
   IncomeFields,
   MarriageFields,
   ParentingPlanFields,
+  ParentingPlanDetailsFields,
   ParentingTimeFields,
   SafetyComplexityFields,
+  SettlementTermsFields,
   SpousesFields,
   type StepFieldsProps,
 } from "./steps";
@@ -45,6 +48,8 @@ export const STEP_FIELD_COMPONENTS: Record<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parentingPlan: ParentingPlanFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parentingPlanDetails: ParentingPlanDetailsFields as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   income: IncomeFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deductions: DeductionsFields as any,
@@ -56,6 +61,10 @@ export const STEP_FIELD_COMPONENTS: Record<
   assetsDebts: AssetsDebtsFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   alimonyFactors: AlimonyFactorsFields as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  settlementTerms: SettlementTermsFields as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  alimonyAdvance: AlimonyAdvanceFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   safetyComplexity: SafetyComplexityFields as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

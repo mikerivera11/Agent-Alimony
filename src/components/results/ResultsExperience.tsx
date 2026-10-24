@@ -58,12 +58,30 @@ function stepForOfficialFormQuestion(question: string): IntakeStepId {
     return "alimonyFactors";
   }
   if (
+    question.includes("marital settlement") ||
+    question.includes("agreed recipient") ||
+    question.includes("responsible party")
+  ) {
+    return "settlementTerms";
+  }
+  if (
     question.includes("parenting plan") ||
     question.includes("holiday") ||
+    question.includes("school break") ||
+    question.includes("exchange") ||
+    question.includes("transportation") ||
+    question.includes("travel") ||
+    question.includes("communication") ||
+    question.includes("majority-residence") ||
+    question.includes("spring break") ||
+    question.includes("summer break") ||
+    question.includes("decision-making") ||
+    question.includes("school-designation") ||
+    question.includes("detailed parenting") ||
     question.startsWith("Who has the children") ||
     question.startsWith("Beginning and ending time")
   ) {
-    return "parentingPlan";
+    return "parentingPlanDetails";
   }
   return "filingDetails";
 }
@@ -106,7 +124,8 @@ type DownloadTarget =
   | "child-support-guidelines"
   | "parenting-plan"
   | "filing-packet"
-  | "court-forms";
+  | "court-forms"
+  | "alimony-advance-agreement";
 
 const WORKSHEET_DOWNLOADS: ReadonlyArray<{
   readonly target: DownloadTarget;
@@ -190,6 +209,8 @@ export function ResultsExperience() {
   // Read from the reviewed snapshot rather than the live draft, so the offer
   // matches the answers the packet would actually be built from.
   const wantsFilingPacket = reviewed?.data.filingDetails?.wantsFilingPacket === "yes";
+  const wantsAlimonyAdvanceAgreement =
+    reviewed?.data.alimonyAdvance?.wantsAdvanceAgreement === "yes";
   const officialFormQuestionGroups = useMemo(() => {
     if (!reviewed || !viewModel || !wantsFilingPacket) return [];
     const populated = new Set<string>(POPULATED_OFFICIAL_FORM_NUMBERS);
@@ -453,6 +474,41 @@ export function ResultsExperience() {
               </div>
             </Alert>
           ) : null}
+        </Card>
+      )}
+
+      {wantsAlimonyAdvanceAgreement && (
+        <Card className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xl font-semibold text-ink">
+              Alimony settlement advance and credit acknowledgment
+            </h2>
+            <p className="text-sm text-ink-muted">
+              Download a separate signable attorney-review draft recording the reported pre-judgment payment,
+              how it will be credited against the final alimony settlement, and what happens if no final written
+              agreement or judgment is entered. It is not a court order, legal advice, or automatically enforceable.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                runDownload(
+                  "alimony-advance-agreement",
+                  "/api/package/alimony-advance-agreement",
+                  "alimony-settlement-advance-credit-agreement.pdf",
+                )
+              }
+              loading={
+                downloadState === "downloading" &&
+                downloadTarget === "alimony-advance-agreement"
+              }
+              disabled={isStale || downloadState === "downloading"}
+            >
+              Download advance credit agreement
+            </Button>
+          </div>
         </Card>
       )}
 

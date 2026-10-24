@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  alimonyAdvanceSchema,
   alimonyFactorsSchema,
   assetsDebtsSchema,
   caseBasicsSchema,
@@ -12,9 +13,11 @@ import {
   householdExpensesSchema,
   incomeSchema,
   marriageSchema,
+  parentingPlanDetailsSchema,
   parentingPlanSchema,
   parentingTimeSchema,
   safetyComplexitySchema,
+  settlementTermsSchema,
   spousesSchema,
 } from "@/domain/intake";
 
@@ -44,12 +47,15 @@ export const packageRequestSchema = z
             children: childrenSchema,
             parentingTime: parentingTimeSchema.optional(),
             parentingPlan: parentingPlanSchema.optional(),
+            parentingPlanDetails: parentingPlanDetailsSchema.optional(),
             income: incomeSchema,
             deductions: deductionsSchema,
             childCosts: childCostsSchema.optional(),
             householdExpenses: householdExpensesSchema,
             assetsDebts: assetsDebtsSchema,
             alimonyFactors: alimonyFactorsSchema,
+            settlementTerms: settlementTermsSchema.optional(),
+            alimonyAdvance: alimonyAdvanceSchema.optional(),
             safetyComplexity: safetyComplexitySchema,
             documentReadiness: documentReadinessSchema,
             filingDetails: filingDetailsSchema,

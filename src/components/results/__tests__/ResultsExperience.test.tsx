@@ -35,6 +35,9 @@ describe("ResultsExperience", () => {
     expect(screen.getByText(/alimony \(estimate\)/i)).toBeInTheDocument();
     expect(screen.getByText(/estimated monthly amount range/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download pdf/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /download advance credit agreement/i }),
+    ).toBeInTheDocument();
   });
 
   it("links outstanding court-form questions to the questionnaire section that answers them", async () => {
@@ -69,7 +72,7 @@ describe("ResultsExperience", () => {
     expect(screen.getByText("Beginning and ending time for Thanksgiving")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /answer in parenting plan/i })).toHaveAttribute(
       "href",
-      "/intake?step=parentingPlan",
+      "/intake?step=parentingPlanDetails",
     );
     expect(
       screen.getByRole("button", { name: /download partially populated court forms/i }),

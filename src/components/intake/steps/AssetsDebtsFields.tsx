@@ -152,6 +152,16 @@ function AssetDebtItemFields({
         error={itemErrors?.value?.message}
       />
 
+      {itemType === "liability" ? (
+        <MoneyField
+          id={`items.${index}.monthlyPayment`}
+          label="Required monthly payment"
+          hint="Form 12.902(f)(1) asks for both the current balance and monthly payment for each debt."
+          registration={register(`items.${index}.monthlyPayment`)}
+          error={itemErrors?.monthlyPayment?.message}
+        />
+      ) : null}
+
       <SelectField
         id={`items.${index}.owner`}
         label="Who holds it?"
@@ -284,6 +294,7 @@ export function AssetsDebtsFields({ register, errors, control, setValue }: StepF
               category: "bankAccount",
               type: "asset",
               value: 0,
+              monthlyPayment: 0,
               classification: "marital",
               owner: "joint",
               agreedRecipient: "not_agreed",

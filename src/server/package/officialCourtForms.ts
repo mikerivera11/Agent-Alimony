@@ -23,6 +23,7 @@ type SupportedFormNumber =
   | "12.901(b)(3)"
   | "12.902(d)"
   | "12.902(e)"
+  | "12.902(f)(1)"
   | "12.932"
   | "12.995(a)";
 
@@ -76,6 +77,13 @@ export const OFFICIAL_COURT_FORM_ASSETS: Readonly<Record<SupportedFormNumber, Fo
     revision: "06/25",
     filename: "form-12.902-e-rev-06-25.pdf",
     sha256: "033ec3e27e140e4d195ac20627ddba50148b1451230305abc8eea3580d0c4af6",
+  },
+  "12.902(f)(1)": {
+    formNumber: "12.902(f)(1)",
+    title: "Marital Settlement Agreement for Dissolution of Marriage with Dependent or Minor Child(ren)",
+    revision: "02/18",
+    filename: "form-12.902-f1-rev-02-18.pdf",
+    sha256: "0b380c4298c2463591ae8d94db3d96e59b147a5068c42107181ae7b08e0602a8",
   },
   "12.932": {
     formNumber: "12.932",
@@ -737,6 +745,398 @@ function fillChildSupport(form: PDFForm, context: PopulationContext): void {
   setText(form, "Email Addresses_2", context.parties.self.email, context.warnings);
 }
 
+function partyChoiceIsPetitioner(
+  choice: "you" | "other_parent",
+  context: PopulationContext,
+): boolean | null {
+  if (context.parties.selfIsPetitioner === null) return null;
+  return choice === "you" ? context.parties.selfIsPetitioner : !context.parties.selfIsPetitioner;
+}
+
+function fillAssignedItems(
+  form: PDFForm,
+  context: PopulationContext,
+  recipient: "petitioner" | "respondent",
+): void {
+  const selfRecipient =
+    context.parties.selfIsPetitioner === null
+      ? null
+      : recipient === "petitioner"
+        ? context.parties.selfIsPetitioner
+        : !context.parties.selfIsPetitioner;
+  if (selfRecipient === null) return;
+
+  const recipientValue = selfRecipient ? "you" : "spouse";
+  const assets = context.draft.data.assetsDebts.items.filter(
+    (item) => item.type === "asset" && item.agreedRecipient === recipientValue,
+  );
+  const liabilities = context.draft.data.assetsDebts.items.filter(
+    (item) => item.type === "liability" && item.agreedRecipient === recipientValue,
+  );
+
+  const assetDescriptionFields =
+    recipient === "petitioner"
+      ? [
+          "Other assets Petitioner shall receive",
+          "Other assets Petitioner shall receive 2",
+          "Other assets Petitioner shall receive 3",
+          "Other assets Petitioner shall receive 4",
+          "Other assets Petitioner shall receive 5",
+          "Other assets Petitioner shall receive 6",
+          "Other assets Petitioner shall receive 7",
+        ]
+      : [
+          "Other assets Respondent shall receive",
+          "Other assets Respondent shall receive 2",
+          "Other assets Respondent shall receive 3",
+          "Other assets Respondent shall receive 4",
+          "Other assets Respondent shall receive 5",
+          "Other assets Respondent shall receive 6",
+        ];
+  const assetValueFields =
+    recipient === "petitioner"
+      ? [
+          "Current fair market value other assets Petitioner shall receive",
+          "Current fair market value other assets Petitioner shall receive 2",
+          "Current fair market value other assets Petitioner shall receive 3",
+          "Current fair market value other assets Petitioner shall receive 4",
+          "Current fair market value other assets Petitioner shall receive 5",
+          "Current fair market value other assets Petitioner shall receive 6",
+          "Current fair market value other assets Petitioner shall receive 7",
+        ]
+      : [
+          "Current fair market value other assets Respondent shall receive",
+          "Current fair market value other assets Respondent shall receive 2",
+          "Current fair market value other assets Respondent shall receive 3",
+          "Current fair market value other assets Respondent shall receive 4",
+          "Current fair market value other assets Respondent shall receive 5",
+          "Current fair market value other assets Respondent shall receive 6",
+        ];
+  assets.slice(0, assetDescriptionFields.length).forEach((item, index) => {
+    setText(form, assetDescriptionFields[index]!, item.label, context.warnings);
+    setText(form, assetValueFields[index]!, item.value.toFixed(2), context.warnings);
+  });
+  if (assets.length > assetDescriptionFields.length) {
+    context.warnings.push(
+      `Form 12.902(f)(1) has room for only ${assetDescriptionFields.length} ${recipient} asset assignments; ${
+        assets.length - assetDescriptionFields.length
+      } additional item(s) remain in the attorney filing packet.`,
+    );
+  }
+  setText(
+    form,
+    recipient === "petitioner" ? "Total Assets to Petitioner" : "Total Assets to Respondent",
+    assets.reduce((sum, item) => sum + item.value, 0).toFixed(2),
+    context.warnings,
+  );
+
+  const liabilityDescriptionFields =
+    recipient === "petitioner"
+      ? [
+          "Other to be paid by Petitioner",
+          "Other to be paid by Petitioner 2",
+          "Other to be paid by Petitioner 3",
+          "Other to be paid by Petitioner 4",
+        ]
+      : [
+          "Other to be paid by Respondent",
+          "Other to be paid by Respondent 2",
+          "Other to be paid by Respondent 3",
+          "Other to be paid by Respondent 4",
+          "Other to be paid by Respondent 5",
+        ];
+  const liabilityBalanceFields =
+    recipient === "petitioner"
+      ? [
+          "Other current amount owed to be paid by Petitioner",
+          "Other current amount owed to be paid by Petitioner 2",
+          "Other current amount owed to be paid by Petitioner3",
+          "Other current amount owed to be paid by Petitioner4",
+        ]
+      : [
+          "Other current amount owed to be paid by Respondent",
+          "Other current amount owed to be paid by Respondent 2",
+          "Other current amount owed to be paid by Respondent 3",
+          "Other current amount owed to be paid by Respondent 4",
+          "Other current amount owed to be paid by Respondent 5",
+        ];
+  const liabilityMonthlyPaymentFields =
+    recipient === "petitioner"
+      ? [
+          "Other monthly payment to be paid by Petitioner",
+          "Other monthly payment to be paid by Petitioner2",
+          "Other monthly payment to be paid by Petitioner3",
+          "Other monthly payment to be paid by Petitioner4",
+        ]
+      : [
+          "Other monthly payment to be paid by Respondent",
+          "Other monthly payment to be paid by Respondent 2",
+          "Other monthly payment to be paid by Respondent 3",
+          "Other monthly payment to be paid by Respondent 4",
+          "Other monthly payment to be paid by Respondent 5",
+        ];
+  liabilities.slice(0, liabilityDescriptionFields.length).forEach((item, index) => {
+    setText(form, liabilityDescriptionFields[index]!, item.label, context.warnings);
+    setText(form, liabilityBalanceFields[index]!, item.value.toFixed(2), context.warnings);
+    setText(
+      form,
+      liabilityMonthlyPaymentFields[index]!,
+      item.monthlyPayment.toFixed(2),
+      context.warnings,
+    );
+  });
+  if (liabilities.length > liabilityDescriptionFields.length) {
+    context.warnings.push(
+      `Form 12.902(f)(1) has room for only ${liabilityDescriptionFields.length} ${recipient} debt assignments; ${
+        liabilities.length - liabilityDescriptionFields.length
+      } additional item(s) remain in the attorney filing packet.`,
+    );
+  }
+  setText(
+    form,
+    recipient === "petitioner"
+      ? "Total debts current amount owed to be paid by Petitioner"
+      : "Total Current Amount Owed by Respondent",
+    liabilities.reduce((sum, item) => sum + item.value, 0).toFixed(2),
+    context.warnings,
+  );
+  setText(
+    form,
+    recipient === "petitioner"
+      ? "Total debts monthly payment to be paid by Petitioner"
+      : "Total Monthly payment to be paid by Respondent",
+    liabilities.reduce((sum, item) => sum + item.monthlyPayment, 0).toFixed(2),
+    context.warnings,
+  );
+}
+
+function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContext): void {
+  const data = context.draft.data;
+  const terms = data.settlementTerms;
+  const alimony = data.alimonyFactors;
+  const filing = data.filingDetails;
+
+  fillCaption(form, context, {
+    county: "County Name",
+    petitioner: "Petitioner",
+    respondent: "Respondent",
+  });
+  fillCaseMetadata(form, context, {
+    circuit: "Judicial Circuit",
+    caseNumber: "Case Number",
+    division: "Division",
+  });
+  setText(form, "Petitioner’s full legal name", context.parties.petitioner?.name, context.warnings);
+  setText(form, "Respondent’s full legal name", context.parties.respondent?.name, context.warnings);
+  setText(form, "We were married to each other on date", formatDate(data.marriage.marriageDate), context.warnings);
+
+  fillAssignedItems(form, context, "petitioner");
+  fillAssignedItems(form, context, "respondent");
+  setText(
+    form,
+    "Contingent Assets and Liabilities (listed in Section III of our Family Law Financial Affidavits) will be",
+    terms?.contingentAssetsLiabilities,
+    context.warnings,
+  );
+
+  if (terms?.beneficiaryDesignationMode !== "none") {
+    check(form, "Check Box1");
+    check(form, "Check Box2");
+    const ownerChoice = alimony.potentialAlimonyRecipient === "self" ? "other_parent" : "you";
+    const ownerIsPetitioner = partyChoiceIsPetitioner(ownerChoice, context);
+    if (ownerIsPetitioner === true) check(form, "Check Box3");
+    if (ownerIsPetitioner === false) check(form, "Check Box4");
+    setText(form, "Describe the assets with specificity", terms?.beneficiaryDesignationDetails, context.warnings);
+  }
+
+  if (alimony.alimonyAgreementStatus === "agreed_waiver") {
+    check(form, "Check Box8");
+  } else if (alimony.alimonyAgreementStatus === "agreed_payment") {
+    const payerChoice = alimony.potentialAlimonyRecipient === "self" ? "other_parent" : "you";
+    const payerIsPetitioner = partyChoiceIsPetitioner(payerChoice, context);
+    if (payerIsPetitioner === true) check(form, "Check Box9");
+    if (payerIsPetitioner === false) check(form, "Check Box10");
+    setText(form, "Dollar amount", alimony.agreedAlimonyAmount.toFixed(2), context.warnings);
+    if (alimony.agreedAlimonyFrequency === "weekly") check(form, "Check Box11");
+    else if (alimony.agreedAlimonyFrequency === "every_two_weeks") check(form, "Check Box12");
+    else if (alimony.agreedAlimonyFrequency === "monthly") check(form, "Check Box13");
+    else {
+      check(form, "Check Box14");
+      setText(
+        form,
+        "Explain other",
+        alimony.agreedAlimonyFrequency
+          ? ALIMONY_FREQUENCY_LABELS[alimony.agreedAlimonyFrequency]
+          : "See additional terms",
+        context.warnings,
+      );
+    }
+    setText(form, "Enter beginning date of alimony", formatDate(alimony.agreedAlimonyStartDate), context.warnings);
+    setText(form, "Enter date or event alimony continues until", alimony.agreedAlimonyEndCondition, context.warnings);
+    setText(
+      form,
+      "Type of alimony",
+      [
+        alimony.agreedAlimonyType ? ALIMONY_TYPE_LABELS[alimony.agreedAlimonyType] : "",
+        alimony.agreedAlimonyNotes,
+      ]
+        .filter(Boolean)
+        .join("; "),
+      context.warnings,
+    );
+    if (alimony.agreedAlimonyNotes?.trim()) {
+      check(form, "Check Box16");
+      setText(
+        form,
+        "Other provisions relating to alimony, including any tax treatment and consequences",
+        alimony.agreedAlimonyNotes,
+        context.warnings,
+      );
+    }
+  }
+
+  if (alimony.agreedAlimonySecurity === "life_insurance") {
+    setText(
+      form,
+      "Life insurance amount to secure the above support, will be provided by the Obligor",
+      alimony.agreedAlimonyAmount.toFixed(2),
+      context.warnings,
+    );
+  }
+
+  const filingChildren = new Map(filing.children.map((child) => [child.childId, child.fullLegalName]));
+  const childFields = [
+    "Name and birth date of minor child or children",
+    "Name and birth date of minor child or children 2",
+    "Name and birth date of minor child or children 3",
+    "Name and birth date of minor child or children 4",
+    "Name and birth date of minor child or children 5",
+    "Name and birth date of minor child or children 6",
+  ];
+  data.children.children.slice(0, childFields.length).forEach((child, index) => {
+    setText(
+      form,
+      childFields[index]!,
+      `${filingChildren.get(child.id) || child.nameOrInitials} — ${formatDate(child.dateOfBirth)}`,
+      context.warnings,
+    );
+  });
+  setText(form, "Indicate exhibit", terms?.parentingPlanExhibitLabel, context.warnings);
+
+  if (terms) {
+    const obligorIsPetitioner = partyChoiceIsPetitioner(terms.childSupportObligor, context);
+    if (obligorIsPetitioner === true) check(form, "Check Box17");
+    if (obligorIsPetitioner === false) check(form, "Check Box18");
+    setText(form, "Indicate amount per month", terms.agreedChildSupportMonthly.toFixed(2), context.warnings);
+    setText(
+      form,
+      "Indicate total number of parties’ minor or dependent children",
+      data.children.children.length,
+      context.warnings,
+    );
+    setText(form, "Commencing month, day, year", formatDate(terms.childSupportStartDate), context.warnings);
+    setText(form, "Terminating month, day, year", formatDate(terms.childSupportEndDate), context.warnings);
+    setText(form, "Indicate amount", terms.childSupportPaymentAmount.toFixed(2), context.warnings);
+    setText(form, "Per week, month, other", terms.childSupportPaymentFrequency.replaceAll("_", " "), context.warnings);
+    check(form, "Indicate if schedule appears below");
+    setText(form, "Schedule for child support obligation", terms.childSupportStepDownSchedule, context.warnings);
+    setText(
+      form,
+      "If the child support amount above deviates from the guidelines by 5% or more, explain the reason(s) here",
+      terms.childSupportDeviationReason,
+      context.warnings,
+    );
+    setText(form, "Indicate amount 3", terms.retroactiveChildSupport.toFixed(2), context.warnings);
+    setText(form, "Indicate amount 4", terms.childSupportArrearage.toFixed(2), context.warnings);
+    setText(
+      form,
+      "Indicate total amount",
+      (terms.retroactiveChildSupport + terms.childSupportArrearage).toFixed(2),
+      context.warnings,
+    );
+    if (terms.retroactiveChildSupport + terms.childSupportArrearage > 0) {
+      setText(form, "Indicate rate", terms.arrearsPaymentAmount.toFixed(2), context.warnings);
+      setText(form, "Beginning date 2", formatDate(terms.arrearsPaymentStartDate), context.warnings);
+      if (terms.arrearsPaymentFrequency === "weekly") check(form, "Check Box19");
+      if (terms.arrearsPaymentFrequency === "every_two_weeks") check(form, "Check Box20");
+      if (terms.arrearsPaymentFrequency === "monthly") check(form, "Check Box21");
+    }
+
+    const healthIsPetitioner =
+      terms.healthInsuranceProvider === "not_available"
+        ? null
+        : partyChoiceIsPetitioner(terms.healthInsuranceProvider, context);
+    if (healthIsPetitioner === true) check(form, "Check Box22");
+    if (healthIsPetitioner === false) check(form, "Check Box23");
+    if (terms.healthInsuranceProvider === "not_available") {
+      check(form, "Indicate if health insurance is either not reasonable in cost or accessible to the child(ren) at this time");
+    }
+    if (terms.uninsuredMedicalSplit === "equal") check(form, "Check Box24");
+    if (terms.uninsuredMedicalSplit === "guideline_percentages") check(form, "Check Box25");
+    if (terms.uninsuredMedicalSplit === "other") {
+      check(form, "Check Box26");
+      setText(form, "Explain if other", terms.uninsuredMedicalDetails, context.warnings);
+    }
+
+    const dentalIsPetitioner =
+      terms.dentalInsuranceProvider === "not_available"
+        ? null
+        : partyChoiceIsPetitioner(terms.dentalInsuranceProvider, context);
+    if (dentalIsPetitioner === true) check(form, "Check Box27");
+    if (dentalIsPetitioner === false) check(form, "Check Box28");
+    if (terms.dentalInsuranceProvider === "not_available") check(form, "Check Box37");
+    if (terms.uninsuredDentalSplit === "equal") check(form, "Check Box31");
+    if (terms.uninsuredDentalSplit === "guideline_percentages") check(form, "Check Box32");
+    if (terms.uninsuredDentalSplit === "other") {
+      check(form, "Check Box33");
+      setText(form, "Other 2", terms.uninsuredDentalDetails, context.warnings);
+    }
+
+    const lifeInsuranceIsPetitioner =
+      terms.childSupportLifeInsuranceProvider === "none"
+        ? null
+        : partyChoiceIsPetitioner(terms.childSupportLifeInsuranceProvider, context);
+    if (lifeInsuranceIsPetitioner === true) check(form, "Check Box35");
+    if (lifeInsuranceIsPetitioner === false) check(form, "Check Box36");
+    setText(form, "Amount of life insurance", terms.childSupportLifeInsuranceAmount.toFixed(2), context.warnings);
+    setText(form, "Explain tax exemptions for child or children", terms.taxExemptionTerms, context.warnings);
+    setText(
+      form,
+      "Other provisions relating to child support (e.g., uninsured medical/dental expenses, health or dental insurance, life insurance to secure child support, orthodontic payments, college fund, etc.):",
+      terms.otherChildSupportTerms,
+      context.warnings,
+    );
+    const sharedDispositionTerms = data.assetsDebts.items
+      .filter(
+        (item) =>
+          item.agreedRecipient === "joint" || item.agreedRecipient === "sell_and_divide",
+      )
+      .map((item) =>
+        item.agreedRecipient === "joint"
+          ? `${item.label} ($${item.value.toFixed(2)}) will be retained jointly.`
+          : `${item.label} ($${item.value.toFixed(2)}) will be sold and the proceeds divided as stated by the parties.`,
+      );
+    setText(
+      form,
+      "Other continued",
+      [terms.otherSettlementTerms, ...sharedDispositionTerms].filter(Boolean).join(" "),
+      context.warnings,
+    );
+    setText(form, "Issues not agreed on", terms.unresolvedIssues, context.warnings);
+  }
+
+  setText(form, "Printed Name of Petitioner", context.parties.petitioner?.name, context.warnings);
+  setText(form, "Address of Petitioner", context.parties.petitioner?.street, context.warnings);
+  setText(form, "City State Zip of Petitioner", context.parties.petitioner?.cityStateZip, context.warnings);
+  setText(form, "Telephone Number of Petitioner", context.parties.petitioner?.phone, context.warnings);
+  setText(form, "Designated E-mail Address(es) of Petitioner", context.parties.petitioner?.email, context.warnings);
+  setText(form, "Printed Name of Respondent", context.parties.respondent?.name, context.warnings);
+  setText(form, "Address of Respondent", context.parties.respondent?.street, context.warnings);
+  setText(form, "City State Zip of Respondent", context.parties.respondent?.cityStateZip, context.warnings);
+  setText(form, "Telephone Number of Respondent", context.parties.respondent?.phone, context.warnings);
+  setText(form, "Designated E-mail Address(es) of Respondent", context.parties.respondent?.email, context.warnings);
+}
+
 function holidayParent(
   choice: "you" | "other_parent",
   context: PopulationContext,
@@ -811,6 +1211,7 @@ function decisionMaker(
 function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   const data = context.draft.data;
   const plan = data.parentingPlan;
+  const details = data.parentingPlanDetails;
   fillCaption(form, context, {
     county: "County Name",
     petitioner: "Petitioner",
@@ -825,20 +1226,52 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   setText(form, "Name of Respondent", context.parties.respondent?.name, context.warnings);
   setText(form, "Petitioner, hereinafter referred to in this Parenting Plan as Parent", "Petitioner", context.warnings);
   setText(form, "Respondent, hereinafter referred to in this Parenting Plan as Parent", "Respondent", context.warnings);
-  setText(form, "address of Petitioner", context.parties.petitioner?.street, context.warnings);
+  const petitionerAddressIsKnown = details?.petitionerAddressStatus === "known";
+  const respondentAddressIsKnown = details?.respondentAddressStatus === "known";
+  setText(
+    form,
+    "address of Petitioner",
+    petitionerAddressIsKnown ? context.parties.petitioner?.street : "",
+    context.warnings,
+  );
   setText(form, "telephone of Petitioner", context.parties.petitioner?.phone, context.warnings);
   setText(form, "email of Petitioner", context.parties.petitioner?.email, context.warnings);
-  setText(form, "address of Respondent", context.parties.respondent?.street, context.warnings);
+  setText(
+    form,
+    "address of Respondent",
+    respondentAddressIsKnown ? context.parties.respondent?.street : "",
+    context.warnings,
+  );
   setText(form, "telephone of Respondent", context.parties.respondent?.phone, context.warnings);
   setText(form, "email of Respondent", context.parties.respondent?.email, context.warnings);
   setText(form, "Printed Name of Petitioner/Parent", context.parties.petitioner?.name, context.warnings);
-  setText(form, "Address of Petitioner/Parent", context.parties.petitioner?.street, context.warnings);
-  setText(form, "City State Zip of Petitioner/Parent", context.parties.petitioner?.cityStateZip, context.warnings);
+  setText(
+    form,
+    "Address of Petitioner/Parent",
+    petitionerAddressIsKnown ? context.parties.petitioner?.street : "",
+    context.warnings,
+  );
+  setText(
+    form,
+    "City State Zip of Petitioner/Parent",
+    petitionerAddressIsKnown ? context.parties.petitioner?.cityStateZip : "",
+    context.warnings,
+  );
   setText(form, "Telephone Number of Petitioner/Parent", context.parties.petitioner?.phone, context.warnings);
   setText(form, "Designated Email Addresses of Petitioner", context.parties.petitioner?.email, context.warnings);
   setText(form, "Printed Name of Respondent/Parent", context.parties.respondent?.name, context.warnings);
-  setText(form, "Address of Respondent/Parent", context.parties.respondent?.street, context.warnings);
-  setText(form, "City State Zip of Respondent/Parent", context.parties.respondent?.cityStateZip, context.warnings);
+  setText(
+    form,
+    "Address of Respondent/Parent",
+    respondentAddressIsKnown ? context.parties.respondent?.street : "",
+    context.warnings,
+  );
+  setText(
+    form,
+    "City State Zip of Respondent/Parent",
+    respondentAddressIsKnown ? context.parties.respondent?.cityStateZip : "",
+    context.warnings,
+  );
   setText(form, "Telephone Number of Respondent/Parent", context.parties.respondent?.phone, context.warnings);
   setText(form, "Designated Email Addresses of Respondent/Parent", context.parties.respondent?.email, context.warnings);
 
@@ -848,6 +1281,13 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
     check(form, "Check Box2");
     setText(form, "parent's name", context.parties.self.name, context.warnings);
   }
+  if (details?.planOrderType === "final") check(form, "Check Box4");
+  if (details?.planOrderType === "temporary") check(form, "Check Box5");
+  if (details?.planOrderType === "modification") check(form, "Check Box6");
+  if (details?.petitionerAddressStatus === "unknown") check(form, "Check Box7");
+  if (details?.petitionerAddressStatus === "confidential") check(form, "Check Box8");
+  if (details?.respondentAddressStatus === "unknown") check(form, "Check Box11");
+  if (details?.respondentAddressStatus === "confidential") check(form, "Check Box12");
 
   const filingChildren = new Map(
     (data.filingDetails?.children ?? []).map((child) => [child.childId, child.fullLegalName ?? ""]),
@@ -874,8 +1314,14 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
       plan.decisionMakingHealthcare,
       plan.decisionMakingReligion,
     ];
+    const decidedParents = decisions.filter(
+      (choice): choice is "you" | "other_parent" => choice === "you" || choice === "other_parent",
+    );
     if (decisions.every((choice) => choice === "shared")) {
       check(form, "Check Box15");
+    } else if (decidedParents.length === 3 && decidedParents.every((choice) => choice === decidedParents[0])) {
+      check(form, "Check Box20");
+      setText(form, "Name or designation of that parent", decisionMaker(decidedParents[0]!, context), context.warnings);
     } else if (decisions.some((choice) => choice === "you" || choice === "other_parent")) {
       check(form, "Check Box16");
       setText(form, "Parent 1", decisionMaker(plan.decisionMakingEducation, context), context.warnings);
@@ -885,6 +1331,68 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
         setText(form, "Parent 3", decisionMaker(plan.decisionMakingReligion, context), context.warnings);
       }
     }
+  }
+
+  if (details?.extracurricularApproval === "either_parent") check(form, "Check Box21");
+  if (details?.extracurricularApproval === "mutual_agreement") check(form, "Check Box22");
+  if (details?.extracurricularTransportation === "parent_with_child") check(form, "Check Box23");
+  if (details) {
+    const otherActivityPercent = 100 - details.extracurricularActivityCostPercentSelf;
+    const otherEquipmentPercent = 100 - details.extracurricularEquipmentCostPercentSelf;
+    check(form, "Check Box24");
+    setText(
+      form,
+      "indicate percentage of cost for activities by parent 1",
+      `${context.parties.self.name} — ${details.extracurricularActivityCostPercentSelf}%`,
+      context.warnings,
+    );
+    setText(
+      form,
+      "indicate percentage of cost for activities by parent 2",
+      `${context.parties.spouse.name} — ${otherActivityPercent}%`,
+      context.warnings,
+    );
+    check(form, "Check Box25");
+    setText(
+      form,
+      "The costs of the extra-curricular activities shall be paid by parent 1",
+      `${context.parties.self.name} — ${details.extracurricularEquipmentCostPercentSelf}%`,
+      context.warnings,
+    );
+    setText(
+      form,
+      "The costs of the extra-curricular activities shall be paid by parent 2",
+      `${context.parties.spouse.name} — ${otherEquipmentPercent}%`,
+      context.warnings,
+    );
+  }
+  if (details?.extracurricularApproval === "other" || details?.extracurricularTransportation === "other") {
+    check(form, "Check Box26");
+    setText(form, "other", details.extracurricularCosts, context.warnings);
+  }
+  setText(
+    form,
+    "Indicate other information that may be important related to information sharing",
+    details?.informationSharingOther,
+    context.warnings,
+  );
+
+  if (details?.schoolCalendarBasis === "oldest_child") check(form, "Check Box27");
+  if (details?.schoolCalendarBasis === "youngest_child") check(form, "Check Box28");
+  if (details?.schoolCalendarBasis === "county") {
+    setText(form, "the county of school", details.schoolCalendarDetails, context.warnings);
+  }
+  if (details?.schoolCalendarBasis === "school") {
+    setText(form, "school", details.schoolCalendarDetails, context.warnings);
+  }
+  if (details?.scheduleChangeNotice?.trim()) {
+    check(form, "Check Box31");
+    setText(form, "indicate date for change notice", details.scheduleChangeNotice, context.warnings);
+  }
+  if (details?.scheduleChangeRequesterPaysCosts === "yes") check(form, "Check Box32");
+  if (details?.scheduleChangeOther?.trim()) {
+    check(form, "Check Box33");
+    setText(form, "Other2", details.scheduleChangeOther, context.warnings);
   }
 
   setText(
@@ -905,30 +1413,194 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
     .join(" ");
   setText(form, "The children shall spend time with Parent", context.parties.petitioner?.name, context.warnings);
   setText(form, "dates and times children shall spend time with the Parent", context.parties.respondent?.name, context.warnings);
+  setText(form, "indicate schedule date", formatDate(details?.scheduleStartDate), context.warnings);
   setText(form, "Other 5", regularSchedule, context.warnings);
   setText(form, "Other 7", regularSchedule, context.warnings);
+  if (details?.differentChildSchedule === "yes") {
+    check(form, "Check Box40");
+    setText(form, "Other 8", details.differentChildScheduleDetails, context.warnings);
+  }
 
-  if (plan?.holidaySchedule?.trim()) {
-    check(form, "Check Box52");
-    setText(form, "Indicate other winter break date variations", plan.holidaySchedule, context.warnings);
-    check(form, "Check Box102");
-    setText(form, "spring break other share time", plan.holidaySchedule, context.warnings);
+  if (details?.winterBreakMode === "split") check(form, "Check Box46");
+  if (details?.winterBreakMode === "alternating_entire_break") check(form, "Check Box50");
+  if (details?.winterBreakMode === "other") check(form, "Check Box52");
+  setText(form, "Indicate other winter break date variations", details?.winterBreakDetails, context.warnings);
+  setText(form, "specific Winter Holidays", plan?.holidaySchedule, context.warnings);
+
+  if (details?.springBreakMode === "regular_schedule") check(form, "Check Box54");
+  if (details?.springBreakMode === "alternating") check(form, "Check Box55");
+  if (details?.springBreakMode === "one_parent") check(form, "Check Box96");
+  if (details?.springBreakMode === "even_split") check(form, "Check Box101");
+  if (details?.springBreakMode === "other") check(form, "Check Box102");
+  if (
+    details?.springBreakMode === "alternating" &&
+    details.springBreakParent &&
+    details.springBreakParent !== "undecided"
+  ) {
+    const oddChoice = details.springBreakParent;
+    const evenChoice = oddChoice === "you" ? "other_parent" : "you";
+    setText(
+      form,
+      "Parent having child(ren) for odd-numbered years for Spring Break",
+      holidayParent(oddChoice, context),
+      context.warnings,
+    );
+    setText(
+      form,
+      "Parent having child(ren) for even-numbered years for Spring Break",
+      holidayParent(evenChoice, context),
+      context.warnings,
+    );
   }
-  if (plan?.summerSchedule?.trim()) {
-    check(form, "Check Box117");
-    setText(form, "date for summer break 4", plan.summerSchedule, context.warnings);
+  if (
+    details?.springBreakMode === "one_parent" &&
+    details.springBreakParent &&
+    details.springBreakParent !== "undecided"
+  ) {
+    setText(
+      form,
+      "Parent shall have the child(ren) for the entire Spring Break every year",
+      holidayParent(details.springBreakParent, context),
+      context.warnings,
+    );
   }
-  if (plan?.exchangeArrangements?.trim()) {
+  if (details?.springBreakMode === "other") {
+    setText(form, "spring break other share time", details.springBreakDetails, context.warnings);
+  }
+
+  if (details?.summerBreakMode === "regular_schedule") check(form, "Check Box104");
+  if (details?.summerBreakMode === "one_parent") check(form, "Check Box105");
+  if (details?.summerBreakMode === "equal_split") check(form, "Check Box106");
+  if (details?.summerBreakMode === "other") check(form, "Check Box117");
+  if (details?.summerBreakMode === "other" && details.summerBreakDetails.trim()) {
+    setText(form, "date for summer break 4", details.summerBreakDetails, context.warnings);
+  }
+  if (
+    details?.summerBreakMode === "one_parent" &&
+    details.summerBreakParent &&
+    details.summerBreakParent !== "undecided"
+  ) {
+    setText(
+      form,
+      "Parent that shall have the entire Summer Break from school",
+      holidayParent(details.summerBreakParent, context),
+      context.warnings,
+    );
+  }
+
+  if (details?.transportationMode === "you" || details?.transportationMode === "other_parent") {
+    check(form, "Check Box119");
+    setText(
+      form,
+      "Parent shall provide all transportation",
+      holidayParent(details.transportationMode, context),
+      context.warnings,
+    );
+  }
+  if (details?.transportationMode === "beginning_parent") check(form, "Check Box120");
+  if (details?.transportationMode === "ending_parent") check(form, "Check Box121");
+  if (details?.transportationMode === "other") {
     check(form, "Check Box122");
-    setText(form, "explain other time sharing transportation options", plan.exchangeArrangements, context.warnings);
-    check(form, "Check Box127");
-    setText(form, "Exchanges shall occur at other place", plan.exchangeArrangements, context.warnings);
+    setText(form, "explain other time sharing transportation options", details.transportationDetails, context.warnings);
   }
-  if (plan?.communicationBetweenChildAndParent?.trim()) {
-    check(form, "Check Box152");
-    setText(form, "child has communication with other parent explain", plan.communicationBetweenChildAndParent, context.warnings);
-    check(form, "Check Box156");
-    setText(form, "communicate only on day - other, explain", plan.communicationBetweenChildAndParent, context.warnings);
+  setText(form, "Number of minutes late", details?.lateExchangeMinutes, context.warnings);
+  if (details?.exchangeLocationMode === "parents_homes") check(form, "Check Box125");
+  if (details?.exchangeLocationMode === "specific_location") {
+    check(form, "Check Box126");
+    setText(form, "Explain where exchanges shall occur", details.exchangeLocationDetails, context.warnings);
+  }
+  if (details?.exchangeLocationMode === "other") {
+    check(form, "Check Box127");
+    setText(form, "Exchanges shall occur at other place", details.exchangeLocationDetails, context.warnings);
+  }
+  if (details?.transportationCostsMode === "child_support_order") check(form, "Check Box130");
+  if (details?.transportationCostsMode === "split") {
+    check(form, "Check Box131");
+    setText(form, "% of the transportation costs", "50", context.warnings);
+    setText(form, "% of the transportation costs 1", "50", context.warnings);
+  }
+  if (details?.transportationCostsMode === "other") {
+    check(form, "Check Box132");
+    setText(form, "% of the transportation costs other", details.transportationCostsDetails, context.warnings);
+  }
+  if (details) {
+    check(form, "Check Box135");
+    setText(form, "indicate number of days 1", details.domesticTravelNoticeDays, context.warnings);
+    setText(form, "indicate number of days 2", details.domesticTravelNoticeDays, context.warnings);
+    check(form, "Check Box139");
+    setText(form, "indicate number of days 3", details.internationalTravelNoticeDays, context.warnings);
+    if (details.internationalTravelSecurity?.trim()) {
+      check(form, "Check Box140");
+      setText(form, "indicate security information for return of child", details.internationalTravelSecurity, context.warnings);
+    }
+    if (details.travelOther?.trim()) {
+      check(form, "Check Box141");
+      setText(form, "indicate other information related to travel", details.travelOther, context.warnings);
+    }
+    if (details.majorityDesignationParent !== "undecided") {
+      setText(
+        form,
+        "Insert the name or designation of the appropriate parent in the space provided",
+        holidayParent(details.majorityDesignationParent, context),
+        context.warnings,
+      );
+    }
+    const parentCommunicationCheckboxes = {
+      in_person: "Check Box145",
+      telephone: "Check Box146",
+      letter: "Check Box147",
+      email: "Check Box148",
+      other: "Check Box149",
+    } as const;
+    details.parentCommunicationMethods.forEach((method) => check(form, parentCommunicationCheckboxes[method]));
+    setText(form, "parents communicate by other - explain", details.parentCommunicationOther, context.warnings);
+
+    const childCommunicationCheckboxes = {
+      telephone: "Check Box150",
+      email: "Check Box151",
+      video: "Check Box152",
+      other: "Check Box152",
+    } as const;
+    details.childCommunicationMethods.forEach((method) => check(form, childCommunicationCheckboxes[method]));
+    setText(form, "child has communication with other parent explain", details.childCommunicationMethods.join(", "), context.warnings);
+    if (details.childCommunicationMode === "anytime") check(form, "Check Box153");
+    if (details.childCommunicationMode === "daily") check(form, "Check Box154");
+    if (details.childCommunicationMode === "specific_days") check(form, "Check Box155");
+    if (details.childCommunicationMode === "other") check(form, "Check Box156");
+    setText(form, "communicate only on day - other, explain", details.childCommunicationDetails, context.warnings);
+    setText(
+      form,
+      "Costs of Electronic Communication shall be addressed as follows",
+      details.electronicCommunicationCosts,
+      context.warnings,
+    );
+    if (details.childcareMode === "each_parent_selects") check(form, "Check Box157");
+    if (details.childcareMode === "mutual_agreement") check(form, "Check Box158");
+    if (details.childcareMode === "right_of_first_refusal") {
+      check(form, "Check Box159");
+      setText(form, "period of time exceeding this number of hours", details.rightOfFirstRefusalHours, context.warnings);
+    }
+    if (details.childcareMode === "other") {
+      check(form, "Check Box160");
+      setText(form, "specify other child care time", details.childcareDetails, context.warnings);
+    }
+    setText(
+      form,
+      "make note of other provisions",
+      [
+        details.disputeResolution,
+        details.springBreakMode !== "other" && details.springBreakDetails.trim()
+          ? `Spring break details: ${details.springBreakDetails.trim()}`
+          : "",
+        details.summerBreakMode !== "other" && details.summerBreakDetails.trim()
+          ? `Summer break details: ${details.summerBreakDetails.trim()}`
+          : "",
+        details.otherProvisions,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      context.warnings,
+    );
   }
 
   const overnights = parentOrder(
@@ -1006,6 +1678,9 @@ function fillForm(formNumber: SupportedFormNumber, form: PDFForm, context: Popul
     case "12.902(e)":
       fillChildSupport(form, context);
       return;
+    case "12.902(f)(1)":
+      fillMaritalSettlementAgreement(form, context);
+      return;
     case "12.932":
       fillDisclosureCertificate(form, context);
       return;
@@ -1028,6 +1703,9 @@ function supportedFormNumbers(
     viewModel.childSupport.kind === "calculated"
   ) {
     numbers.push("12.902(e)");
+  }
+  if (readiness.forms.some((form) => form.entry.form.formNumber === "12.902(f)(1)")) {
+    numbers.push("12.902(f)(1)");
   }
   if (readiness.forms.some((form) => form.entry.form.formNumber === "12.995(a)")) numbers.push("12.995(a)");
   return numbers;
@@ -1071,7 +1749,6 @@ export function buildOfficialCourtFormsManifest(options: {
       "Financial affidavit 12.902(b) or 12.902(c): the correct version depends on a rule threshold this app has not verified from a primary source.",
       "Certificate of Compliance with Mandatory Disclosure 12.932: generate it only after the required documents have actually been exchanged and service details can be sworn.",
       "Notice of Social Security Number 12.902(j): SSNs are deliberately never collected; complete this form securely by hand.",
-      "Marital settlement agreement 12.902(f): this app produces a term sheet, not a binding agreement.",
       "Final judgment: reserved for the court and the attorney preparing the proposed order.",
       "Signatures, notarization, service certificates, sworn declarations, and legal elections that were not explicitly answered.",
     ],

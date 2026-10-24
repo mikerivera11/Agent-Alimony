@@ -9,6 +9,7 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from "pdf-lib";
 
 import type { FilingReadiness, FormWorksheet, SettlementTermSheet } from "@/domain/forms";
+import type { ReviewedIntakeDraft } from "@/domain/intake";
 import { formatCentsAsDollars } from "@/domain/package";
 import type { PackageViewModel, ConfirmedFactEntry } from "@/domain/package";
 import type { FormulaStep, MissingFact, RuleFlag, StatutoryCitation, EquitableDistributionResult } from "@/domain/rules";
@@ -208,6 +209,25 @@ class PdfWriter {
       this.y -= BODY_SIZE * LINE_HEIGHT_FACTOR;
     }
     this.y = top - boxHeight - 10;
+  }
+
+  signatureLine(label: string): void {
+    this.ensureSpace(42);
+    this.y -= 18;
+    this.page.drawLine({
+      start: { x: MARGIN, y: this.y },
+      end: { x: MARGIN + 250, y: this.y },
+      thickness: 0.8,
+      color: INK,
+    });
+    this.page.drawText(label, {
+      x: MARGIN,
+      y: this.y - 13,
+      size: FOOTER_SIZE,
+      font: this.fonts.regular,
+      color: MUTED,
+    });
+    this.y -= 34;
   }
 }
 
@@ -718,6 +738,108 @@ export async function generateFilingPacketPdf(options: {
       y: MARGIN / 2,
       size: FOOTER_SIZE,
       font: writer.fonts.regular,
+      color: MUTED,
+    });
+  });
+
+  return doc.save();
+}
+
+export async function generateAlimonyAdvanceAgreementPdf(
+  draft: ReviewedIntakeDraft,
+): Promise<Uint8Array> {
+  const advance = draft.data.alimonyAdvance;
+  if (!advance || advance.wantsAdvanceAgreement !== "yes") {
+    throw new Error("The reviewed draft does not request an alimony advance agreement.");
+  }
+
+  const doc = await PDFDocument.create();
+  const fonts = {
+    regular: await doc.embedFont(StandardFonts.Helvetica),
+    bold: await doc.embedFont(StandardFonts.HelveticaBold),
+  };
+  const writer = new PdfWriter(doc, fonts);
+  const selfIsPetitioner = draft.data.spouses.yourRole === "petitioner";
+  const payer = advance.payerFullLegalName;
+  const recipient = advance.recipientFullLegalName;
+  const paymentMethod = {
+    cashiers_check: "cashier's check",
+    wire_transfer: "wire transfer",
+    attorney_trust: "deposit into an attorney trust account",
+    other: advance.paymentMethodDetails || "the other method stated by the parties",
+  }[advance.paymentMethod ?? "other"];
+  const contingency = {
+    refund: "the recipient will refund the advance",
+    escrow_pending_agreement: "the funds will remain in attorney escrow pending a signed written agreement",
+    nonrefundable: "the parties intend the advance to be nonrefundable, subject to attorney review",
+    attorney_to_confirm: "this term must be completed by Florida counsel before signing",
+  }[advance.ifFinalAgreementNotEntered ?? "attorney_to_confirm"];
+  const remaining = Math.max(0, advance.finalSettlementAmount - advance.advanceAmount);
+
+  doc.setTitle("Alimony Settlement Advance and Credit Acknowledgment — Attorney-Review Draft");
+  doc.setSubject("Pre-judgment alimony settlement advance and credit terms");
+  writer.title("Alimony Settlement Advance and Credit Acknowledgment");
+  writer.disclaimerBox(
+    "ATTORNEY-REVIEW DRAFT — NOT A COURT ORDER OR LEGAL ADVICE",
+    "This document records the parties' reported intent concerning a payment before final judgment. It does not " +
+      "replace the marital settlement agreement or final judgment, does not itself establish enforceability, and " +
+      "should be reviewed by licensed Florida counsel before money is transferred or either party signs.",
+  );
+  writer.paragraph(
+    `This acknowledgment is between ${payer || "the paying spouse"} (“Payer”) and ${
+      recipient || "the receiving spouse"
+    } (“Recipient”).`,
+  );
+  writer.packetSection("Payment and credit terms");
+  writer.bullet(
+    `Total reported alimony settlement: ${formatCentsAsDollars(Math.round(advance.finalSettlementAmount * 100))}.`,
+  );
+  writer.bullet(`Advance payment: ${formatCentsAsDollars(Math.round(advance.advanceAmount * 100))}.`);
+  writer.bullet(`Payment due date: ${advance.paymentDueDate}.`);
+  writer.bullet(`Payment method: ${paymentMethod}.`);
+  writer.bullet(
+    advance.creditMethod === "dollar_for_dollar"
+      ? "After receipt of cleared funds, the advance is credited dollar-for-dollar against the final alimony settlement."
+      : `Credit method: ${advance.creditDetails || "to be completed by counsel"}.`,
+  );
+  writer.bullet(
+    `Remaining reported settlement balance after credit: ${formatCentsAsDollars(Math.round(remaining * 100))}.`,
+  );
+  writer.bullet(
+    advance.clearedFundsRequired === "yes"
+      ? "No credit is earned until the payment has cleared and is irrevocably available."
+      : "The parties reported that credit is not conditioned on cleared funds; counsel must confirm this language.",
+  );
+  writer.bullet(`If no final written settlement or judgment is entered: ${contingency}.`);
+  if (advance.advanceNotes?.trim()) writer.bullet(`Additional reported terms: ${advance.advanceNotes.trim()}`);
+
+  writer.packetSection("Acknowledgments");
+  writer.paragraph(
+    "The parties intend the credited amount to be reflected in the final marital settlement agreement and any " +
+      "proposed final judgment. The payment is not child support, property distribution, a gift, or a waiver of " +
+      "unresolved claims unless the final signed documents expressly state otherwise.",
+  );
+  writer.paragraph(
+    "Each party acknowledges the opportunity to obtain independent legal and tax advice. No signature should be " +
+      "added until blanks and attorney-review terms are resolved.",
+  );
+  writer.spacer(12);
+  writer.signatureLine(`${payer || "Payer"} — signature and date`);
+  writer.signatureLine(`${recipient || "Recipient"} — signature and date`);
+  writer.signatureLine("Notary public or deputy clerk — Payer acknowledgment");
+  writer.signatureLine("Notary public or deputy clerk — Recipient acknowledgment");
+  writer.paragraph(
+    `Case role reference: ${selfIsPetitioner ? "the user is Petitioner" : "the user is Respondent"}. ` +
+      "This line is informational and should be confirmed against the filed case caption.",
+    { color: MUTED },
+  );
+
+  writer.pages.forEach((page, index) => {
+    page.drawText(`Attorney-review draft · Page ${index + 1} of ${writer.pages.length}`, {
+      x: MARGIN,
+      y: 24,
+      size: FOOTER_SIZE,
+      font: fonts.regular,
       color: MUTED,
     });
   });

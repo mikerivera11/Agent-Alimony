@@ -275,8 +275,13 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
     if (isBlank(filing.you?.phoneNumber) || isBlank(filing.you?.emailAddress)) {
       missing.push("Your court-form contact information");
     }
+    const details = data.parentingPlanDetails;
+    const selfIsPetitioner = data.spouses?.yourRole === "petitioner";
+    const spouseAddressStatus = selfIsPetitioner
+      ? details?.respondentAddressStatus
+      : details?.petitionerAddressStatus;
     if (
-      isBlank(filing.spouse?.address?.street) ||
+      (spouseAddressStatus === "known" && isBlank(filing.spouse?.address?.street)) ||
       isBlank(filing.spouse?.phoneNumber) ||
       isBlank(filing.spouse?.emailAddress)
     ) {
@@ -286,6 +291,36 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
       missing.push("Whether the parenting plan is agreed, proposed, or in dispute");
     }
     const plan = data.parentingPlan;
+    if (!details) {
+      missing.push("The detailed parenting-plan terms");
+    } else {
+      if (details.majorityDesignationParent === "undecided") {
+        missing.push("The majority-residence designation used only when another law requires one");
+      }
+      if (
+        details.springBreakMode === "one_parent" &&
+        (!details.springBreakParent || details.springBreakParent === "undecided")
+      ) {
+        missing.push("Which parent has the entire spring break");
+      }
+      if (
+        details.summerBreakMode === "one_parent" &&
+        (!details.summerBreakParent || details.summerBreakParent === "undecided")
+      ) {
+        missing.push("Which parent has the entire summer break");
+      }
+    }
+    if (
+      plan &&
+      [
+        plan.decisionMakingEducation,
+        plan.decisionMakingHealthcare,
+        plan.decisionMakingReligion,
+        plan.schoolDesignationParent,
+      ].includes("undecided")
+    ) {
+      missing.push("All parenting decision-making and school-designation choices");
+    }
     if (plan?.holidayScheduleMode === undefined) {
       missing.push("How holidays will be handled");
     } else if (plan.holidayScheduleMode === "specific") {
@@ -310,6 +345,12 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
     const agreement = data.alimonyFactors?.alimonyAgreementStatus;
     if (agreement === "not_agreed" && data.alimonyFactors?.potentialAlimonyRecipient !== "none") {
       missing.push("The parties' agreed alimony terms, or confirmation that alimony is waived");
+    }
+    if (!data.settlementTerms) {
+      missing.push("The marital settlement agreement terms");
+    }
+    if ((data.assetsDebts?.items ?? []).some((item) => item.agreedRecipient === "not_agreed")) {
+      missing.push("An agreed recipient or responsible party for every asset and debt");
     }
   }
 

@@ -356,8 +356,8 @@ They remain **worksheets, not filled forms** because they show the statutory
 calculation and open questions in a more readable attorney-review layout. The
 separate official-forms exporter described below uses a stricter policy:
 
-- The official PDFs *are* interactive AcroForms — 12.902(e) carries 93 fields
-  and 12.995(a) carries 317. Many field names are positional rather than
+- The official PDFs *are* interactive AcroForms — for example, 12.902(e)
+  carries 93 fields and 12.995(a) carries 317. Many field names are positional rather than
   semantic, so the official-forms exporter maps only controls verified against
   one exact revision and leaves ambiguous controls blank.
 - Forms carry a revision footer and a superseded form is refused at the
@@ -369,10 +369,16 @@ separate official-forms exporter described below uses a stricter policy:
   engine already implements exactly that order, so the layout survives form
   revisions.
 
-The parenting-plan intake includes a structured holiday schedule builder that
-matches the information Form 12.995(a) asks for: named holiday, alternating or
-every-year assignment, odd-year parent, exact beginning/end time, priority over
-the regular schedule, and the form's two optional weekend-correction rules.
+The parenting-plan intake includes a structured holiday schedule builder and a
+dedicated form-details section covering the remaining choices in Form
+12.995(a): plan/order status, party address treatment, extracurricular
+decisions and costs, information sharing, school calendar, schedule changes,
+school breaks, transportation and exchange logistics, travel notice, majority
+residence designation, parent/child communication, child care, dispute
+resolution, and additional provisions. The holiday builder records the named
+holiday, alternating or every-year assignment, odd-year parent, exact
+beginning/end time, priority over the regular schedule, and the form's two
+optional weekend-correction rules.
 Thanksgiving, Christmas, and New Year's Day begin as **proposed alternating
 defaults**. They are not presented as Florida legal defaults; the form leaves
 those choices blank. Christmas starts opposite Thanksgiving so one parent does
@@ -462,13 +468,20 @@ download. It inserts confirmed answers into revision-locked copies of the
 Florida Supreme Court Approved Family Law Forms using verified AcroForm field
 mappings. The download includes the applicable petition, cover sheet,
 child-related forms when relevant, child-support worksheet when the
-deterministic calculation completed, and parenting plan.
+deterministic calculation completed, Form 12.902(f)(1) for an uncontested case
+with dependent or minor children, and the parenting plan.
 
 When payment terms are agreed, the same confirmed amount, cadence, start date,
 duration/end condition, and alimony type are inserted into the verified
-alimony controls of the applicable dissolution petition. The app still does
-not generate a binding marital settlement agreement or proposed final
-judgment; an attorney must draft those instruments from the term sheet.
+alimony controls of the applicable dissolution petition and Form 12.902(f)(1).
+The settlement intake also captures disclosure acknowledgment, contingent
+items, beneficiary designations, child-support payment and step-down terms,
+arrears, health/dental coverage, uncovered-expense allocation, support life
+insurance, tax-exemption terms, other terms, and unresolved issues. Property
+and debt assignments come from the itemized assets/debts intake. Signatures,
+notarization, and execution details remain blank; the populated form is an
+attorney-review draft and does not become binding merely because the app
+generated it.
 
 The court-form download lists every unresolved mapped answer by form number and
 links directly to the intake section where it can be completed. A partially
@@ -494,12 +507,12 @@ filing-ready:
   documents actually exchanged and how they were served, not merely documents
   a user has available. It remains in the readiness packet until those events
   can truthfully be certified.
-- **It does not draft a marital settlement agreement.** Drafting the binding
-  instrument means deciding whether alimony is modifiable, who claims the
-  children on a tax return, whether a QDRO is needed to divide retirement,
-  whether life insurance secures support, and how a house is deeded or
-  refinanced. None of that is arithmetic. Each section of the term sheet lists
-  those decisions under "For the attorney to decide" instead of guessing.
+- **It populates only Form 12.902(f)(1), and only from explicit answers.**
+  The no-child agreements, Forms 12.902(f)(2) and 12.902(f)(3), remain
+  unimplemented. The app does not invent legal elections or execution terms:
+  unresolved issues stay visible, overflow asset/debt rows remain in the
+  attorney packet, and retirement-order, deed, refinance, tax, and
+  enforceability questions still require professional review.
 - **It never collects Social Security numbers**, even though Form 12.902(j)
   needs them. They change no calculation here and would make a breach far
   worse, so the packet says to complete that form by hand.
@@ -508,6 +521,17 @@ The attorney filing packet and the official-forms draft remain separate
 downloads so both can be reviewed together: the packet explains readiness,
 gaps, sources, and settlement terms; the forms show where confirmed information
 was inserted into the court's documents.
+
+If the parties report an agreed alimony settlement and want to make part of it
+before final judgment, the results page can also generate a separate **Alimony
+Settlement Advance and Credit Acknowledgment**. It records the total settlement,
+advance amount, due date, payment method, credit method, remaining balance,
+cleared-funds condition, and the reported treatment if no final written
+agreement or judgment is entered, with signature and notary/deputy-clerk lines.
+It is intentionally not called a promissory note: it documents a reported
+advance and credit, not merely a future promise to pay. It is prominently
+marked as an attorney-review draft and does not establish enforceability,
+replace the marital settlement agreement, or become a court order.
 
 ## Saving, editing, and coming back
 

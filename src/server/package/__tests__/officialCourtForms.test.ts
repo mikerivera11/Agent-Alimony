@@ -41,12 +41,13 @@ describe("official court forms", () => {
       "12.901(b)(1)",
       "12.902(d)",
       "12.902(e)",
+      "12.902(f)(1)",
       "12.995(a)",
     ]);
     expect(manifest.omitted.join(" ")).toContain("Financial affidavit");
     expect(manifest.omitted.join(" ")).toContain("Mandatory Disclosure");
     expect(manifest.omitted.join(" ")).toContain("Social Security");
-    expect(manifest.omitted.join(" ")).toContain("settlement agreement");
+    expect(manifest.omitted.join(" ")).not.toContain("Marital settlement agreement");
   });
 
   it("lists unresolved answers as blanks to complete before filing", () => {
@@ -243,20 +244,85 @@ describe("official court forms", () => {
     expect(form.getTextField("Other 7").getText()).toContain("Alternating weekends");
     expect(form.getCheckBox("Check Box43").isChecked()).toBe(true);
     expect(form.getCheckBox("Check Box44").isChecked()).toBe(true);
+    expect(
+      form.getTextField("indicate percentage of cost for activities by parent 1").getText(),
+    ).toContain("50%");
+    expect(
+      form.getTextField("The costs of the extra-curricular activities shall be paid by parent 1").getText(),
+    ).toContain("Alex Rivera");
     expect(form.getTextField("Thanksgiving").getText()).toBe("Jordan Rivera (fictional)");
     expect(form.getTextField("Odd Years 12").getText()).toBe("Alex Rivera (fictional)");
     expect(form.getTextField("other special day 1").getText()).toBe("Christmas");
     expect(form.getTextField("other special day 2").getText()).toBe("New Year's Day");
-    expect(form.getCheckBox("Check Box52").isChecked()).toBe(true);
-    expect(form.getCheckBox("Check Box102").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box46").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box52").isChecked()).toBe(false);
+    expect(form.getCheckBox("Check Box55").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box102").isChecked()).toBe(false);
+    expect(
+      form.getTextField("Parent having child(ren) for odd-numbered years for Spring Break").getText(),
+    ).toBe("Alex Rivera (fictional)");
+    expect(
+      form.getTextField("Parent having child(ren) for even-numbered years for Spring Break").getText(),
+    ).toBe("Jordan Rivera (fictional)");
+    expect(
+      form.getTextField("Parent shall have the child(ren) for the entire Spring Break every year").getText(),
+    ).toBeUndefined();
     expect(form.getCheckBox("Check Box117").isChecked()).toBe(true);
-    expect(form.getTextField("date for summer break 4").getText()).toContain("Four consecutive weeks");
-    expect(form.getCheckBox("Check Box122").isChecked()).toBe(true);
-    expect(form.getCheckBox("Check Box127").isChecked()).toBe(true);
-    expect(form.getTextField("Exchanges shall occur at other place").getText()).toContain("children's school");
+    expect(form.getTextField("date for summer break 4").getText()).toContain("four consecutive weeks");
+    expect(
+      form.getTextField("Parent that shall have the entire Summer Break from school").getText(),
+    ).toBeUndefined();
+    expect(form.getCheckBox("Check Box120").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box122").isChecked()).toBe(false);
+    expect(form.getCheckBox("Check Box126").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box127").isChecked()).toBe(false);
+    expect(form.getTextField("Explain where exchanges shall occur").getText()).toContain("children's school");
     expect(form.getCheckBox("Check Box152").isChecked()).toBe(true);
-    expect(form.getCheckBox("Check Box156").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box154").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box156").isChecked()).toBe(false);
     expect(form.getTextField("communicate only on day - other, explain").getText()).toContain("video call");
+  });
+
+  it("writes the confirmed marital settlement terms into Form 12.902(f)(1)", async () => {
+    const { draft, viewModel } = sampleInputs();
+    const bytes = await __testing.populateForm({
+      formNumber: "12.902(f)(1)",
+      draft,
+      viewModel,
+    });
+    const form = (await PDFDocument.load(bytes)).getForm();
+
+    expect(form.getTextField("Petitioner’s full legal name").getText()).toBe("Alex Rivera (fictional)");
+    expect(form.getTextField("Respondent’s full legal name").getText()).toBe("Jordan Rivera (fictional)");
+    expect(form.getTextField("We were married to each other on date").getText()).toBe("06/14/2011");
+    expect(form.getTextField("Other assets Petitioner shall receive").getText()).toContain("401(k)");
+    expect(form.getTextField("Current fair market value other assets Petitioner shall receive").getText()).toBe(
+      "60000.00",
+    );
+    expect(form.getTextField("Other assets Respondent shall receive").getText()).toContain("Marital home");
+    expect(form.getTextField("Other to be paid by Petitioner").getText()).toContain("Car loan");
+    expect(form.getTextField("Other monthly payment to be paid by Petitioner").getText()).toBe("420.00");
+    expect(form.getTextField("Total debts monthly payment to be paid by Petitioner").getText()).toBe("420.00");
+    expect(form.getCheckBox("Check Box9").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box13").isChecked()).toBe(true);
+    expect(form.getTextField("Dollar amount").getText()).toBe("1000.00");
+    expect(form.getTextField("Name and birth date of minor child or children").getText()).toContain(
+      "Taylor Rivera (fictional)",
+    );
+    expect(form.getTextField("Indicate exhibit").getText()).toBe("A");
+    expect(form.getCheckBox("Check Box18").isChecked()).toBe(true);
+    expect(form.getTextField("Indicate amount per month").getText()).toBe("775.00");
+    expect(form.getTextField("Commencing month, day, year").getText()).toBe("09/01/2026");
+    expect(form.getCheckBox("Check Box22").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box25").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box28").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box32").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box36").isChecked()).toBe(true);
+    expect(form.getTextField("Amount of life insurance").getText()).toBe("100000.00");
+    expect(form.getTextField("Explain tax exemptions for child or children").getText()).toContain(
+      "Alex claims Taylor",
+    );
+    expect(form.getTextField("Issues not agreed on").getText()).toBe("None.");
   });
 
   it("maps shared and allocated parental decision-making without inferring sole responsibility", async () => {
@@ -289,5 +355,22 @@ describe("official court forms", () => {
     expect(allocatedForm.getTextField("Parent 2").getText()).toBe("Jordan Rivera (fictional)");
     expect(allocatedForm.getTextField("other activity").getText()).toBe("Religious upbringing");
     expect(allocatedForm.getTextField("Parent 3").getText()).toBe("Alex Rivera (fictional)");
+  });
+
+  it("does not expose an address marked confidential in the parenting plan", async () => {
+    const source = createSampleDraft();
+    source.data.parentingPlanDetails.petitionerAddressStatus = "confidential";
+    const draft = buildReviewedDraft(source);
+    const bytes = await __testing.populateForm({
+      formNumber: "12.995(a)",
+      draft,
+      viewModel: buildPackageViewModel(draft),
+    });
+    const form = (await PDFDocument.load(bytes)).getForm();
+
+    expect(form.getCheckBox("Check Box8").isChecked()).toBe(true);
+    expect(form.getTextField("address of Petitioner").getText()).toBeUndefined();
+    expect(form.getTextField("Address of Petitioner/Parent").getText()).toBeUndefined();
+    expect(form.getTextField("City State Zip of Petitioner/Parent").getText()).toBeUndefined();
   });
 });

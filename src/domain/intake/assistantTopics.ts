@@ -102,6 +102,23 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
       "How does a court decide time-sharing between parents?",
     ],
   },
+  parentingPlanDetails: {
+    knowledgeEntryIds: ["parenting-plan"],
+    statuteSections: ["61.13"],
+    keywords: [
+      "parenting plan",
+      "time-sharing schedule",
+      "exchanges",
+      "transportation",
+      "school",
+      "travel",
+      "communication",
+    ],
+    suggestedQuestions: [
+      "What must a Florida parenting plan include?",
+      "What should the parenting plan say about exchanges and communication?",
+    ],
+  },
   income: {
     knowledgeEntryIds: ["child-support-basics", "variable-income", "alimony-factors", "financial-disclosure"],
     statuteSections: ["61.30"],
@@ -184,6 +201,24 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
       "What factors does Florida consider when awarding alimony?",
       "What are the different types of alimony in Florida?",
       "Could a lump-sum payment work instead of monthly alimony?",
+    ],
+  },
+  settlementTerms: {
+    knowledgeEntryIds: ["equitable-distribution", "child-support-basics", "app-scope"],
+    statuteSections: ["61.13", "61.30", "61.075"],
+    keywords: ["marital settlement agreement", "child support terms", "insurance", "tax exemption"],
+    suggestedQuestions: [
+      "What belongs in a marital settlement agreement?",
+      "Why does this draft still need attorney review and notarized signatures?",
+    ],
+  },
+  alimonyAdvance: {
+    knowledgeEntryIds: ["lump-sum", "app-scope"],
+    statuteSections: ["61.08"],
+    keywords: ["advance payment", "credit", "alimony settlement", "pre-judgment payment"],
+    suggestedQuestions: [
+      "How is an advance alimony payment credited?",
+      "Why should funds be held in attorney trust before final judgment?",
     ],
   },
   safetyComplexity: {
