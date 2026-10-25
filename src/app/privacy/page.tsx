@@ -64,7 +64,8 @@ export default function PrivacyPage() {
           <p className="text-ink-muted">
             If someone else has access to this device, remember that your browser history and saved local data
             could reveal that you visited this site. The &quot;Quick exit&quot; link at the top of every page
-            takes you to a neutral page immediately.
+            clears this app&apos;s browser-saved case data, signs you out of this app, and takes you to a neutral
+            page immediately. It does not sign you out of Google itself or erase browser history.
           </p>
         </section>
       </Container>
