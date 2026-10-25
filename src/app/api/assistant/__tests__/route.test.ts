@@ -108,6 +108,85 @@ describe("section topic grounding", () => {
     resetServerEnvCache();
   });
 
+  describe("case-specific calculation explanations", () => {
+    beforeAll(() => {
+      process.env.DATABASE_URL ??= "******localhost:5432/fsg_test";
+      process.env.SESSION_SIGNING_SECRET ??= "a".repeat(32);
+      resetServerEnvCache();
+    });
+
+    const caseContext = {
+      kind: "child_support_calculation",
+      rulesetId: "fl-child-support-61.30",
+      monthlyTransferAmountCents: 123_456,
+      obligorParent: "Parent 1",
+      combinedNetMonthlyIncomeCents: 900_000,
+      totalMinimumChildSupportNeedCents: 210_000,
+      substantialTimeSharingApplied: true,
+      formulaTrace: [
+        {
+          stepId: "net-income",
+          description: "Gross income minus allowable deductions.",
+          citation: "Fla. Stat. §61.30(2)-(4)",
+          values: {
+            parent1GrossCents: 700_000,
+            parent1DeductionsCents: 100_000,
+            parent1NetCents: 600_000,
+            parent2NetCents: 300_000,
+          },
+        },
+      ],
+      citations: [
+        {
+          citation: "Fla. Stat. §61.30",
+          title: "Child support guidelines",
+          url: "https://www.flsenate.gov/Laws/Statutes/2025/61.30",
+        },
+      ],
+      assumptions: ["The confirmed monthly figures were used without an AI calculation."],
+    } as const;
+
+    it("reads exact figures from the deterministic trace without invoking a model", async () => {
+      const response = await post({
+        question: "How was my child support estimate calculated from the income I provided?",
+        caseContext,
+      });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        answer: { content: string; source: string; citations: { citation: string }[] };
+      };
+
+      expect(response.status).toBe(200);
+      expect(payload.answer.source).toContain("deterministic calculation trace");
+      expect(payload.answer.content).toContain("$1,234.56");
+      expect(payload.answer.content).toContain("Parent 1 Gross");
+      expect(payload.answer.content).toContain("$7,000.00");
+      expect(payload.answer.citations.map((citation) => citation.citation)).toContain("Fla. Stat. §61.30");
+    });
+
+    it("rejects oversized or malformed calculation context", async () => {
+      const response = await post({
+        question: "How was my estimate calculated?",
+        caseContext: { ...caseContext, monthlyTransferAmountCents: -1 },
+      });
+
+      expect(response.status).toBe(400);
+      expect((await json(response)).error?.code).toBe("invalid_request");
+    });
+
+    it("does not use case context to answer an unrelated question", async () => {
+      const response = await post({
+        question: "What is the best pizza topping?",
+        caseContext,
+      });
+      const payload = (await response.json()) as { answer: { outOfScope: boolean; content: string } };
+
+      expect(response.status).toBe(200);
+      expect(payload.answer.outOfScope).toBe(true);
+      expect(payload.answer.content).not.toContain("$1,234.56");
+    });
+  });
+
   it("accepts a known intake step as the grounding topic", async () => {
     const response = await post({
       question: "How are retirement accounts divided?",

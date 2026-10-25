@@ -1,7 +1,11 @@
+"use client";
+
 import { formatCentsAsDollars } from "@/domain/package";
 import type { ChildSupportResult, RuleOutcome } from "@/domain/rules";
+import type { AssistantCaseContext } from "@/lib/assistantCaseContext";
 
-import { Alert, Card } from "@/components/ui";
+import { useOptionalAssistantDock } from "@/components/assistant/AssistantDockContext";
+import { Alert, Button, Card } from "@/components/ui";
 import { FormulaTraceTable } from "./FormulaTraceTable";
 import { RuleOutcomeStatus } from "./RuleOutcomeStatus";
 
@@ -11,6 +15,29 @@ interface ChildSupportOutcomeCardProps {
 
 /** Renders the Florida §61.30 child support outcome, including a full formula trace when calculated. */
 export function ChildSupportOutcomeCard({ outcome }: ChildSupportOutcomeCardProps) {
+  const assistantDock = useOptionalAssistantDock();
+
+  const caseContext: AssistantCaseContext | null =
+    outcome.kind === "calculated"
+      ? {
+          kind: "child_support_calculation",
+          rulesetId: outcome.rulesetId,
+          monthlyTransferAmountCents: outcome.result.monthlyTransferAmountCents,
+          obligorParent:
+            outcome.result.obligorParentId === "parent1"
+              ? "Parent 1"
+              : outcome.result.obligorParentId === "parent2"
+                ? "Parent 2"
+                : "No transfer",
+          combinedNetMonthlyIncomeCents: outcome.result.combinedNetMonthlyIncomeCents,
+          totalMinimumChildSupportNeedCents: outcome.result.totalMinimumChildSupportNeedCents,
+          substantialTimeSharingApplied: outcome.result.substantialTimeSharingApplied,
+          formulaTrace: [...outcome.formulaTrace],
+          citations: [...outcome.citations],
+          assumptions: [...outcome.assumptions],
+        }
+      : null;
+
   return (
     <Card as="section" className="flex flex-col gap-5">
       <h2 className="text-xl font-semibold text-ink">Child support (estimate)</h2>
@@ -75,6 +102,21 @@ export function ChildSupportOutcomeCard({ outcome }: ChildSupportOutcomeCardProp
               <FormulaTraceTable steps={outcome.formulaTrace} />
             </div>
           </details>
+
+          {caseContext && assistantDock ? (
+            <div className="flex flex-col items-start gap-2 rounded-xl border border-border bg-surface-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-ink-muted">
+                Ask the assistant to explain these exact rules-engine steps in plain language.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => assistantDock.openCaseContext(caseContext)}
+              >
+                Ask about this calculation
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
     </Card>

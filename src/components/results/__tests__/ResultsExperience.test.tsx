@@ -6,8 +6,17 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { buildReviewedDraft, createLocalStorageIntakeDraftStorage } from "@/domain/intake";
 import { createLocalStorageReviewedSnapshotStorage } from "@/domain/integration";
+import {
+  AssistantDockProvider,
+  useAssistantDock,
+} from "@/components/assistant/AssistantDockContext";
 
 import { ResultsExperience } from "../ResultsExperience";
+
+function CaseContextProbe() {
+  const { caseContext } = useAssistantDock();
+  return <output>{caseContext?.kind ?? "no-case-context"}</output>;
+}
 
 afterEach(() => {
   cleanup();
@@ -38,6 +47,23 @@ describe("ResultsExperience", () => {
     expect(
       screen.getByRole("button", { name: /download advance credit agreement/i }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the assistant with the deterministic child-support trace", async () => {
+    const reviewed = buildReviewedDraft(createSampleDraft());
+    await createLocalStorageReviewedSnapshotStorage().save(reviewed);
+
+    render(
+      <AssistantDockProvider>
+        <ResultsExperience />
+        <CaseContextProbe />
+      </AssistantDockProvider>,
+    );
+
+    const button = await screen.findByRole("button", { name: /ask about this calculation/i });
+    fireEvent.click(button);
+
+    expect(screen.getByText("child_support_calculation")).toBeInTheDocument();
   });
 
   it("links outstanding court-form questions to the questionnaire section that answers them", async () => {

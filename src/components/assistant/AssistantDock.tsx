@@ -38,7 +38,7 @@ const SUPPRESSED_PATHS = new Set(["/", "/assistant"]);
 
 export function AssistantDock() {
   const pathname = usePathname();
-  const { isOpen, topic, open, close, clearTopic } = useAssistantDock();
+  const { isOpen, topic, caseContext, open, close, clearTopic, clearCaseContext } = useAssistantDock();
   const panelId = useId();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
@@ -53,8 +53,13 @@ export function AssistantDock() {
     topicRef.current = topic;
   }, [topic]);
   const getTopic = useCallback(() => topicRef.current, []);
+  const caseContextRef = useRef(caseContext);
+  useEffect(() => {
+    caseContextRef.current = caseContext;
+  }, [caseContext]);
+  const getCaseContext = useCallback(() => caseContextRef.current, []);
 
-  const { turns, pending, ask, reset } = useAssistantConversation(getTopic, kind);
+  const { turns, pending, ask, reset } = useAssistantConversation(getTopic, getCaseContext, kind);
 
   const suppressed = SUPPRESSED_PATHS.has(pathname ?? "");
 
@@ -62,6 +67,12 @@ export function AssistantDock() {
   const suggestions =
     kind === "financial_options"
       ? FINANCIAL_SUGGESTED_QUESTIONS
+      : caseContext
+        ? [
+            "How was my child support estimate calculated from the income I provided?",
+            "Which deductions and child-related costs were included?",
+            "How did the overnights affect my child support estimate?",
+          ]
       : topic
         ? INTAKE_ASSISTANT_TOPICS[topic].suggestedQuestions
         : GENERAL_SUGGESTED_QUESTIONS;
@@ -168,7 +179,21 @@ export function AssistantDock() {
           <AssistantKindSelector value={kind} onChange={setKind} disabled={pending} />
         </div>
 
-        {sectionTitle ? (
+        {kind === "legal" && caseContext ? (
+          <div className="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2">
+            <p className="text-xs text-ink-muted">
+              Answering from your{" "}
+              <span className="font-semibold text-ink">deterministic child-support calculation</span>
+            </p>
+            <button
+              type="button"
+              onClick={clearCaseContext}
+              className="flex-none rounded-lg px-2 py-1 text-xs text-ink-muted underline underline-offset-2 transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Ask generally instead
+            </button>
+          </div>
+        ) : sectionTitle ? (
           <div className="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2">
             <p className="text-xs text-ink-muted">
               Answering about <span className="font-semibold text-ink">{sectionTitle}</span>
@@ -186,9 +211,9 @@ export function AssistantDock() {
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {kind === "legal" ? (
             <p className="text-xs text-ink-muted">
-              Answers explain Florida law in general terms using this app&apos;s cited sources. This is not legal
-              advice and never calculates your figures — every dollar amount comes from the app&apos;s own
-              deterministic calculators.
+              {caseContext
+                ? "Answers about this estimate read back the preserved rules-engine trace. The assistant does not recalculate or change any figure."
+                : "Answers explain Florida law in general terms using this app's cited sources. This is not legal advice and never calculates your figures — every dollar amount comes from the app's own deterministic calculators."}
             </p>
           ) : (
             <p className="text-xs text-ink-muted">
@@ -225,7 +250,9 @@ export function AssistantDock() {
           <label htmlFor={`${panelId}-input`} className="sr-only">
             {kind === "financial_options"
               ? "Ask a question about financial options"
-              : sectionTitle
+              : caseContext
+                ? "Ask about your child-support calculation"
+                : sectionTitle
                 ? `Ask a question about ${sectionTitle}`
                 : "Ask a question about Florida family law"}
           </label>
@@ -247,7 +274,9 @@ export function AssistantDock() {
             placeholder={
               kind === "financial_options"
                 ? "For example: HELOC or sell investments for a lump sum?"
-                : sectionTitle
+                : caseContext
+                  ? "Ask how income, deductions, costs, or overnights affected this estimate…"
+                  : sectionTitle
                   ? `Ask about ${sectionTitle.toLowerCase()}…`
                   : "Ask about Florida alimony, support, or property…"
             }

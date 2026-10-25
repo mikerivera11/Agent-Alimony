@@ -10,7 +10,9 @@ import {
   getAssistantAdapter,
 } from "@/server/assistant";
 import { INTAKE_ASSISTANT_TOPIC_IDS, type IntakeStepId } from "@/domain/intake";
+import { assistantCaseContextSchema } from "@/lib/assistantCaseContext";
 import { ASSISTANT_KINDS } from "@/lib/assistantKinds";
+import { answerCaseContextQuestion } from "@/server/assistant/case-context";
 
 /**
  * Q&A endpoint for the Florida family-law information assistant.
@@ -42,6 +44,7 @@ const requestSchema = z.object({
   // string could never inject instructions — but keeping it a closed set means
   // there is no ambiguity about that at the boundary.
   topic: z.enum(INTAKE_ASSISTANT_TOPIC_IDS as [IntakeStepId, ...IntakeStepId[]]).optional(),
+  caseContext: assistantCaseContextSchema.optional(),
 });
 
 function errorResponse(status: number, code: string, message: string): NextResponse {
@@ -84,6 +87,21 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   try {
+    const caseAnswer =
+      parsed.data.kind === "legal"
+        ? answerCaseContextQuestion(parsed.data.question, parsed.data.caseContext)
+        : null;
+    if (caseAnswer) {
+      return NextResponse.json(
+        {
+          ok: true,
+          answer: caseAnswer,
+          disclaimer: ASSISTANT_DISCLAIMER,
+        },
+        { status: 200, headers: NO_STORE_HEADERS },
+      );
+    }
+
     const adapter = getAssistantAdapter(parsed.data.kind);
     const answer = await adapter.answer({
       question: parsed.data.question,

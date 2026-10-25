@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { IntakeStepId } from "@/domain/intake";
+import type { AssistantCaseContext } from "@/lib/assistantCaseContext";
 import type { AssistantKind } from "@/lib/assistantKinds";
 
 export interface AssistantCitation {
@@ -47,7 +48,11 @@ const MAX_HISTORY_MESSAGES = 6;
  * starts, so moving to another section mid-thread scopes the *next* question
  * correctly instead of silently answering from the section you have left.
  */
-export function useAssistantConversation(getTopic: () => IntakeStepId | undefined, kind: AssistantKind) {
+export function useAssistantConversation(
+  getTopic: () => IntakeStepId | undefined,
+  getCaseContext: () => AssistantCaseContext | undefined,
+  kind: AssistantKind,
+) {
   const [allTurns, setAllTurns] = useState<AssistantTurn[]>([]);
   const [pending, setPending] = useState(false);
   const nextTurnIdRef = useRef(0);
@@ -85,6 +90,7 @@ export function useAssistantConversation(getTopic: () => IntakeStepId | undefine
             question: trimmed,
             history,
             topic: kind === "legal" ? getTopic() : undefined,
+            caseContext: kind === "legal" ? getCaseContext() : undefined,
           }),
         });
         const payload = await response.json();
@@ -109,7 +115,7 @@ export function useAssistantConversation(getTopic: () => IntakeStepId | undefine
         setPending(false);
       }
     },
-    [getTopic, kind, pending],
+    [getTopic, getCaseContext, kind, pending],
   );
 
   const reset = useCallback(() => {

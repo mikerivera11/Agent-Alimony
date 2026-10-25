@@ -187,6 +187,15 @@ A side panel carries the same assistant on every page, so a question can be aske
 
 While the panel is open it insets the page rather than covering it, so the sticky header's Quick exit stays one click away; on small screens, where the panel is a full-screen sheet, it carries its own Quick exit instead. Quick exit synchronously removes every namespaced browser-saved case value, starts a keepalive request that revokes the app session, and replaces the current tab with `weather.gov`. It signs the person out of this application, not out of Google globally, and cannot erase browser history. `src/domain/intake/assistantTopics.ts` maps each of the thirteen topics to the knowledge-base entries relevant to it and to three suggested starter questions. A test asserts that all thirty-nine of those starters actually retrieve grounded material, so no suggestion can be offered that the assistant would then decline.
 
+Calculated child-support results also include **Ask about this calculation**.
+That action gives the assistant a minimal, read-only context containing only
+the ruleset id, final summary figures, preserved formula trace, assumptions,
+and citations. It excludes names, addresses, documents, and the mutable intake
+draft. The API validates strict size and type limits and answers these
+questions deterministically from the trace; no model receives the case figures
+or performs arithmetic. Questions unrelated to the calculation continue
+through the ordinary citation-grounded assistant.
+
 The topic is a **closed enum of step ids** at the API boundary, never free text, so it opens no injection path. More importantly, a topic can only ever *re-rank* — the preference boost is applied after the minimum-score filter, so an entry must first match the question on its own merits. This matters: an earlier design appended the topic's keywords to the scored text, which let the section itself manufacture a match, and a question about pizza asked from the alimony section came back with three confident alimony passages. The cost of the stricter rule is that a genuinely vague question ("what counts here?") is declined rather than guessed at, which is the correct trade in this domain; the suggested starters exist to solve discovery instead.
 
 ### Providers
