@@ -72,6 +72,16 @@ describe("filingDetailsSchema", () => {
       );
     }
   });
+
+  it("keeps the marriage city and state or country optional for the filing packet", () => {
+    const filing = createSampleDraft().data.filingDetails;
+    filing.marriagePlaceCity = "";
+    filing.marriagePlaceStateOrCountry = "";
+
+    const result = filingDetailsSchema.safeParse(filing);
+
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("marriageSchema", () => {

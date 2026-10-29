@@ -1342,13 +1342,6 @@ export const filingDetailsSchema = z
         message: "Enter the designated email address used on court forms",
       });
     }
-    if (!value.marriagePlaceCity?.trim() || !value.marriagePlaceStateOrCountry?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["marriagePlaceCity"],
-        message: "Enter where the marriage took place",
-      });
-    }
     if (!value.relatedCasesStatus) {
       ctx.addIssue({
         code: "custom",

@@ -212,9 +212,6 @@ function missingForForm(formNumber: string, data: FilingPacketDraftData): string
       missing.push("Your spouse's military-service status");
     }
     if (isBlank(data.marriage?.marriageDate)) missing.push("The date you married");
-    if (isBlank(filing.marriagePlaceCity) && isBlank(filing.marriagePlaceStateOrCountry)) {
-      missing.push("Where you married");
-    }
     if (isBlank(filing.floridaResidentSince)) missing.push("When Florida residence began");
     if (isBlank(filing.judicialCircuit)) missing.push("The judicial circuit");
     if (data.caseBasics?.petitionStatus === "filed") {
