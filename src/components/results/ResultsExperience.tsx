@@ -497,7 +497,7 @@ export function ResultsExperience() {
                 runDownload(
                   "alimony-advance-agreement",
                   "/api/package/alimony-advance-agreement",
-                  "alimony-settlement-advance-credit-agreement.pdf",
+                  "pre-judgment-housing-advance-credit-agreement.pdf",
                 )
               }
               loading={
@@ -506,7 +506,7 @@ export function ResultsExperience() {
               }
               disabled={isStale || downloadState === "downloading"}
             >
-              Download advance credit agreement
+              Download housing advance agreement
             </Button>
           </div>
         </Card>

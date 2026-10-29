@@ -45,7 +45,7 @@ describe("ResultsExperience", () => {
     expect(screen.getByText(/estimated monthly amount range/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download pdf/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /download advance credit agreement/i }),
+      screen.getByRole("button", { name: /download housing advance agreement/i }),
     ).toBeInTheDocument();
   });
 

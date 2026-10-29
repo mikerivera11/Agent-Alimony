@@ -541,16 +541,19 @@ downloads so both can be reviewed together: the packet explains readiness,
 gaps, sources, and settlement terms; the forms show where confirmed information
 was inserted into the court's documents.
 
-If the parties report an agreed alimony settlement and want to make part of it
-before final judgment, the results page can also generate a separate **Alimony
-Settlement Advance and Credit Acknowledgment**. It records the total settlement,
-advance amount, due date, payment method, credit method, remaining balance,
-cleared-funds condition, and the reported treatment if no final written
-agreement or judgment is entered, with signature and notary/deputy-clerk lines.
-It is intentionally not called a promissory note: it documents a reported
-advance and credit, not merely a future promise to pay. It is prominently
-marked as an attorney-review draft and does not establish enforceability,
-replace the marital settlement agreement, or become a court order.
+The optional **Pre-judgment housing advance** questionnaire is always available,
+even before the parties finish all alimony terms. It records the housing or
+relocation purpose, intended use, target move date, one payment or an installment
+schedule of up to 24 payments, payment method, dollar-for-dollar lump-sum credit,
+remaining balance, cleared-funds condition, and the reported treatment if no
+final written agreement or judgment is entered. The results page generates a
+separate **Pre-Judgment Housing Advance and Lump-Sum Credit Agreement** with
+signature and notary/deputy-clerk lines.
+
+The generated document is promissory-note-style, but it is not represented as a
+guaranteed enforceable promissory note. It is prominently marked as an
+attorney-review draft and does not establish enforceability, replace the marital
+settlement agreement, or become a court order.
 
 ## Saving, editing, and coming back
 

@@ -118,8 +118,9 @@ describe("official court forms", () => {
     expect(form.getCheckBox("check if this is a petitioner request on insurance").isChecked()).toBe(true);
     expect(form.getCheckBox("insurance provided by petitioner").isChecked()).toBe(true);
     expect(form.getCheckBox("Check Box111").isChecked()).toBe(true);
-    expect(form.getCheckBox("To be paid according to the percentages in the Child Support Guidelines Worksheet, Florida Family").isChecked()).toBe(
-      true,
+    expect(form.getCheckBox("Other {explain}").isChecked()).toBe(true);
+    expect(form.getTextField("Explaination of other payment arrangements").getText()).toContain(
+      "first 12 months",
     );
     expect(form.getCheckBox("check this and any of the following five that apply").isChecked()).toBe(true);
     expect(form.getCheckBox("check if this applies").isChecked()).toBe(true);
@@ -353,14 +354,15 @@ describe("official court forms", () => {
     expect(form.getTextField("other special day 2").getText()).toBe("New Year's Day");
     expect(form.getCheckBox("Check Box46").isChecked()).toBe(true);
     expect(form.getCheckBox("Check Box52").isChecked()).toBe(false);
-    expect(form.getCheckBox("Check Box55").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box54").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box55").isChecked()).toBe(false);
     expect(form.getCheckBox("Check Box102").isChecked()).toBe(false);
     expect(
       form.getTextField("Parent having child(ren) for odd-numbered years for Spring Break").getText(),
-    ).toBe("Alex Rivera (fictional)");
+    ).toBeUndefined();
     expect(
       form.getTextField("Parent having child(ren) for even-numbered years for Spring Break").getText(),
-    ).toBe("Jordan Rivera (fictional)");
+    ).toBeUndefined();
     expect(
       form.getTextField("Parent shall have the child(ren) for the entire Spring Break every year").getText(),
     ).toBeUndefined();
@@ -411,15 +413,18 @@ describe("official court forms", () => {
     expect(form.getTextField("Indicate amount per month").getText()).toBe("775.00");
     expect(form.getTextField("Commencing month, day, year").getText()).toBe("09/01/2026");
     expect(form.getCheckBox("Check Box22").isChecked()).toBe(true);
-    expect(form.getCheckBox("Check Box25").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box26").isChecked()).toBe(true);
+    expect(form.getTextField("Explain if other").getText()).toContain("first 12 months");
     expect(form.getCheckBox("Check Box28").isChecked()).toBe(true);
-    expect(form.getCheckBox("Check Box32").isChecked()).toBe(true);
+    expect(form.getCheckBox("Check Box33").isChecked()).toBe(true);
+    expect(form.getTextField("Other 2").getText()).toContain("Dental and orthodontic");
     expect(form.getCheckBox("Check Box36").isChecked()).toBe(true);
     expect(form.getTextField("Amount of life insurance").getText()).toBe("100000.00");
     expect(form.getTextField("Explain tax exemptions for child or children").getText()).toContain(
-      "Alex claims Taylor",
+      "file jointly for tax year 2026",
     );
-    expect(form.getTextField("Issues not agreed on").getText()).toBe("None.");
+    expect(form.getTextField("Other continued").getText()).toContain("vehicle lease");
+    expect(form.getTextField("Issues not agreed on").getText()).toContain("Christmas-break start");
   });
 
   it("maps shared and allocated parental decision-making without inferring sole responsibility", async () => {

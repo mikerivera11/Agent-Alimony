@@ -23,11 +23,11 @@ describe("POST /api/package/alimony-advance-agreement", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("content-disposition")).toContain(
-      "alimony-settlement-advance-credit-agreement.pdf",
+      "pre-judgment-housing-advance-credit-agreement.pdf",
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     const pdf = await PDFDocument.load(await response.arrayBuffer());
-    expect(pdf.getTitle()).toContain("Alimony Settlement Advance and Credit Acknowledgment");
+    expect(pdf.getTitle()).toContain("Pre-Judgment Housing Advance and Lump-Sum Credit Agreement");
   });
 
   it("refuses to generate a document that the reviewed answers did not request", async () => {

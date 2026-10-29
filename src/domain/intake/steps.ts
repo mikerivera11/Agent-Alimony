@@ -97,9 +97,6 @@ const alwaysApplicable = () => true;
 const hasChildren = (data: IntakeDraftData) => data.children.hasChildren === "yes";
 const wantsChildCaseFilingPacket = (data: IntakeDraftData) =>
   hasChildren(data) && data.filingDetails.wantsFilingPacket === "yes";
-const hasAgreedAlimonyPayment = (data: IntakeDraftData) =>
-  data.alimonyFactors.alimonyAgreementStatus === "agreed_payment";
-
 const emptyPersonIncome: Income["self"] = {
   wages: 0,
   selfEmploymentIncome: 0,
@@ -446,17 +443,22 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
   },
   alimonyAdvance: {
     id: "alimonyAdvance",
-    title: "Alimony advance credit agreement",
-    summary: "Document an upfront payment that will be credited against the final agreed settlement.",
+    title: "Pre-judgment housing advance",
+    summary: "Create an optional payment schedule to help with housing before final judgment.",
     whyWeAsk:
-      "An advance paid before final judgment needs a clear paper trail: amount, due date, payment method, when credit applies, and what happens if the final agreement or judgment is not entered.",
+      "Money paid before final judgment needs a clear paper trail: its housing or relocation purpose, every due date and amount, when the lump-sum credit applies, and what happens if the final agreement or judgment is not entered.",
     schema: alimonyAdvanceSchema,
     defaultValues: {
       wantsAdvanceAgreement: "no",
       payerFullLegalName: "",
       recipientFullLegalName: "",
+      purpose: "housing_transition",
+      intendedUseDetails: "",
+      targetMoveDate: undefined,
       advanceAmount: 0,
+      paymentScheduleType: "single_payment",
       paymentDueDate: undefined,
+      paymentSchedule: [],
       paymentMethod: undefined,
       paymentMethodDetails: "",
       finalSettlementAmount: 0,
@@ -481,7 +483,7 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
           ? (data.alimonyFactors.agreedAlimonyAmount ?? 0)
           : 0,
     }) as AlimonyAdvance,
-    isApplicable: hasAgreedAlimonyPayment,
+    isApplicable: alwaysApplicable,
   },
   safetyComplexity: {
     id: "safetyComplexity",

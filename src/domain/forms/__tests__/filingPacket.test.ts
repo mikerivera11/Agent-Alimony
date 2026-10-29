@@ -235,9 +235,15 @@ describe("buildSettlementTermSheet", () => {
     });
   }
 
-  it("covers alimony, child support, property, and parenting", () => {
+  it("covers alimony, child support, property, parenting, and additional settlement terms", () => {
     const ids = termSheet().sections.map((section) => section.id);
-    expect(ids).toEqual(["alimony", "childSupport", "equitableDistribution", "parenting"]);
+    expect(ids).toEqual([
+      "alimony",
+      "childSupport",
+      "equitableDistribution",
+      "parenting",
+      "maritalSettlement",
+    ]);
   });
 
   it("gives every figure a stated basis, so nothing is unsourced", () => {
@@ -315,5 +321,20 @@ describe("buildSettlementTermSheet", () => {
     expect(home?.value).toMatch(/Jordan Rivera \(fictional\).*estimated value \$210,000\.00/i);
     expect(home?.basis).toMatch(/reported settlement assignment/i);
     expect(retirement?.value).toMatch(/Alex Rivera \(fictional\)/i);
+  });
+
+  it("carries detailed parenting and unresolved settlement terms into attorney review", () => {
+    const sheet = termSheet();
+    const parenting = sheet.sections.find((section) => section.id === "parenting");
+    const settlement = sheet.sections.find((section) => section.id === "maritalSettlement");
+
+    expect(parenting?.items.find((item) => item.label === "Extracurricular activities and costs")?.value).toMatch(
+      /soccer and music/i,
+    );
+    expect(parenting?.items.find((item) => item.label === "Spring break")?.value).toMatch(/regular parenting schedule/i);
+    expect(settlement?.items.find((item) => item.label === "Other settlement obligations")?.value).toMatch(
+      /vehicle lease/i,
+    );
+    expect(settlement?.attorneyDecisions.join(" ")).toMatch(/lease expiration date/i);
   });
 });

@@ -247,7 +247,7 @@ function setText(
     throw new Error(`Verified text field "${name}" is missing from the official PDF.`);
   }
 
-  let text = String(value);
+  let text = String(value).replace(/\s+/g, " ").trim();
   const maxLength = field.getMaxLength();
   if (maxLength !== undefined && text.length > maxLength) {
     warnings.push(`${name} was shortened to fit the official form; review the full answer in the filing packet.`);
@@ -1362,6 +1362,30 @@ function fillHolidayRow(
   setText(form, fields.time, holiday.beginEndTime, context.warnings);
 }
 
+function holidayOverflowText(
+  holiday: NonNullable<ReviewedIntakeDraft["data"]["parentingPlan"]>["holidaySchedules"][number],
+  context: PopulationContext,
+): string {
+  let assignment = "assignment not decided";
+  if (holiday.rotation === "alternating" && holiday.oddYearParent) {
+    const oddParent = holidayParent(holiday.oddYearParent, context);
+    const evenParent = holidayParent(
+      holiday.oddYearParent === "you" ? "other_parent" : "you",
+      context,
+    );
+    assignment = `${evenParent} in even-numbered years and ${oddParent} in odd-numbered years`;
+  } else if (holiday.rotation === "you_every_year") {
+    assignment = `${context.parties.self.name} every year`;
+  } else if (holiday.rotation === "other_parent_every_year") {
+    assignment = `${context.parties.spouse.name} every year`;
+  } else if (holiday.rotation === "regular_schedule") {
+    assignment = "regular time-sharing schedule";
+  }
+  return `${holiday.name}: ${assignment}; ${holiday.beginEndTime?.trim() || "times not decided"}${
+    holiday.notes?.trim() ? `; ${holiday.notes.trim()}` : ""
+  }.`;
+}
+
 const STANDARD_HOLIDAYS = [
   { aliases: ["mother's day", "mothers day"], row: 1, even: "Mothers Day" },
   { aliases: ["father's day", "fathers day"], row: 2, even: "Fathers Day" },
@@ -1411,6 +1435,10 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   const data = context.draft.data;
   const plan = data.parentingPlan;
   const details = data.parentingPlanDetails;
+  const overflowHolidayTerms = (plan?.holidaySchedules ?? [])
+    .filter((holiday) => !standardHolidayFields(holiday.name))
+    .slice(2)
+    .map((holiday) => holidayOverflowText(holiday, context));
   fillCaption(form, context, {
     county: "County Name",
     petitioner: "Petitioner",
@@ -1795,6 +1823,7 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
           ? `Summer break details: ${details.summerBreakDetails.trim()}`
           : "",
         details.otherProvisions,
+        ...overflowHolidayTerms,
       ]
         .filter(Boolean)
         .join(" "),

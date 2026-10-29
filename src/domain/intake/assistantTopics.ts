@@ -215,9 +215,17 @@ export const INTAKE_ASSISTANT_TOPICS: Record<IntakeStepId, IntakeAssistantTopic>
   alimonyAdvance: {
     knowledgeEntryIds: ["lump-sum", "app-scope"],
     statuteSections: ["61.08"],
-    keywords: ["advance payment", "credit", "alimony settlement", "pre-judgment payment"],
+    keywords: [
+      "advance payment",
+      "credit",
+      "alimony settlement",
+      "pre-judgment payment",
+      "housing",
+      "moving",
+      "installment schedule",
+    ],
     suggestedQuestions: [
-      "How is an advance alimony payment credited?",
+      "How is a housing advance credited against the lump-sum settlement?",
       "Why should funds be held in attorney trust before final judgment?",
     ],
   },

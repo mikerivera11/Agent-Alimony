@@ -694,7 +694,8 @@ export async function generateFilingPacketPdf(options: {
   }
 
   writer.newPage();
-  writer.packetSection("Proposed terms for attorney drafting");
+  writer.packetSection("Proposed Parenting Plan and Marital Settlement Agreement");
+  writer.subheading("Prepared for Attorney Review");
   writer.paragraph(termSheet.disclaimer, { color: MUTED });
   for (const section of termSheet.sections) {
     writer.subheading(section.title);
@@ -775,15 +776,32 @@ export async function generateAlimonyAdvanceAgreementPdf(
     attorney_to_confirm: "this term must be completed by Florida counsel before signing",
   }[advance.ifFinalAgreementNotEntered ?? "attorney_to_confirm"];
   const remaining = Math.max(0, advance.finalSettlementAmount - advance.advanceAmount);
+  const purpose =
+    advance.purpose === "housing_transition"
+      ? "housing transition, relocation, deposit, moving, and related setup costs"
+      : "the transition expense described by the parties";
+  const scheduledPayments =
+    advance.paymentScheduleType === "installments"
+      ? advance.paymentSchedule
+      : [
+          {
+            id: "single-payment",
+            dueDate: advance.paymentDueDate ?? "",
+            amount: advance.advanceAmount,
+            note: "",
+          },
+        ];
 
-  doc.setTitle("Alimony Settlement Advance and Credit Acknowledgment — Attorney-Review Draft");
-  doc.setSubject("Pre-judgment alimony settlement advance and credit terms");
-  writer.title("Alimony Settlement Advance and Credit Acknowledgment");
+  doc.setTitle("Pre-Judgment Housing Advance and Lump-Sum Credit Agreement — Attorney-Review Draft");
+  doc.setSubject("Pre-judgment housing advance, payment schedule, and proposed lump-sum alimony credit");
+  writer.title("Pre-Judgment Housing Advance Agreement");
+  writer.subheading("Lump-Sum Alimony Settlement Credit");
   writer.disclaimerBox(
     "ATTORNEY-REVIEW DRAFT — NOT A COURT ORDER OR LEGAL ADVICE",
-    "This document records the parties' reported intent concerning a payment before final judgment. It does not " +
-      "replace the marital settlement agreement or final judgment, does not itself establish enforceability, and " +
-      "should be reviewed by licensed Florida counsel before money is transferred or either party signs.",
+    "This promissory-note-style document records the parties' reported intent concerning payments before final " +
+      "judgment. It does not replace the marital settlement agreement or final judgment, does not guarantee " +
+      "enforceability as a promissory note, and should be reviewed by licensed Florida counsel before money is " +
+      "transferred or either party signs.",
   );
   writer.paragraph(
     `This acknowledgment is between ${payer || "the paying spouse"} (“Payer”) and ${
@@ -792,11 +810,24 @@ export async function generateAlimonyAdvanceAgreementPdf(
   );
   writer.packetSection("Payment and credit terms");
   writer.bullet(
-    `Total reported alimony settlement: ${formatCentsAsDollars(Math.round(advance.finalSettlementAmount * 100))}.`,
+    `Total proposed lump-sum alimony settlement: ${formatCentsAsDollars(Math.round(advance.finalSettlementAmount * 100))}.`,
   );
-  writer.bullet(`Advance payment: ${formatCentsAsDollars(Math.round(advance.advanceAmount * 100))}.`);
-  writer.bullet(`Payment due date: ${advance.paymentDueDate}.`);
+  writer.bullet(`Total pre-judgment advance: ${formatCentsAsDollars(Math.round(advance.advanceAmount * 100))}.`);
+  writer.bullet(`Purpose: ${purpose}.`);
+  writer.bullet(`Intended use: ${advance.intendedUseDetails?.trim() || "to be completed by counsel"}.`);
+  if (advance.targetMoveDate) writer.bullet(`Target move date: ${advance.targetMoveDate}.`);
   writer.bullet(`Payment method: ${paymentMethod}.`);
+  writer.subheading(
+    advance.paymentScheduleType === "installments" ? "Installment schedule" : "Payment schedule",
+  );
+  scheduledPayments.forEach((payment, index) => {
+    writer.bullet(
+      `${index + 1}. ${payment.dueDate || "Date to be completed"} — ${formatCentsAsDollars(
+        Math.round(payment.amount * 100),
+      )}${payment.note?.trim() ? ` — ${payment.note.trim()}` : ""}.`,
+      8,
+    );
+  });
   writer.bullet(
     advance.creditMethod === "dollar_for_dollar"
       ? "After receipt of cleared funds, the advance is credited dollar-for-dollar against the final alimony settlement."
@@ -815,7 +846,8 @@ export async function generateAlimonyAdvanceAgreementPdf(
 
   writer.packetSection("Acknowledgments");
   writer.paragraph(
-    "The parties intend the credited amount to be reflected in the final marital settlement agreement and any " +
+    "The Recipient acknowledges the obligation to use the advance for the stated transition purpose, subject to " +
+      "the final language approved by counsel. The parties intend the credited amount to be reflected in the final marital settlement agreement and any " +
       "proposed final judgment. The payment is not child support, property distribution, a gift, or a waiver of " +
       "unresolved claims unless the final signed documents expressly state otherwise.",
   );

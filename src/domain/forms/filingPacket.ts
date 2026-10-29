@@ -453,7 +453,7 @@ export interface TermSheetItem {
 }
 
 export interface TermSheetSection {
-  readonly id: "alimony" | "childSupport" | "equitableDistribution" | "parenting";
+  readonly id: "alimony" | "childSupport" | "equitableDistribution" | "parenting" | "maritalSettlement";
   readonly title: string;
   readonly items: readonly TermSheetItem[];
   /** Decisions this app deliberately leaves to an attorney. */
@@ -801,7 +801,30 @@ function parentingSection(data: FilingPacketDraftData): TermSheetSection {
   }
 
   const plan = data.parentingPlan ?? {};
+  const details = data.parentingPlanDetails;
   const overnights = data.parentingTime?.overnightsWithYouPerYear;
+  const holidayItems: TermSheetItem[] =
+    plan.holidayScheduleMode === "specific"
+      ? (plan.holidaySchedules ?? []).map((holiday) => {
+          const assignment =
+            holiday.rotation === "alternating"
+              ? `Alternating; ${holiday.oddYearParent === "you" ? "you" : "the other parent"} in odd-numbered years`
+              : holiday.rotation === "you_every_year"
+                ? "You every year"
+                : holiday.rotation === "other_parent_every_year"
+                  ? "The other parent every year"
+                  : holiday.rotation === "regular_schedule"
+                    ? "Regular schedule"
+                    : "Not decided";
+          return {
+            label: holiday.name || "Unnamed holiday",
+            value: `${assignment}; ${holiday.beginEndTime?.trim() || "times not decided"}${
+              holiday.notes?.trim() ? `; ${holiday.notes.trim()}` : ""
+            }`,
+            basis: "Parties' proposed holiday schedule for Form 12.995(a).",
+          };
+        })
+      : [];
 
   return {
     id: "parenting",
@@ -822,7 +845,90 @@ function parentingSection(data: FilingPacketDraftData): TermSheetSection {
         value: plan.planStatus ?? "Not answered",
         basis: "Florida requires a parenting plan in every case involving minor children, §61.13(2)(b).",
       },
+      {
+        label: "Education decisions",
+        value: plan.decisionMakingEducation ?? "Not answered",
+        basis: "Parties' proposed allocation of parental responsibility.",
+      },
+      {
+        label: "Extracurricular activities and costs",
+        value: details?.extracurricularCosts?.trim() || "Not entered",
+        basis: "Parties' proposed extracurricular terms.",
+      },
+      {
+        label: "Winter/Christmas break",
+        value: details?.winterBreakDetails?.trim() || plan.holidaySchedule?.trim() || "Not entered",
+        basis: "Parties' proposed school-break schedule.",
+      },
+      {
+        label: "Spring break",
+        value: details?.springBreakDetails?.trim() || "Not entered",
+        basis: "Parties' proposed school-break schedule.",
+      },
+      {
+        label: "Travel",
+        value:
+          [
+            details?.internationalTravelNoticeDays !== undefined
+              ? `${details.internationalTravelNoticeDays} days' international-travel notice`
+              : "",
+            details?.internationalTravelSecurity?.trim(),
+            details?.travelOther?.trim(),
+          ]
+            .filter(Boolean)
+            .join("; ") || "Not entered",
+        basis: "Parties' proposed travel and consent terms.",
+      },
+      {
+        label: "Other parenting provisions",
+        value: details?.otherProvisions?.trim() || "None entered",
+        basis: "Parties' proposed additional parenting terms.",
+      },
+      ...holidayItems,
     ],
+  };
+}
+
+function maritalSettlementSection(data: FilingPacketDraftData): TermSheetSection {
+  const terms = data.settlementTerms;
+  if (!terms) {
+    return {
+      id: "maritalSettlement",
+      title: "Marital settlement agreement — additional terms",
+      items: [],
+      attorneyDecisions: ["Collect and review the remaining proposed settlement terms."],
+      unavailable: "The marital settlement terms were not completed.",
+    };
+  }
+
+  const unresolved = terms.unresolvedIssues?.trim() ?? "";
+  return {
+    id: "maritalSettlement",
+    title: "Marital settlement agreement — additional terms",
+    items: [
+      {
+        label: "Child medical, dental, insurance, education, and care terms",
+        value: terms.otherChildSupportTerms?.trim() || "Not entered",
+        basis: "Parties' reported terms for attorney drafting and Form 12.902(f)(1).",
+      },
+      {
+        label: "Tax terms",
+        value: terms.taxExemptionTerms?.trim() || "Not entered",
+        basis: "Parties' reported tax-filing and allocation terms; tax-adviser review required.",
+      },
+      {
+        label: "Other settlement obligations",
+        value: terms.otherSettlementTerms?.trim() || "Not entered",
+        basis: "Parties' reported additional financial obligations.",
+      },
+    ],
+    attorneyDecisions:
+      unresolved && unresolved.toLowerCase() !== "none."
+        ? unresolved
+            .split(/\n+/)
+            .map((item) => item.replace(/^[-•]\s*/, "").trim())
+            .filter(Boolean)
+        : [],
   };
 }
 
@@ -840,6 +946,7 @@ export function buildSettlementTermSheet(options: {
       childSupportSection(packageViewModel, data),
       equitableDistributionSection(packageViewModel, data),
       parentingSection(data),
+      maritalSettlementSection(data),
     ],
   };
 }

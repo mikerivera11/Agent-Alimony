@@ -25,7 +25,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(
       {
         error:
-          "No advance-payment credit agreement was requested. Turn it on in the Alimony advance credit agreement section.",
+          "No housing advance agreement was requested. Turn it on in the Pre-judgment housing advance section.",
       },
       { status: 409 },
     );
@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="alimony-settlement-advance-credit-agreement.pdf"',
+      "Content-Disposition": 'attachment; filename="pre-judgment-housing-advance-credit-agreement.pdf"',
       "Cache-Control": "no-store",
     },
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  alimonyAdvanceSchema,
   alimonyFactorsSchema,
   assetsDebtsSchema,
   caseBasicsSchema,
@@ -210,6 +211,38 @@ describe("parentingPlanSchema", () => {
     ]);
     expect(completePlan.holidaySchedules.every((holiday) => holiday.rotation === "alternating")).toBe(true);
     expect(parentingPlanSchema.safeParse(completePlan).success).toBe(true);
+  });
+
+  describe("alimonyAdvanceSchema", () => {
+    const advance = createSampleDraft().data.alimonyAdvance;
+
+    it("accepts an installment schedule that equals the total advance", () => {
+      expect(alimonyAdvanceSchema.safeParse(advance).success).toBe(true);
+    });
+
+    it("rejects an installment schedule that does not equal the total advance", () => {
+      const result = alimonyAdvanceSchema.safeParse({
+        ...advance,
+        paymentSchedule: advance.paymentSchedule?.map((payment, index) =>
+          index === 0 ? { ...payment, amount: 4000 } : payment,
+        ),
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "paymentSchedule")).toBe(true);
+      }
+    });
+
+    it("keeps the questionnaire optional", () => {
+      expect(
+        alimonyAdvanceSchema.safeParse({
+          wantsAdvanceAgreement: "no",
+          advanceAmount: 0,
+          finalSettlementAmount: 0,
+        }).success,
+      ).toBe(true);
+    });
   });
 
   it("puts Christmas opposite Thanksgiving so one parent does not receive both in one year", () => {

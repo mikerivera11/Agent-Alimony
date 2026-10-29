@@ -56,9 +56,11 @@ describe("generatePackagePdf", () => {
 
     expect(Buffer.from(bytes.slice(0, 5)).toString("latin1")).toBe("%PDF-");
     expect(reloaded.getTitle()).toBe(
-      "Alimony Settlement Advance and Credit Acknowledgment — Attorney-Review Draft",
+      "Pre-Judgment Housing Advance and Lump-Sum Credit Agreement — Attorney-Review Draft",
     );
-    expect(reloaded.getSubject()).toBe("Pre-judgment alimony settlement advance and credit terms");
+    expect(reloaded.getSubject()).toBe(
+      "Pre-judgment housing advance, payment schedule, and proposed lump-sum alimony credit",
+    );
     expect(reloaded.getPageCount()).toBeGreaterThanOrEqual(1);
   });
 

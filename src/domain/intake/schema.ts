@@ -915,13 +915,30 @@ export type SettlementTerms = z.infer<typeof settlementTermsSchema>;
 
 // 11c. Alimony advance and credit agreement ---------------------------------
 
+export const advancePaymentItemSchema = z.object({
+  id: z.string().min(1),
+  dueDate: isoDateSchema,
+  amount: moneySchema,
+  note: shortTextSchema.optional(),
+});
+
+export type AdvancePaymentItem = z.infer<typeof advancePaymentItemSchema>;
+
 export const alimonyAdvanceSchema = z
   .object({
     wantsAdvanceAgreement: yesNoSchema,
     payerFullLegalName: shortTextSchema.optional(),
     recipientFullLegalName: shortTextSchema.optional(),
+    purpose: z.enum(["housing_transition", "other"]).optional(),
+    intendedUseDetails: longTextSchema.optional(),
+    targetMoveDate: optionalIsoDateSchema,
     advanceAmount: moneySchema,
+    paymentScheduleType: z.enum(["single_payment", "installments"]).optional(),
     paymentDueDate: optionalIsoDateSchema,
+    paymentSchedule: z
+      .array(advancePaymentItemSchema)
+      .max(24, "Add no more than 24 scheduled payments")
+      .default([]),
     paymentMethod: z.enum(["cashiers_check", "wire_transfer", "attorney_trust", "other"]).optional(),
     paymentMethodDetails: shortTextSchema.optional(),
     finalSettlementAmount: moneySchema,
@@ -949,6 +966,20 @@ export const alimonyAdvanceSchema = z
         message: "Enter the receiving spouse's full legal name",
       });
     }
+    if (!value.purpose) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["purpose"],
+        message: "Choose the purpose of the advance",
+      });
+    }
+    if (!value.intendedUseDetails?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["intendedUseDetails"],
+        message: "Describe how the receiving spouse will use the advance",
+      });
+    }
     if (value.advanceAmount <= 0) {
       ctx.addIssue({ code: "custom", path: ["advanceAmount"], message: "Enter the advance payment amount" });
     }
@@ -967,13 +998,37 @@ export const alimonyAdvanceSchema = z
       });
     }
     for (const [field, message] of [
-      ["paymentDueDate", "Enter when the advance payment is due"],
+      ["paymentScheduleType", "Choose a single payment or installment schedule"],
       ["paymentMethod", "Choose how the advance will be paid"],
       ["creditMethod", "Choose how the advance is credited"],
       ["ifFinalAgreementNotEntered", "Choose what happens if no final agreement or judgment is entered"],
       ["clearedFundsRequired", "Choose whether credit applies only after funds clear"],
     ] as const) {
       if (!value[field]) ctx.addIssue({ code: "custom", path: [field], message });
+    }
+    if (value.paymentScheduleType === "single_payment" && !value.paymentDueDate) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["paymentDueDate"],
+        message: "Enter when the advance payment is due",
+      });
+    }
+    if (value.paymentScheduleType === "installments") {
+      if (value.paymentSchedule.length < 2) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["paymentSchedule"],
+          message: "Add at least two installment payments",
+        });
+      }
+      const scheduledTotal = value.paymentSchedule.reduce((total, payment) => total + payment.amount, 0);
+      if (Math.abs(scheduledTotal - value.advanceAmount) >= 0.005) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["paymentSchedule"],
+          message: "The scheduled payments must total the full advance amount",
+        });
+      }
     }
     if (value.paymentMethod === "other" && !value.paymentMethodDetails?.trim()) {
       ctx.addIssue({

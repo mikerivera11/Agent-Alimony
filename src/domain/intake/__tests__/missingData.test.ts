@@ -21,6 +21,13 @@ describe("getApplicableStepIds", () => {
     expect(ids).toContain("parentingTime");
     expect(ids).toContain("childCosts");
   });
+
+  it("always offers the optional pre-judgment housing advance questionnaire", () => {
+    const draft = createEmptyDraft();
+    draft.data.alimonyFactors.alimonyAgreementStatus = "not_agreed";
+
+    expect(getApplicableStepIds(draft.data)).toContain("alimonyAdvance");
+  });
 });
 
 describe("getMissingDataSummary", () => {
