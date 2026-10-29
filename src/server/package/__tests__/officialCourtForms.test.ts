@@ -50,6 +50,15 @@ describe("official court forms", () => {
     expect(manifest.omitted.join(" ")).not.toContain("Marital settlement agreement");
   });
 
+  it("omits the child-support worksheet when no deterministic calculation is available", () => {
+    const { draft, readiness } = sampleInputs();
+
+    const manifest = buildOfficialCourtFormsManifest({ draft, readiness });
+
+    expect(manifest.included.map((asset) => asset.formNumber)).not.toContain("12.902(e)");
+    expect(manifest.included.map((asset) => asset.formNumber)).toContain("12.995(a)");
+  });
+
   it("lists unresolved answers as blanks to complete before filing", () => {
     const draftData = createSampleDraft();
     draftData.data.filingDetails.judicialCircuit = "";

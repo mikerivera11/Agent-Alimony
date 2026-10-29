@@ -125,6 +125,7 @@ type DownloadTarget =
   | "parenting-plan"
   | "filing-packet"
   | "court-forms"
+  | "court-forms-preview"
   | "alimony-advance-agreement";
 
 const WORKSHEET_DOWNLOADS: ReadonlyArray<{
@@ -278,12 +279,76 @@ export function ResultsExperience() {
     [runDownload],
   );
 
+  const handleCourtFormsPreviewDownload = useCallback(async () => {
+    if (!draft) return;
+    setDownloadTarget("court-forms-preview");
+    setDownloadState("downloading");
+    setDownloadError(null);
+    try {
+      const response = await fetch("/api/package/court-forms-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ draft }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `Server responded with ${response.status}`);
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = "currently-populated-florida-court-forms-review-draft.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      setDownloadState("idle");
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "The court forms could not be generated.");
+      setDownloadState("error");
+    } finally {
+      setDownloadTarget(null);
+    }
+  }, [draft]);
+
   if (state.status === "loading") {
     return <p className="text-ink-muted">Loading your results…</p>;
   }
 
   if (state.status === "empty" || !viewModel) {
-    return <ResultsEmptyState />;
+    const canDownloadCourtForms = draft?.data.filingDetails.wantsFilingPacket === "yes";
+    return (
+      <div className="flex flex-col gap-6">
+        <ResultsEmptyState />
+        {canDownloadCourtForms ? (
+          <Card padding="lg" className="flex flex-col items-start gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-ink">Your court forms are available now</h2>
+              <p className="mt-2 text-ink-muted">
+                Download the revision-locked Florida forms populated with the answers currently saved. Missing
+                answers remain blank and are listed on the cover page. The child-support worksheet is included only
+                after the deterministic calculation is complete.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={handleCourtFormsPreviewDownload}
+              loading={downloadState === "downloading" && downloadTarget === "court-forms-preview"}
+              disabled={downloadState === "downloading"}
+            >
+              {downloadState === "downloading" && downloadTarget === "court-forms-preview"
+                ? "Preparing court forms..."
+                : "Download currently populated court forms"}
+            </Button>
+            {downloadState === "error" ? (
+              <Alert variant="danger" role="alert">
+                {downloadError ?? "The court forms could not be generated."}
+              </Alert>
+            ) : null}
+          </Card>
+        ) : null}
+      </div>
+    );
   }
 
   return (

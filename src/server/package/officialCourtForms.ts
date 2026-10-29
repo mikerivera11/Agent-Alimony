@@ -125,7 +125,7 @@ interface PartyContext {
 
 interface PopulationContext {
   readonly draft: ReviewedIntakeDraft;
-  readonly viewModel: PackageViewModel;
+  readonly viewModel?: PackageViewModel;
   readonly warnings: string[];
   readonly parties: PartyContext;
 }
@@ -179,6 +179,10 @@ function money(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+function optionalDollars(value: number | undefined): string | undefined {
+  return typeof value === "number" ? value.toFixed(2) : undefined;
+}
+
 function percent(basisPoints: number): string {
   return `${(basisPoints / 100).toFixed(2)}%`;
 }
@@ -209,7 +213,10 @@ const ALIMONY_FREQUENCY_LABELS = {
 function agreedAlimonySummary(context: PopulationContext): string {
   const factors = context.draft.data.alimonyFactors;
   if (factors.alimonyAgreementStatus !== "agreed_payment") return "";
-  const amount = `$${factors.agreedAlimonyAmount.toFixed(2)}`;
+  const amount =
+    typeof factors.agreedAlimonyAmount === "number"
+      ? `$${factors.agreedAlimonyAmount.toFixed(2)}`
+      : "amount not entered";
   const frequency = factors.agreedAlimonyFrequency
     ? ALIMONY_FREQUENCY_LABELS[factors.agreedAlimonyFrequency]
     : "frequency not entered";
@@ -514,7 +521,12 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
         check(form, "Respondent requests that the Court order the other spouse to pay the following");
         check(form, "check for payment by petitioner");
       }
-      setText(form, "indicate amount of payment", data.alimonyFactors.agreedAlimonyAmount.toFixed(2), context.warnings);
+      setText(
+        form,
+        "indicate amount of payment",
+        optionalDollars(data.alimonyFactors.agreedAlimonyAmount),
+        context.warnings,
+      );
       if (data.alimonyFactors.agreedAlimonyFrequency === "weekly") check(form, "check for every week");
       else if (data.alimonyFactors.agreedAlimonyFrequency === "every_two_weeks") {
         check(form, "check for every other week");
@@ -654,7 +666,7 @@ function fillPetition(form: PDFForm, context: PopulationContext, formNumber: Sup
       setText(
         form,
         "Spousal support (alimony) Amount",
-        data.alimonyFactors.agreedAlimonyAmount.toFixed(2),
+        optionalDollars(data.alimonyFactors.agreedAlimonyAmount),
         context.warnings,
       );
       setText(
@@ -900,7 +912,8 @@ function parentOrder<T>(context: PopulationContext, selfValue: T, spouseValue: T
 }
 
 function fillChildSupport(form: PDFForm, context: PopulationContext): void {
-  const outcome = context.viewModel.childSupport;
+  const outcome = context.viewModel?.childSupport;
+  if (!outcome) return;
   if (outcome.kind !== "calculated") return;
   const result = outcome.result;
   fillCaption(form, context, {
@@ -966,10 +979,11 @@ function fillAssignedItems(
   if (selfRecipient === null) return;
 
   const recipientValue = selfRecipient ? "you" : "spouse";
-  const assets = context.draft.data.assetsDebts.items.filter(
+  const items = context.draft.data.assetsDebts.items ?? [];
+  const assets = items.filter(
     (item) => item.type === "asset" && item.agreedRecipient === recipientValue,
   );
-  const liabilities = context.draft.data.assetsDebts.items.filter(
+  const liabilities = items.filter(
     (item) => item.type === "liability" && item.agreedRecipient === recipientValue,
   );
 
@@ -1138,7 +1152,7 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
     context.warnings,
   );
 
-  if (terms?.beneficiaryDesignationMode !== "none") {
+  if (terms?.beneficiaryDesignationMode && terms.beneficiaryDesignationMode !== "none") {
     check(form, "Check Box1");
     check(form, "Check Box2");
     const ownerChoice = alimony.potentialAlimonyRecipient === "self" ? "other_parent" : "you";
@@ -1155,7 +1169,7 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
     const payerIsPetitioner = partyChoiceIsPetitioner(payerChoice, context);
     if (payerIsPetitioner === true) check(form, "Check Box9");
     if (payerIsPetitioner === false) check(form, "Check Box10");
-    setText(form, "Dollar amount", alimony.agreedAlimonyAmount.toFixed(2), context.warnings);
+    setText(form, "Dollar amount", optionalDollars(alimony.agreedAlimonyAmount), context.warnings);
     if (alimony.agreedAlimonyFrequency === "weekly") check(form, "Check Box11");
     else if (alimony.agreedAlimonyFrequency === "every_two_weeks") check(form, "Check Box12");
     else if (alimony.agreedAlimonyFrequency === "monthly") check(form, "Check Box13");
@@ -1198,12 +1212,12 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
     setText(
       form,
       "Life insurance amount to secure the above support, will be provided by the Obligor",
-      alimony.agreedAlimonyAmount.toFixed(2),
+      optionalDollars(alimony.agreedAlimonyAmount),
       context.warnings,
     );
   }
 
-  const filingChildren = new Map(filing.children.map((child) => [child.childId, child.fullLegalName]));
+  const filingChildren = new Map((filing.children ?? []).map((child) => [child.childId, child.fullLegalName]));
   const childFields = [
     "Name and birth date of minor child or children",
     "Name and birth date of minor child or children 2",
@@ -1226,7 +1240,7 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
     const obligorIsPetitioner = partyChoiceIsPetitioner(terms.childSupportObligor, context);
     if (obligorIsPetitioner === true) check(form, "Check Box17");
     if (obligorIsPetitioner === false) check(form, "Check Box18");
-    setText(form, "Indicate amount per month", terms.agreedChildSupportMonthly.toFixed(2), context.warnings);
+    setText(form, "Indicate amount per month", optionalDollars(terms.agreedChildSupportMonthly), context.warnings);
     setText(
       form,
       "Indicate total number of parties’ minor or dependent children",
@@ -1235,8 +1249,13 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
     );
     setText(form, "Commencing month, day, year", formatDate(terms.childSupportStartDate), context.warnings);
     setText(form, "Terminating month, day, year", formatDate(terms.childSupportEndDate), context.warnings);
-    setText(form, "Indicate amount", terms.childSupportPaymentAmount.toFixed(2), context.warnings);
-    setText(form, "Per week, month, other", terms.childSupportPaymentFrequency.replaceAll("_", " "), context.warnings);
+    setText(form, "Indicate amount", optionalDollars(terms.childSupportPaymentAmount), context.warnings);
+    setText(
+      form,
+      "Per week, month, other",
+      terms.childSupportPaymentFrequency?.replaceAll("_", " "),
+      context.warnings,
+    );
     check(form, "Indicate if schedule appears below");
     setText(form, "Schedule for child support obligation", terms.childSupportStepDownSchedule, context.warnings);
     setText(
@@ -1245,16 +1264,17 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
       terms.childSupportDeviationReason,
       context.warnings,
     );
-    setText(form, "Indicate amount 3", terms.retroactiveChildSupport.toFixed(2), context.warnings);
-    setText(form, "Indicate amount 4", terms.childSupportArrearage.toFixed(2), context.warnings);
-    setText(
-      form,
-      "Indicate total amount",
-      (terms.retroactiveChildSupport + terms.childSupportArrearage).toFixed(2),
-      context.warnings,
-    );
-    if (terms.retroactiveChildSupport + terms.childSupportArrearage > 0) {
-      setText(form, "Indicate rate", terms.arrearsPaymentAmount.toFixed(2), context.warnings);
+    setText(form, "Indicate amount 3", optionalDollars(terms.retroactiveChildSupport), context.warnings);
+    setText(form, "Indicate amount 4", optionalDollars(terms.childSupportArrearage), context.warnings);
+    const hasArrearsAmounts =
+      typeof terms.retroactiveChildSupport === "number" ||
+      typeof terms.childSupportArrearage === "number";
+    const totalArrears = (terms.retroactiveChildSupport ?? 0) + (terms.childSupportArrearage ?? 0);
+    if (hasArrearsAmounts) {
+      setText(form, "Indicate total amount", totalArrears.toFixed(2), context.warnings);
+    }
+    if (totalArrears > 0) {
+      setText(form, "Indicate rate", optionalDollars(terms.arrearsPaymentAmount), context.warnings);
       setText(form, "Beginning date 2", formatDate(terms.arrearsPaymentStartDate), context.warnings);
       if (terms.arrearsPaymentFrequency === "weekly") check(form, "Check Box19");
       if (terms.arrearsPaymentFrequency === "every_two_weeks") check(form, "Check Box20");
@@ -1297,7 +1317,12 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
         : partyChoiceIsPetitioner(terms.childSupportLifeInsuranceProvider, context);
     if (lifeInsuranceIsPetitioner === true) check(form, "Check Box35");
     if (lifeInsuranceIsPetitioner === false) check(form, "Check Box36");
-    setText(form, "Amount of life insurance", terms.childSupportLifeInsuranceAmount.toFixed(2), context.warnings);
+    setText(
+      form,
+      "Amount of life insurance",
+      optionalDollars(terms.childSupportLifeInsuranceAmount),
+      context.warnings,
+    );
     setText(form, "Explain tax exemptions for child or children", terms.taxExemptionTerms, context.warnings);
     setText(
       form,
@@ -1305,7 +1330,7 @@ function fillMaritalSettlementAgreement(form: PDFForm, context: PopulationContex
       terms.otherChildSupportTerms,
       context.warnings,
     );
-    const sharedDispositionTerms = data.assetsDebts.items
+    const sharedDispositionTerms = (data.assetsDebts.items ?? [])
       .filter(
         (item) =>
           item.agreedRecipient === "joint" || item.agreedRecipient === "sell_and_divide",
@@ -1699,7 +1724,7 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
   if (details?.summerBreakMode === "one_parent") check(form, "Check Box105");
   if (details?.summerBreakMode === "equal_split") check(form, "Check Box106");
   if (details?.summerBreakMode === "other") check(form, "Check Box117");
-  if (details?.summerBreakMode === "other" && details.summerBreakDetails.trim()) {
+  if (details?.summerBreakMode === "other" && details.summerBreakDetails?.trim()) {
     setText(form, "date for summer break 4", details.summerBreakDetails, context.warnings);
   }
   if (
@@ -1779,7 +1804,9 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
       email: "Check Box148",
       other: "Check Box149",
     } as const;
-    details.parentCommunicationMethods.forEach((method) => check(form, parentCommunicationCheckboxes[method]));
+    (details.parentCommunicationMethods ?? []).forEach((method) =>
+      check(form, parentCommunicationCheckboxes[method]),
+    );
     setText(form, "parents communicate by other - explain", details.parentCommunicationOther, context.warnings);
 
     const childCommunicationCheckboxes = {
@@ -1788,8 +1815,15 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
       video: "Check Box152",
       other: "Check Box152",
     } as const;
-    details.childCommunicationMethods.forEach((method) => check(form, childCommunicationCheckboxes[method]));
-    setText(form, "child has communication with other parent explain", details.childCommunicationMethods.join(", "), context.warnings);
+    (details.childCommunicationMethods ?? []).forEach((method) =>
+      check(form, childCommunicationCheckboxes[method]),
+    );
+    setText(
+      form,
+      "child has communication with other parent explain",
+      (details.childCommunicationMethods ?? []).join(", "),
+      context.warnings,
+    );
     if (details.childCommunicationMode === "anytime") check(form, "Check Box153");
     if (details.childCommunicationMode === "daily") check(form, "Check Box154");
     if (details.childCommunicationMode === "specific_days") check(form, "Check Box155");
@@ -1816,10 +1850,10 @@ function fillParentingPlan(form: PDFForm, context: PopulationContext): void {
       "make note of other provisions",
       [
         details.disputeResolution,
-        details.springBreakMode !== "other" && details.springBreakDetails.trim()
+        details.springBreakMode !== "other" && details.springBreakDetails?.trim()
           ? `Spring break details: ${details.springBreakDetails.trim()}`
           : "",
-        details.summerBreakMode !== "other" && details.summerBreakDetails.trim()
+        details.summerBreakMode !== "other" && details.summerBreakDetails?.trim()
           ? `Summer break details: ${details.summerBreakDetails.trim()}`
           : "",
         details.otherProvisions,
@@ -1919,7 +1953,7 @@ function fillForm(formNumber: SupportedFormNumber, form: PDFForm, context: Popul
 
 function supportedFormNumbers(
   readiness: FilingReadiness,
-  viewModel: PackageViewModel,
+  viewModel?: PackageViewModel,
 ): SupportedFormNumber[] {
   const petition = readiness.forms.find((form) => form.entry.form.formNumber.startsWith("12.901(b)"))
     ?.entry.form.formNumber as SupportedFormNumber | undefined;
@@ -1928,7 +1962,7 @@ function supportedFormNumbers(
   if (readiness.forms.some((form) => form.entry.form.formNumber === "12.902(d)")) numbers.push("12.902(d)");
   if (
     readiness.forms.some((form) => form.entry.form.formNumber === "12.902(e)") &&
-    viewModel.childSupport.kind === "calculated"
+    viewModel?.childSupport.kind === "calculated"
   ) {
     numbers.push("12.902(e)");
   }
@@ -1942,7 +1976,7 @@ function supportedFormNumbers(
 export function buildOfficialCourtFormsManifest(options: {
   readonly draft: ReviewedIntakeDraft;
   readonly readiness: FilingReadiness;
-  readonly viewModel: PackageViewModel;
+  readonly viewModel?: PackageViewModel;
 }): OfficialCourtFormsManifest {
   const included = supportedFormNumbers(options.readiness, options.viewModel).map(
     (number) => OFFICIAL_COURT_FORM_ASSETS[number],
@@ -2072,7 +2106,7 @@ async function addManifestPages(
 export async function generateOfficialCourtFormsPdf(options: {
   readonly draft: ReviewedIntakeDraft;
   readonly readiness: FilingReadiness;
-  readonly viewModel: PackageViewModel;
+  readonly viewModel?: PackageViewModel;
 }): Promise<Uint8Array> {
   const manifest = buildOfficialCourtFormsManifest(options);
   const warnings = [...manifest.warnings];

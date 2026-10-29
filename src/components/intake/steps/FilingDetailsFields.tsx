@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useFieldArray, useWatch, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 
 import type { FilingDetails } from "@/domain/intake";
@@ -150,6 +151,8 @@ function ChildFilingDetailsBlock({
  * adding capability, so the packet says to complete that form by hand.
  */
 export function FilingDetailsFields({ register, errors, control }: StepFieldsProps<FilingDetails>) {
+  const [courtFormsState, setCourtFormsState] = useState<"idle" | "downloading" | "error">("idle");
+  const [courtFormsError, setCourtFormsError] = useState("");
   const wantsPacket = useWatch({ control, name: "wantsFilingPacket" });
   const residency = useWatch({ control, name: "whichPartyIsFloridaResident" });
   const pregnancy = useWatch({ control, name: "pregnancyStatus" });
@@ -166,6 +169,34 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
   const thirdPartyClaim = useWatch({ control, name: "thirdPartyCustodyClaimStatus" });
   const supportOrder = useWatch({ control, name: "existingChildSupportOrderStatus" });
   const { fields } = useFieldArray({ control, name: "children" });
+
+  async function downloadCurrentCourtForms(): Promise<void> {
+    setCourtFormsState("downloading");
+    setCourtFormsError("");
+    try {
+      const raw = window.localStorage.getItem("florida-support-guide.intake-draft.v1");
+      if (!raw) throw new Error("No saved intake was found on this device.");
+      const response = await fetch("/api/package/court-forms-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ draft: JSON.parse(raw) }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "The court forms could not be generated.");
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "currently-populated-florida-court-forms-review-draft.pdf";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setCourtFormsState("idle");
+    } catch (error) {
+      setCourtFormsError(error instanceof Error ? error.message : "The court forms could not be generated.");
+      setCourtFormsState("error");
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -188,6 +219,30 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             These questions correspond to fields in the supported Florida court forms. The app does not sign, swear,
             notarize, serve, or file anything, and legal elections still require attorney review.
           </p>
+          <section className="flex flex-col gap-3 rounded-lg border border-line p-4">
+            <div>
+              <h3 className="font-semibold text-ink">Your currently populated Florida court forms</h3>
+              <p className="mt-1 text-sm text-ink-muted">
+                Download the official forms with every answer currently saved. Unknown or unfinished fields remain
+                blank and are listed on the PDF cover page. This review draft is not signed, notarized, or filed.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={`${secondaryButtonClasses} self-start`}
+              onClick={downloadCurrentCourtForms}
+              disabled={courtFormsState === "downloading"}
+            >
+              {courtFormsState === "downloading"
+                ? "Preparing court forms..."
+                : "Download currently populated court forms"}
+            </button>
+            {courtFormsState === "error" ? (
+              <p role="alert" className="text-sm font-medium text-danger">
+                {courtFormsError}
+              </p>
+            ) : null}
+          </section>
 
           <fieldset className="flex flex-col gap-5">
             <legend className="text-base font-semibold text-ink">Court case information</legend>
