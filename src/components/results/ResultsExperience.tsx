@@ -311,6 +311,19 @@ export function ResultsExperience() {
     }
   }, [draft]);
 
+  const hasCourtFormsDraft =
+    wantsFilingPacket || draft?.data.filingDetails.wantsFilingPacket === "yes";
+  const handleVisibleCourtFormsDownload = useCallback(() => {
+    if (wantsFilingPacket && !isStale) {
+      return runDownload(
+        "court-forms",
+        "/api/package/court-forms",
+        "populated-florida-court-forms-review-draft.pdf",
+      );
+    }
+    return handleCourtFormsPreviewDownload();
+  }, [handleCourtFormsPreviewDownload, isStale, runDownload, wantsFilingPacket]);
+
   if (state.status === "loading") {
     return <p className="text-ink-muted">Loading your results…</p>;
   }
@@ -408,6 +421,38 @@ export function ResultsExperience() {
         </Alert>
       )}
 
+      {hasCourtFormsDraft ? (
+        <Card className="flex flex-col gap-4 border-2 border-primary">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold uppercase tracking-wide text-primary">Official Florida court forms</p>
+            <h2 className="text-2xl font-semibold text-ink">Your populated court forms</h2>
+            <p className="text-sm text-ink-muted">
+              These are the revision-locked official Florida PDFs with your saved answers inserted—not the
+              worksheets shown below. Unknown answers remain blank and are listed on the cover page for attorney
+              review.
+            </p>
+          </div>
+          <div>
+            <Button
+              type="button"
+              onClick={handleVisibleCourtFormsDownload}
+              loading={
+                downloadState === "downloading" &&
+                (downloadTarget === "court-forms" || downloadTarget === "court-forms-preview")
+              }
+              disabled={downloadState === "downloading"}
+            >
+              {downloadState === "downloading" &&
+              (downloadTarget === "court-forms" || downloadTarget === "court-forms-preview")
+                ? "Preparing official court forms..."
+                : hasOfficialFormGaps
+                  ? "Download partially populated official court forms"
+                  : "Download populated official court forms"}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
       <Card className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold text-ink">Court form worksheets</h2>
@@ -445,7 +490,7 @@ export function ResultsExperience() {
       {wantsFilingPacket && (
         <Card className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-semibold text-ink">Attorney filing packet and court forms</h2>
+            <h2 className="text-xl font-semibold text-ink">Attorney filing packet details</h2>
             <p className="text-sm text-ink-muted">
               Everything an attorney needs to prepare an uncontested filing: which Florida forms your case calls for,
               which answers you have already given for each, exactly what is still missing, and a term sheet covering
@@ -455,8 +500,8 @@ export function ResultsExperience() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-xl text-sm text-ink-muted">
-              Download the attorney packet for the full readiness analysis, and the separate official-forms draft for
-              verified answers inserted into revision-locked Florida court PDFs. Both require attorney review.
+              Download the attorney packet for the full readiness analysis, missing-answer list, and settlement term
+              sheet. The separate official court-form download is highlighted above.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button
@@ -469,21 +514,6 @@ export function ResultsExperience() {
                 disabled={isStale || downloadState === "downloading"}
               >
                 Download filing packet
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  runDownload(
-                    "court-forms",
-                    "/api/package/court-forms",
-                    "populated-florida-court-forms-review-draft.pdf",
-                  )
-                }
-                loading={downloadState === "downloading" && downloadTarget === "court-forms"}
-                disabled={isStale || downloadState === "downloading"}
-              >
-                {hasOfficialFormGaps ? "Download partially populated court forms" : "Download populated court forms"}
               </Button>
             </div>
           </div>
