@@ -47,22 +47,22 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const draft = normalizeDraft(parsed.data.draft as unknown as IntakeDraft);
+  const previewData = {
+    ...draft.data,
+    filingDetails: {
+      ...draft.data.filingDetails,
+      wantsFilingPacket: "yes" as const,
+    },
+  };
   const reviewed = {
     draftId: draft.draftId,
     reviewedAt: new Date().toISOString(),
-    data: draft.data,
+    data: previewData,
   } as ReviewedIntakeDraft;
   const readiness = buildFilingReadiness({
-    data: draft.data,
+    data: previewData,
     asOfIso: new Date().toISOString().slice(0, 10),
   });
-
-  if (!readiness.requested) {
-    return Response.json(
-      { error: "Turn on the attorney filing packet before downloading court forms." },
-      { status: 409 },
-    );
-  }
 
   try {
     const pdfBytes = await generateOfficialCourtFormsPdf({

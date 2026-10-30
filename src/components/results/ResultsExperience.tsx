@@ -280,7 +280,18 @@ export function ResultsExperience() {
   );
 
   const handleCourtFormsPreviewDownload = useCallback(async () => {
-    if (!draft) return;
+    const sourceDraft =
+      draft ??
+      (reviewed
+        ? {
+            draftId: reviewed.draftId,
+            createdAt: reviewed.reviewedAt,
+            updatedAt: reviewed.reviewedAt,
+            completedStepIds: [],
+            data: reviewed.data,
+          }
+        : null);
+    if (!sourceDraft) return;
     setDownloadTarget("court-forms-preview");
     setDownloadState("downloading");
     setDownloadError(null);
@@ -288,7 +299,7 @@ export function ResultsExperience() {
       const response = await fetch("/api/package/court-forms-preview", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ draft }),
+        body: JSON.stringify({ draft: sourceDraft }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -309,10 +320,9 @@ export function ResultsExperience() {
     } finally {
       setDownloadTarget(null);
     }
-  }, [draft]);
+  }, [draft, reviewed]);
 
-  const hasCourtFormsDraft =
-    wantsFilingPacket || draft?.data.filingDetails.wantsFilingPacket === "yes";
+  const hasCourtFormsDraft = Boolean(reviewed || draft);
   const handleVisibleCourtFormsDownload = useCallback(() => {
     if (wantsFilingPacket && !isStale) {
       return runDownload(
@@ -329,7 +339,7 @@ export function ResultsExperience() {
   }
 
   if (state.status === "empty" || !viewModel) {
-    const canDownloadCourtForms = draft?.data.filingDetails.wantsFilingPacket === "yes";
+    const canDownloadCourtForms = Boolean(draft);
     return (
       <div className="flex flex-col gap-6">
         <ResultsEmptyState />

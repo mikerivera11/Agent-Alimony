@@ -50,12 +50,14 @@ describe("POST /api/package/court-forms-preview", () => {
     expect(pdf.getPageCount()).toBeGreaterThan(1);
   });
 
-  it("requires the filing-packet opt-in", async () => {
+  it("generates a partial official-form draft even before filing details are enabled", async () => {
     const draft = createEmptyDraft();
     draft.data.filingDetails.wantsFilingPacket = "no";
 
     const response = await POST(requestFor(draft));
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(200);
+    const pdf = await PDFDocument.load(await response.arrayBuffer());
+    expect(pdf.getTitle()).toBe("Populated Florida Court Forms — Review Draft");
   });
 });
