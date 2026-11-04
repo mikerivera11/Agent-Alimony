@@ -90,18 +90,18 @@ describe("ResultsExperience", () => {
     render(<ResultsExperience />);
 
     expect(await screen.findByText(/finish the remaining court-form questions/i)).toBeInTheDocument();
-    expect(screen.getAllByText("The judicial circuit")).toHaveLength(1);
+    expect(screen.getAllByText("The judicial circuit").length).toBeGreaterThan(0);
     expect(screen.getByText(/forms 12\.928, 12\.901\(b\)\(1\)/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /answer in attorney filing packet \(optional\)/i }),
+      screen.getByRole("link", { name: /answer in official florida court forms/i }),
     ).toHaveAttribute("href", "/intake?step=filingDetails");
-    expect(screen.getByText("Beginning and ending time for Thanksgiving")).toBeInTheDocument();
+    expect(screen.getAllByText("Beginning and ending time for Thanksgiving").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /answer in parenting plan/i })).toHaveAttribute(
       "href",
       "/intake?step=parentingPlanDetails",
     );
     expect(
-      screen.getByRole("button", { name: /download partially populated court forms/i }),
+      screen.getByRole("button", { name: /download review draft with missing items/i }),
     ).toBeEnabled();
   });
 
@@ -120,16 +120,20 @@ describe("ResultsExperience", () => {
     render(<ResultsExperience />);
 
     const downloadButton = await screen.findByRole("button", {
-      name: /download populated court forms/i,
+      name: /download populated official court forms/i,
     });
-    expect(downloadButton).toBeDisabled();
+    expect(downloadButton).toBeEnabled();
     expect(screen.getByText(/update the forms with your latest answers/i)).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: /update court forms with latest answers/i }),
     );
 
-    await waitFor(() => expect(downloadButton).toBeEnabled());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /download populated official court forms/i }),
+      ).toBeEnabled(),
+    );
     expect(screen.queryByText(/update the forms with your latest answers/i)).not.toBeInTheDocument();
   });
 });

@@ -47,21 +47,15 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const draft = normalizeDraft(parsed.data.draft as unknown as IntakeDraft);
-  const previewData = {
-    ...draft.data,
-    filingDetails: {
-      ...draft.data.filingDetails,
-      wantsFilingPacket: "yes" as const,
-    },
-  };
   const reviewed = {
     draftId: draft.draftId,
     reviewedAt: new Date().toISOString(),
-    data: previewData,
+    data: draft.data,
   } as ReviewedIntakeDraft;
   const readiness = buildFilingReadiness({
-    data: previewData,
+    data: draft.data,
     asOfIso: new Date().toISOString().slice(0, 10),
+    includeForms: true,
   });
 
   try {

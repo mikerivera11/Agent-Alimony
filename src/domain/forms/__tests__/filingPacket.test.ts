@@ -72,6 +72,20 @@ describe("wholeMonthsBetween", () => {
 });
 
 describe("buildFilingReadiness", () => {
+  it("can build the official-form completion checklist independently of the attorney-packet preference", () => {
+    const data = draftData();
+    data.filingDetails.wantsFilingPacket = "no";
+
+    const readiness = buildFilingReadiness({
+      data,
+      asOfIso: AS_OF,
+      includeForms: true,
+    });
+
+    expect(readiness.requested).toBe(true);
+    expect(readiness.forms.length).toBeGreaterThan(0);
+  });
+
   it("collects nothing and reports nothing when the packet was not requested", () => {
     const data = draftData();
     data.filingDetails = { wantsFilingPacket: "no" };

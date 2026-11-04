@@ -60,9 +60,17 @@ describe("official court forms", () => {
   });
 
   it("lists unresolved answers as blanks to complete before filing", () => {
-    const draftData = createSampleDraft();
-    draftData.data.filingDetails.judicialCircuit = "";
-    const draft = buildReviewedDraft(draftData);
+    const completeDraft = buildReviewedDraft(createSampleDraft());
+    const draft = {
+      ...completeDraft,
+      data: {
+        ...completeDraft.data,
+        filingDetails: {
+          ...completeDraft.data.filingDetails,
+          judicialCircuit: "",
+        },
+      },
+    };
     const viewModel = buildPackageViewModel(draft);
     const readiness = buildFilingReadiness({
       data: draft.data,
@@ -331,6 +339,23 @@ describe("official court forms", () => {
     const form = (await PDFDocument.load(bytes)).getForm();
 
     expect(form.getTextField("Parties number of children in common").getText()).toBe("2");
+    expect(
+      form
+        .getTextField(
+          "TOTAL_Present Gross Monthly Income Enter the amount from line 17 Section I of Florida Family Law Rules of Procedure Form 12902b or c Financial Affidavit",
+        )
+        .getText(),
+    ).toBe("9150.00");
+    expect(form.getTextField("Petitioner line 4A Multiply the number on line 2 by the").getText()).toBe(
+      "1061.63",
+    );
+    expect(form.getTextField("6. Petitioners share Enter answer on line 6A").getText()).toBe("474.76");
+    expect(
+      form.getTextField("14. d. Total Additional Support: Monthly Child Care and Health Insurance Costs").getText(),
+    ).toBe("830.00");
+    expect(
+      form.getTextField("17 PETITIONER: Total Support Payments actually made Add 16a though 16c").getText(),
+    ).toBe("505.00");
     expect(form.getTextField("21. Presumptive Child Support to be Paid").getText()).toBe(
       (viewModel.childSupport.result.monthlyTransferAmountCents / 100).toFixed(2),
     );
@@ -348,7 +373,7 @@ describe("official court forms", () => {
 
     expect(form.getCheckBox("Check Box1").isChecked()).toBe(true);
     expect(form.getTextField("Other 5").getText()).toContain("Monday through Thursday");
-    expect(form.getTextField("Other 7").getText()).toContain("Alternating weekends");
+    expect(form.getTextField("Other 7").getText()?.replace(/\s+/g, " ")).toContain("Alternating weekends");
     expect(form.getCheckBox("Check Box43").isChecked()).toBe(true);
     expect(form.getCheckBox("Check Box44").isChecked()).toBe(true);
     expect(

@@ -207,26 +207,44 @@ export function ResultsExperience() {
     return buildPackageViewModel(state.reviewed);
   }, [state]);
 
-  // Read from the reviewed snapshot rather than the live draft, so the offer
-  // matches the answers the packet would actually be built from.
+  // Read from the reviewed snapshot rather than the live draft for finalized
+  // output. The court-form checklist is always available because official
+  // forms are a separate workflow from the optional attorney term sheet.
   const wantsFilingPacket = reviewed?.data.filingDetails?.wantsFilingPacket === "yes";
   const wantsAlimonyAdvanceAgreement =
     reviewed?.data.alimonyAdvance?.wantsAdvanceAgreement === "yes";
-  const officialFormQuestionGroups = useMemo(() => {
-    if (!reviewed || !viewModel || !wantsFilingPacket) return [];
+  const officialFormsReadiness = useMemo(() => {
+    if (!reviewed || !viewModel) return null;
     const populated = new Set<string>(POPULATED_OFFICIAL_FORM_NUMBERS);
-    const forms = buildFilingReadiness({
+    const readiness = buildFilingReadiness({
       data: reviewed.data,
       asOfIso: viewModel.generatedAt.slice(0, 10),
-    }).forms
-      .filter((form) => populated.has(form.entry.form.formNumber) && form.status === "needsInformation")
+      includeForms: true,
+    });
+    return {
+      ...readiness,
+      forms: readiness.forms.filter((form) => populated.has(form.entry.form.formNumber)),
+    };
+  }, [reviewed, viewModel]);
+  const officialFormQuestionGroups = useMemo(() => {
+    if (!officialFormsReadiness) return [];
+    const forms = officialFormsReadiness.forms
+      .filter((form) => form.status === "needsInformation")
       .map((form) => ({
         formNumber: form.entry.form.formNumber,
         missing: form.missing,
       }));
     return groupOfficialFormQuestions(forms);
-  }, [reviewed, viewModel, wantsFilingPacket]);
+  }, [officialFormsReadiness]);
   const hasOfficialFormGaps = officialFormQuestionGroups.length > 0;
+  const officialFormMissingCount =
+    officialFormsReadiness?.forms.reduce((sum, form) => sum + form.missing.length, 0) ?? 0;
+  const officialFormReadyCount =
+    officialFormsReadiness?.forms.filter((form) => form.status === "ready").length ?? 0;
+  const officialFormCompletionPercent =
+    officialFormsReadiness && officialFormsReadiness.forms.length > 0
+      ? Math.round((officialFormReadyCount / officialFormsReadiness.forms.length) * 100)
+      : 0;
 
   /**
    * One download path for the packet and every worksheet. They all post the
@@ -432,17 +450,104 @@ export function ResultsExperience() {
       )}
 
       {hasCourtFormsDraft ? (
-        <Card className="flex flex-col gap-4 border-2 border-primary">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold uppercase tracking-wide text-primary">Official Florida court forms</p>
-            <h2 className="text-2xl font-semibold text-ink">Your populated court forms</h2>
-            <p className="text-sm text-ink-muted">
-              These are the revision-locked official Florida PDFs with your saved answers inserted—not the
-              worksheets shown below. Unknown answers remain blank and are listed on the cover page for attorney
-              review.
-            </p>
+        <Card className="flex flex-col gap-6 border-2 border-primary">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary">Official Florida court forms</p>
+              <h2 className="text-2xl font-semibold text-ink">Court-form completion center</h2>
+              <p className="max-w-3xl text-sm text-ink-muted">
+                Complete each answer once, then download the revision-locked official Florida PDFs. Every unanswered
+                item is identified below. The app never guesses a legal answer; choose an explicit not-applicable or
+                attorney-review option where the questionnaire provides one.
+              </p>
+            </div>
+            <div className="rounded-xl bg-surface-muted px-5 py-4 text-center">
+              <p className="text-3xl font-bold text-ink">{officialFormCompletionPercent}%</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">forms ready</p>
+            </div>
           </div>
+
           <div>
+            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+              <span className="font-semibold text-ink">
+                {officialFormReadyCount} of {officialFormsReadiness?.forms.length ?? 0} supported forms complete
+              </span>
+              <span className={officialFormMissingCount > 0 ? "font-semibold text-warning-text" : "text-success-text"}>
+                {officialFormMissingCount > 0
+                  ? `${officialFormMissingCount} answers remaining`
+                  : "All collected answers complete"}
+              </span>
+            </div>
+            <div
+              className="h-3 overflow-hidden rounded-full bg-surface-muted"
+              role="progressbar"
+              aria-label="Official court form completion"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={officialFormCompletionPercent}
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width]"
+                style={{ width: `${officialFormCompletionPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {officialFormsReadiness?.forms.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {officialFormsReadiness.forms.map((form) => {
+                const isReady = form.status === "ready";
+                const firstMissing = form.missing[0];
+                const stepId = firstMissing ? stepForOfficialFormQuestion(firstMissing) : "filingDetails";
+                return (
+                  <div
+                    key={form.entry.form.formNumber}
+                    className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-ink">Form {form.entry.form.formNumber}</p>
+                        <p className="text-sm text-ink-muted">{form.entry.form.title}</p>
+                      </div>
+                      <span
+                        className={
+                          isReady
+                            ? "rounded-full bg-success-surface px-2.5 py-1 text-xs font-semibold text-success-text"
+                            : "rounded-full bg-warning-surface px-2.5 py-1 text-xs font-semibold text-warning-text"
+                        }
+                      >
+                        {isReady ? "Ready" : `${form.missing.length} missing`}
+                      </span>
+                    </div>
+                    {!isReady ? (
+                      <>
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-ink-muted">
+                          {form.missing.slice(0, 3).map((missing) => (
+                            <li key={missing}>{missing}</li>
+                          ))}
+                        </ul>
+                        {form.missing.length > 3 ? (
+                          <p className="text-xs text-ink-muted">+ {form.missing.length - 3} more answers</p>
+                        ) : null}
+                        <Link
+                          href={`/intake?step=${stepId}`}
+                          className={buttonClasses("secondary", "sm")}
+                        >
+                          Complete this form
+                        </Link>
+                      </>
+                    ) : (
+                      <p className="text-sm text-success-text">
+                        All questionnaire answers for this form are complete.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-3">
             <Button
               type="button"
               onClick={handleVisibleCourtFormsDownload}
@@ -456,9 +561,17 @@ export function ResultsExperience() {
               (downloadTarget === "court-forms" || downloadTarget === "court-forms-preview")
                 ? "Preparing official court forms..."
                 : hasOfficialFormGaps
-                  ? "Download partially populated official court forms"
+                  ? "Download review draft with missing items"
                   : "Download populated official court forms"}
             </Button>
+            {hasOfficialFormGaps ? (
+              <Link
+                href={`/intake?step=${officialFormQuestionGroups[0]?.stepId ?? "filingDetails"}`}
+                className={buttonClasses("primary", "md")}
+              >
+                Complete {officialFormMissingCount} remaining answers
+              </Link>
+            ) : null}
           </div>
         </Card>
       ) : null}

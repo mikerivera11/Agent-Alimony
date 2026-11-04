@@ -380,9 +380,15 @@ export function buildFilingReadiness(options: {
   data: FilingPacketDraftData;
   /** ISO date the residency arithmetic is measured against. */
   asOfIso: string;
+  /**
+   * Builds the court-form checklist even when the optional attorney-packet
+   * question was answered "no". Used by the dedicated court-forms workflow,
+   * which is separate from the attorney term-sheet preference.
+   */
+  includeForms?: boolean;
 }): FilingReadiness {
-  const { data, asOfIso } = options;
-  const requested = data.filingDetails?.wantsFilingPacket === "yes";
+  const { data, asOfIso, includeForms = false } = options;
+  const requested = includeForms || data.filingDetails?.wantsFilingPacket === "yes";
 
   if (!requested) {
     return {

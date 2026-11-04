@@ -520,10 +520,10 @@ export const INTAKE_STEPS: { [K in IntakeStepId]: IntakeStepConfig<IntakeDraftDa
   },
   filingDetails: {
     id: "filingDetails",
-    title: "Attorney filing packet (optional)",
-    summary: "Extra details an attorney needs to prepare court forms. Skip this if you only want an estimate.",
+    title: "Official Florida court forms",
+    summary: "Complete the identifying, filing, and legal-choice fields used by the supported official forms.",
     whyWeAsk:
-      "Nothing here changes your estimate. The court's forms ask for details the estimate doesn't need — full legal names, addresses, dates — so this section exists only if you want to hand an attorney a packet they can file from. Answer 'no' and the rest stays blank.",
+      "Nothing here changes your estimate. Official court forms require full legal names, addresses, filing details, and explicit legal choices that the calculations do not need. You may postpone this section, but the form-completion center will identify every unanswered item before filing.",
     schema: filingDetailsSchema,
     defaultValues: {
       wantsFilingPacket: "no",

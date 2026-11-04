@@ -9,6 +9,9 @@ import { DateField, RadioGroupField, TextField, YesNoField } from "../fields";
 import { secondaryButtonClasses } from "../fields/inputStyles";
 import type { StepFieldsProps } from "./StepFieldsProps";
 
+const courtFormSectionClasses =
+  "flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 shadow-sm";
+
 function ChildFilingDetailsBlock({
   index,
   register,
@@ -202,22 +205,36 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
     <div className="flex flex-col gap-6">
       <YesNoField
         id="wantsFilingPacket"
-        legend="Do you want an attorney filing packet?"
-        hint="Answer no to skip this section entirely. Your estimate is exactly the same either way."
+        legend="Do you want to complete your official Florida court forms now?"
+        hint="Your financial estimate works without these identifying and filing details. Choose yes to complete the official-form workflow."
         required
         registration={register("wantsFilingPacket")}
         error={errors.wantsFilingPacket?.message}
       />
 
       {wantsPacket !== "yes" ? (
-        <p className="text-sm text-ink-muted">
-          Nothing else is asked here. You can turn this on later if you decide to take your answers to an attorney.
-        </p>
+        <div className="rounded-xl border border-line bg-surface-muted p-4 text-sm text-ink-muted">
+          You can continue without entering court-form details. The Results page will still show the official forms,
+          identify every missing answer, and bring you back to this section when you are ready.
+        </div>
       ) : (
         <>
-          <p className="rounded-lg bg-surface-muted p-4 text-sm text-ink-muted">
-            These questions correspond to fields in the supported Florida court forms. The app does not sign, swear,
-            notarize, serve, or file anything, and legal elections still require attorney review.
+          <section className="grid gap-3 md:grid-cols-3">
+            {[
+              ["1", "Answer by topic", "Questions are grouped by the section of the court forms they complete."],
+              ["2", "Review missing items", "Results shows each supported form and every answer still needed."],
+              ["3", "Download official PDFs", "Your answers are inserted into revision-locked Florida forms for review."],
+            ].map(([number, title, description]) => (
+              <div key={number} className="rounded-xl border border-line bg-surface-muted p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Step {number}</p>
+                <h3 className="mt-1 font-semibold text-ink">{title}</h3>
+                <p className="mt-1 text-sm text-ink-muted">{description}</p>
+              </div>
+            ))}
+          </section>
+          <p className="rounded-lg bg-warning-surface p-4 text-sm text-warning-text">
+            Choose an explicit answer for every question, including “not applicable” or “not sure — attorney review”
+            when offered. The app does not sign, swear, notarize, serve, or file anything.
           </p>
           <section className="flex flex-col gap-3 rounded-lg border border-line p-4">
             <div>
@@ -244,7 +261,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             ) : null}
           </section>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Court case information</legend>
             <p className="text-sm text-ink-muted">
               If the clerk has not assigned these values yet, leave them blank. They remain visibly blank on the
@@ -254,6 +271,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
               id="judicialCircuit"
               label="Judicial circuit"
               hint="For example, Ninth Judicial Circuit."
+              required
               registration={register("judicialCircuit")}
               error={errors.judicialCircuit?.message}
             />
@@ -283,7 +301,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             />
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">About you</legend>
             <TextField
               id="you.fullLegalName"
@@ -302,24 +320,28 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             <TextField
               id="you.address.street"
               label="Your street address"
+              required
               registration={register("you.address.street")}
               error={errors.you?.address?.street?.message}
             />
             <TextField
               id="you.address.city"
               label="City"
+              required
               registration={register("you.address.city")}
               error={errors.you?.address?.city?.message}
             />
             <TextField
               id="you.address.state"
               label="State"
+              required
               registration={register("you.address.state")}
               error={errors.you?.address?.state?.message}
             />
             <TextField
               id="you.address.postalCode"
               label="ZIP code"
+              required
               registration={register("you.address.postalCode")}
               error={errors.you?.address?.postalCode?.message}
             />
@@ -360,7 +382,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             />
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">About your spouse</legend>
             <TextField
               id="spouse.fullLegalName"
@@ -435,7 +457,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             />
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">The marriage</legend>
             <TextField
               id="marriagePlaceCity"
@@ -476,7 +498,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             />
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Florida residence</legend>
             <p className="text-sm text-ink-muted">
               Florida law requires one spouse to have lived in Florida for at least six months before a dissolution is
@@ -507,7 +529,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             ) : null}
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Petition child and pregnancy questions</legend>
             <RadioGroupField
               id="pregnancyStatus"
@@ -564,7 +586,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             ) : null}
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Property request in the petition</legend>
             <RadioGroupField
               id="propertyDistributionRequest"
@@ -605,7 +627,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             ) : null}
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Parenting request in the petition</legend>
             <RadioGroupField
               id="childrenCurrentResidence"
@@ -665,7 +687,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             />
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Child-support request in the petition</legend>
             <RadioGroupField
               id="childSupportWorksheetStatus"
@@ -745,11 +767,12 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             />
           </fieldset>
 
-          <fieldset className="flex flex-col gap-5">
+          <fieldset className={courtFormSectionClasses}>
             <legend className="text-base font-semibold text-ink">Former name</legend>
             <YesNoField
               id="formerNameRestorationRequested"
               legend="Is the petitioner asking the court to restore a former name?"
+              required
               registration={register("formerNameRestorationRequested")}
               error={errors.formerNameRestorationRequested?.message}
             />
@@ -765,7 +788,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
           </fieldset>
 
           {fields.length > 0 ? (
-            <fieldset className="flex flex-col gap-5">
+            <fieldset className={courtFormSectionClasses}>
               <legend className="text-base font-semibold text-ink">Children&apos;s filing details</legend>
               <p className="text-sm text-ink-muted">
                 One block per child you already entered. The UCCJEA affidavit asks for each child&apos;s full legal
@@ -784,7 +807,7 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
           ) : null}
 
           {fields.length > 0 ? (
-            <fieldset className="flex flex-col gap-5">
+            <fieldset className={courtFormSectionClasses}>
               <legend className="text-base font-semibold text-ink">UCCJEA case-history questions</legend>
               <p className="text-sm text-ink-muted">
                 These are sworn questions on Form 12.902(d). Answer from your own knowledge; do not guess.

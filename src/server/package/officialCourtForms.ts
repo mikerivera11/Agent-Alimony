@@ -130,6 +130,15 @@ interface PopulationContext {
   readonly parties: PartyContext;
 }
 
+interface FieldOverlay {
+  readonly pageIndex: number;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly text: string;
+}
+
 function assetPath(filename: string): string {
   return path.join(process.cwd(), "src", "server", "package", "florida-forms", filename);
 }
@@ -254,7 +263,10 @@ function setText(
     throw new Error(`Verified text field "${name}" is missing from the official PDF.`);
   }
 
-  let text = String(value).replace(/\s+/g, " ").trim();
+  const rawText = String(value).trim();
+  let text = field.isMultiline()
+    ? rawText.replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ")
+    : rawText.replace(/\s+/g, " ");
   const maxLength = field.getMaxLength();
   if (maxLength !== undefined && text.length > maxLength) {
     warnings.push(`${name} was shortened to fit the official form; review the full answer in the filing packet.`);
@@ -271,21 +283,114 @@ function check(form: PDFForm, name: string): void {
   field.check();
 }
 
-function fitPopulatedTextFieldFonts(form: PDFForm, font: PDFFont): void {
+const PREFERRED_FORM_FONT_SIZE = 9;
+const MINIMUM_FORM_FONT_SIZE = 4.5;
+const FORM_FIELD_HORIZONTAL_PADDING = 6;
+const FORM_FIELD_VERTICAL_PADDING = 4;
+
+function wrapTextToWidth(text: string, font: PDFFont, size: number, width: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
+    }
+    let line = "";
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (font.widthOfTextAtSize(candidate, size) <= width) {
+        line = candidate;
+        continue;
+      }
+      if (line) lines.push(line);
+      if (font.widthOfTextAtSize(word, size) <= width) {
+        line = word;
+        continue;
+      }
+      let segment = "";
+      for (const character of word) {
+        const next = `${segment}${character}`;
+        if (segment && font.widthOfTextAtSize(next, size) > width) {
+          lines.push(segment);
+          segment = character;
+        } else {
+          segment = next;
+        }
+      }
+      line = segment;
+    }
+    if (line) lines.push(line);
+  }
+  return lines;
+}
+
+function truncateLineToWidth(text: string, font: PDFFont, size: number, width: number): string {
+  const ellipsis = "\u2026";
+  let value = text.trim();
+  while (value && font.widthOfTextAtSize(`${value}${ellipsis}`, size) > width) {
+    value = value.slice(0, -1).trimEnd();
+  }
+  return value ? `${value}${ellipsis}` : ellipsis;
+}
+
+function fitPopulatedTextFieldFonts(form: PDFForm, font: PDFFont, warnings: string[]): void {
   for (const field of form.getFields()) {
     if (!(field instanceof PDFTextField) || !field.getText()?.trim()) continue;
 
+    const widgets = field.acroField.getWidgets();
+    if (widgets.length === 0) continue;
+    const availableWidth = Math.min(
+      ...widgets.map((widget) =>
+        Math.max(1, widget.getRectangle().width - FORM_FIELD_HORIZONTAL_PADDING),
+      ),
+    );
+    const availableHeight = Math.min(
+      ...widgets.map((widget) =>
+        Math.max(1, widget.getRectangle().height - FORM_FIELD_VERTICAL_PADDING),
+      ),
+    );
+    let fontSize = PREFERRED_FORM_FONT_SIZE;
+    const originalText = field.getText() ?? "";
+
     if (field.isMultiline()) {
-      field.acroField.setDefaultAppearance("/Helvetica 8 Tf 0 g");
+      let lines = wrapTextToWidth(originalText, font, fontSize, availableWidth);
+      while (
+        fontSize > MINIMUM_FORM_FONT_SIZE &&
+        lines.length * fontSize * 1.2 > availableHeight
+      ) {
+        fontSize -= 0.25;
+        lines = wrapTextToWidth(originalText, font, fontSize, availableWidth);
+      }
+      const maximumLines = Math.max(1, Math.floor(availableHeight / (fontSize * 1.2)));
+      if (lines.length > maximumLines) {
+        lines = lines.slice(0, maximumLines);
+        lines[maximumLines - 1] = truncateLineToWidth(
+          lines[maximumLines - 1] ?? "",
+          font,
+          fontSize,
+          availableWidth,
+        );
+        warnings.push(
+          `${field.getName()} was shortened to stay inside the official form field; review the full answer in the filing packet.`,
+        );
+      }
+      field.setText(lines.join("\n"));
+      field.acroField.setDefaultAppearance(`/Helvetica ${fontSize} Tf 0 g`);
       continue;
     }
 
-    const availableWidth = Math.min(
-      ...field.acroField.getWidgets().map((widget) => Math.max(1, widget.getRectangle().width - 6)),
-    );
-    let fontSize = 10;
-    while (fontSize > 5 && font.widthOfTextAtSize(field.getText() ?? "", fontSize) > availableWidth) {
+    while (
+      fontSize > MINIMUM_FORM_FONT_SIZE &&
+      font.widthOfTextAtSize(originalText, fontSize) > availableWidth
+    ) {
       fontSize -= 0.25;
+    }
+    if (font.widthOfTextAtSize(originalText, fontSize) > availableWidth) {
+      field.setText(truncateLineToWidth(originalText, font, fontSize, availableWidth));
+      warnings.push(
+        `${field.getName()} was shortened to stay inside the official form line; review the full answer in the filing packet.`,
+      );
     }
     field.acroField.setDefaultAppearance(`/Helvetica ${fontSize} Tf 0 g`);
   }
@@ -911,17 +1016,117 @@ function parentOrder<T>(context: PopulationContext, selfValue: T, spouseValue: T
   return null;
 }
 
+function childSupportRepeatedCellOverlays(
+  doc: PDFDocument,
+  form: PDFForm,
+  context: PopulationContext,
+): FieldOverlay[] {
+  const orderedCosts = parentOrder(
+    context,
+    {
+      childCareCents: Math.round(
+        (context.draft.data.childCosts?.childCarePaidBySelfMonthly ?? 0) * 100,
+      ),
+      healthCents: Math.round(
+        (context.draft.data.childCosts?.childHealthInsurancePaidBySelfMonthly ?? 0) * 100,
+      ),
+    },
+    {
+      childCareCents: Math.round(
+        (context.draft.data.childCosts?.childCarePaidByOtherParentMonthly ?? 0) * 100,
+      ),
+      healthCents: Math.round(
+        (context.draft.data.childCosts?.childHealthInsurancePaidByOtherParentMonthly ?? 0) * 100,
+      ),
+    },
+  );
+  if (!orderedCosts) return [];
+
+  const noncoveredMedicalCents = Math.round(
+    (context.draft.data.childCosts?.extraordinaryMedicalCostsMonthly ?? 0) * 100,
+  );
+  if (noncoveredMedicalCents > 0) {
+    context.warnings.push(
+      "Form 12.902(e) line 16(c) remains blank because the intake records the total noncovered medical amount but not which parent paid it.",
+    );
+  }
+  const specs = [
+    {
+      fieldName: "16   a Monthly child care payments actually made",
+      values: [
+        money(orderedCosts.petitioner.childCareCents),
+        money(orderedCosts.respondent.childCareCents),
+      ],
+    },
+    {
+      fieldName: "b Monthly health insurance payments actually made_2",
+      values: [
+        money(orderedCosts.petitioner.healthCents),
+        money(orderedCosts.respondent.healthCents),
+      ],
+    },
+    {
+      fieldName: "for any noncovered medical dental and",
+      values: noncoveredMedicalCents === 0 ? ["0.00", "0.00"] : ["", ""],
+    },
+  ] as const;
+  const pageRefs = new Map(doc.getPages().map((page, index) => [page.ref.toString(), index]));
+  const overlays: FieldOverlay[] = [];
+
+  for (const spec of specs) {
+    const field = form.getTextField(spec.fieldName);
+    const widgets = [...field.acroField.getWidgets()].sort(
+      (left, right) => left.getRectangle().x - right.getRectangle().x,
+    );
+    field.setText("");
+    widgets.forEach((widget, index) => {
+      const pageIndex = pageRefs.get(widget.P()?.toString() ?? "");
+      const text = spec.values[index] ?? "";
+      if (pageIndex === undefined || !text) return;
+      const rectangle = widget.getRectangle();
+      overlays.push({
+        pageIndex,
+        x: rectangle.x,
+        y: rectangle.y,
+        width: rectangle.width,
+        height: rectangle.height,
+        text,
+      });
+    });
+  }
+  return overlays;
+}
+
 function fillChildSupport(form: PDFForm, context: PopulationContext): void {
   const outcome = context.viewModel?.childSupport;
   if (!outcome) return;
   if (outcome.kind !== "calculated") return;
   const result = outcome.result;
+  const traceValues = new Map(outcome.formulaTrace.map((step) => [step.stepId, step.values]));
+  const traceNumber = (stepId: string, key: string): number | undefined => {
+    const value = traceValues.get(stepId)?.[key];
+    return typeof value === "number" ? value : undefined;
+  };
   fillCaption(form, context, {
     county: "County Name",
     petitioner: "petitioner",
     respondent: "respondent",
   });
   fillCaseMetadata(form, context, { caseNumber: "Case No", division: "Division" });
+  setText(
+    form,
+    "IN THE CIRCUIT COURT OF THE",
+    context.draft.data.filingDetails.judicialCircuit,
+    context.warnings,
+  );
+  setText(
+    form,
+    "IN THE CIRCUIT COURT OF THE_2",
+    context.draft.data.filingDetails.judicialCircuit,
+    context.warnings,
+  );
+  setText(form, "Case No_2", context.draft.data.filingDetails.caseNumber, context.warnings);
+  setText(form, "Division_2", context.draft.data.filingDetails.division, context.warnings);
   setText(form, "County Name_2", context.draft.data.caseBasics.county, context.warnings);
   setText(form, "petitioner_2", context.parties.petitioner?.name, context.warnings);
   setText(form, "respondent_2", context.parties.respondent?.name, context.warnings);
@@ -930,6 +1135,50 @@ function fillChildSupport(form: PDFForm, context: PopulationContext): void {
   if (!ordered) return;
   const petitioner = ordered.petitioner;
   const respondent = ordered.respondent;
+  const orderedDirectCosts = parentOrder(
+    context,
+    {
+      childCareCents: Math.round(
+        (context.draft.data.childCosts?.childCarePaidBySelfMonthly ?? 0) * 100,
+      ),
+      healthCents: Math.round(
+        (context.draft.data.childCosts?.childHealthInsurancePaidBySelfMonthly ?? 0) * 100,
+      ),
+    },
+    {
+      childCareCents: Math.round(
+        (context.draft.data.childCosts?.childCarePaidByOtherParentMonthly ?? 0) * 100,
+      ),
+      healthCents: Math.round(
+        (context.draft.data.childCosts?.childHealthInsurancePaidByOtherParentMonthly ?? 0) * 100,
+      ),
+    },
+  );
+  const noncoveredMedicalCents = Math.round(
+    (context.draft.data.childCosts?.extraordinaryMedicalCostsMonthly ?? 0) * 100,
+  );
+  const totalGrossIncomeCents =
+    petitioner.monthlyGrossIncomeCents + respondent.monthlyGrossIncomeCents;
+  const totalAddOnsCents =
+    result.childCareAddOnCents + result.childHealthInsuranceAddOnCents + noncoveredMedicalCents;
+  const petitionerBasicShareCents = Math.round(
+    (result.basicMonthlyNeedCents * petitioner.incomeSharePercentBasisPoints) / 10_000,
+  );
+  const respondentBasicShareCents = result.basicMonthlyNeedCents - petitionerBasicShareCents;
+  const petitionerAddOnShareCents = Math.round(
+    (totalAddOnsCents * petitioner.incomeSharePercentBasisPoints) / 10_000,
+  );
+  const respondentAddOnShareCents = totalAddOnsCents - petitionerAddOnShareCents;
+  const petitionerDirectPaidCents = orderedDirectCosts
+    ? orderedDirectCosts.petitioner.childCareCents + orderedDirectCosts.petitioner.healthCents
+    : 0;
+  const respondentDirectPaidCents = orderedDirectCosts
+    ? orderedDirectCosts.respondent.childCareCents + orderedDirectCosts.respondent.healthCents
+    : 0;
+  const petitionerMinimumObligationCents =
+    petitionerBasicShareCents + petitionerAddOnShareCents - petitionerDirectPaidCents;
+  const respondentMinimumObligationCents =
+    respondentBasicShareCents + respondentAddOnShareCents - respondentDirectPaidCents;
   setText(form, "Parties number of children in common", result.numberOfChildren, context.warnings);
   setText(form, "Petitioner Present Gross Monthly Income", money(petitioner.monthlyGrossIncomeCents), context.warnings);
   setText(form, "Respondent Present Gross Monthly Income", money(respondent.monthlyGrossIncomeCents), context.warnings);
@@ -939,18 +1188,172 @@ function fillChildSupport(form: PDFForm, context: PopulationContext): void {
   setText(form, "Petitioner answer on line 3A Divide the amount on line", percent(petitioner.incomeSharePercentBasisPoints), context.warnings);
   setText(form, "Respondent answer on line 3A Divide the amount on line", percent(respondent.incomeSharePercentBasisPoints), context.warnings);
   setText(form, "Total Basic Monthly Obligation", money(result.basicMonthlyNeedCents), context.warnings);
-  setText(form, "Petitioner line 4A Multiply the number on line 2 by the", money(petitioner.dollarShareOfTotalNeedCents), context.warnings);
-  setText(form, "Respondent line 4A Multiply the number on line 2 by the", money(respondent.dollarShareOfTotalNeedCents), context.warnings);
+  setText(form, "Petitioner line 4A Multiply the number on line 2 by the", money(petitionerBasicShareCents), context.warnings);
+  setText(form, "Respondent line 4A Multiply the number on line 2 by the", money(respondentBasicShareCents), context.warnings);
   setText(form, "Total Child Care Cost", money(result.childCareAddOnCents), context.warnings);
   setText(form, "Total Child(ren) Health Insurance Cost", money(result.childHealthInsuranceAddOnCents), context.warnings);
-  setText(form, "Total Monthly Child Care and Health Costs", money(result.childCareAddOnCents + result.childHealthInsuranceAddOnCents), context.warnings);
+  setText(form, "Total Monthly Child(ren) Noncovered Medical", money(noncoveredMedicalCents), context.warnings);
+  setText(form, "Total Monthly Child Care and Health Costs", money(totalAddOnsCents), context.warnings);
+  setText(
+    form,
+    "TOTAL_Present Gross Monthly Income Enter the amount from line 17 Section I of Florida Family Law Rules of Procedure Form 12902b or c Financial Affidavit",
+    money(totalGrossIncomeCents),
+    context.warnings,
+  );
+  setText(form, "6. Petitioners share Enter answer on line 6A", money(petitionerAddOnShareCents), context.warnings);
+  setText(form, "6. Respondent share Enter answer on line 6A", money(respondentAddOnShareCents), context.warnings);
+  if (orderedDirectCosts) {
+    setText(
+      form,
+      "7. a. Monthly child care payments actually made by petitioner",
+      money(orderedDirectCosts.petitioner.childCareCents),
+      context.warnings,
+    );
+    setText(
+      form,
+      "7. a. Monthly child care payments actually made by respondent",
+      money(orderedDirectCosts.respondent.childCareCents),
+      context.warnings,
+    );
+    setText(
+      form,
+      "7. b. Monthly health insurance payments actually made by petitioner",
+      money(orderedDirectCosts.petitioner.healthCents),
+      context.warnings,
+    );
+    setText(
+      form,
+      "7. b. Monthly health insurance payments actually made by respondent",
+      money(orderedDirectCosts.respondent.healthCents),
+      context.warnings,
+    );
+  }
+  setText(form, "7. c. prescription medication expenses of the petitioner", "0.00", context.warnings);
+  setText(form, "7. c. prescription medication expenses of the respondent", "0.00", context.warnings);
+  setText(
+    form,
+    "8. Petitioner total support Payments actually made (Add 7a though 7c)",
+    money(petitionerDirectPaidCents),
+    context.warnings,
+  );
+  setText(
+    form,
+    "8. Respondent total support Payments actually made (Add 7a though 7c)",
+    money(respondentDirectPaidCents),
+    context.warnings,
+  );
+  setText(
+    form,
+    "9. Petitioner MINIMUM CHILD SUPPORT OBLIGATION FOR EACH PARENT (Line 4 plus line 6 minus line 8)",
+    money(petitionerMinimumObligationCents),
+    context.warnings,
+  );
+  setText(
+    form,
+    "9. Respondent MINIMUM CHILD SUPPORT OBLIGATION FOR EACH PARENT (Line 4 plus line 6 minus line 8)",
+    money(respondentMinimumObligationCents),
+    context.warnings,
+  );
   setText(form, "10. Total Monthly Obligation", money(result.totalMinimumChildSupportNeedCents), context.warnings);
+  setText(
+    form,
+    "11. Petitioner Increased Basic Obligation for each Parent",
+    optionalDollars(
+      traceNumber("gross-up-basic-transfer", "parent1BasicShareCents") === undefined
+        ? undefined
+        : (context.parties.selfIsPetitioner
+            ? traceNumber("gross-up-basic-transfer", "parent1BasicShareCents")
+            : traceNumber("gross-up-basic-transfer", "parent2BasicShareCents"))! / 100,
+    ),
+    context.warnings,
+  );
+  setText(
+    form,
+    "11. Respondent Increased Basic Obligation for each Parent",
+    optionalDollars(
+      traceNumber("gross-up-basic-transfer", "parent1BasicShareCents") === undefined
+        ? undefined
+        : (context.parties.selfIsPetitioner
+            ? traceNumber("gross-up-basic-transfer", "parent2BasicShareCents")
+            : traceNumber("gross-up-basic-transfer", "parent1BasicShareCents"))! / 100,
+    ),
+    context.warnings,
+  );
   setText(form, "12. overnight stays with the Petitioner", petitioner.overnightsWithChild, context.warnings);
   setText(form, "12. overnight stays with Respondent", respondent.overnightsWithChild, context.warnings);
   setText(form, "12. Petitioner Percentage of Overnight Stays", percent(petitioner.overnightSharePercentBasisPoints), context.warnings);
   setText(form, "12. Respondent Percentage of Overnight Stays", percent(respondent.overnightSharePercentBasisPoints), context.warnings);
+  const petitionerCrossObligationCents =
+    context.parties.selfIsPetitioner
+      ? traceNumber("gross-up-basic-transfer", "parent1CrossObligationCents")
+      : traceNumber("gross-up-basic-transfer", "parent2CrossObligationCents");
+  const respondentCrossObligationCents =
+    context.parties.selfIsPetitioner
+      ? traceNumber("gross-up-basic-transfer", "parent2CrossObligationCents")
+      : traceNumber("gross-up-basic-transfer", "parent1CrossObligationCents");
+  setText(
+    form,
+    "13. Petitioner Support Multiplied by other Parent percentage of overnights",
+    petitionerCrossObligationCents === undefined ? undefined : money(petitionerCrossObligationCents),
+    context.warnings,
+  );
+  setText(
+    form,
+    "13. Respondent Support Multiplied by other Parent percentage of overnights",
+    respondentCrossObligationCents === undefined ? undefined : money(respondentCrossObligationCents),
+    context.warnings,
+  );
+  setText(form, "14. a. Total Additional Support: Monthly Child Care Costs", money(result.childCareAddOnCents), context.warnings);
+  setText(form, "14. b. Total Additional Support: Monthly Child(ren) Health Insurance Cost", money(result.childHealthInsuranceAddOnCents), context.warnings);
+  setText(form, "14. c. Total Additional Support: Monthly Child(ren) Noncovered Medical Costs", money(noncoveredMedicalCents), context.warnings);
+  setText(form, "14. d. Total Additional Support: Monthly Child Care and Health Insurance Costs", money(totalAddOnsCents), context.warnings);
+  setText(form, "Petitioner Additional Support Payments", money(petitionerAddOnShareCents), context.warnings);
+  setText(form, "Respondent Additional Support Payments", money(respondentAddOnShareCents), context.warnings);
+  setText(
+    form,
+    "17 PETITIONER: Total Support Payments actually made Add 16a though 16c",
+    money(petitionerDirectPaidCents),
+    context.warnings,
+  );
+  setText(
+    form,
+    "17 RESPONDENT: Total Support Payments actually made Add 16a though 16c",
+    money(respondentDirectPaidCents),
+    context.warnings,
+  );
+  setText(
+    form,
+    "18 PETITIONER: Total Additional Support Transfer Amount Line 15 minus line 17 enter any negative number as zero",
+    money(Math.max(0, petitionerAddOnShareCents - petitionerDirectPaidCents)),
+    context.warnings,
+  );
+  setText(
+    form,
+    "18 RESPONDENT: Total Additional Support Transfer Amount Line 15 minus line 17 enter any negative number as zero",
+    money(Math.max(0, respondentAddOnShareCents - respondentDirectPaidCents)),
+    context.warnings,
+  );
+  const petitionerOwes = petitioner.parentId === result.obligorParentId;
+  setText(
+    form,
+    "19 Total Child Support Owed from Petitioner to Respondent Add line 13A plus 18A",
+    money(petitionerOwes ? result.monthlyTransferAmountCents : 0),
+    context.warnings,
+  );
+  setText(
+    form,
+    "20 Total Child Support Owed from Respondent to Petitioner Add line 13B plus line 18B",
+    money(petitionerOwes ? 0 : result.monthlyTransferAmountCents),
+    context.warnings,
+  );
   setText(form, "21. Presumptive Child Support to be Paid", money(result.monthlyTransferAmountCents), context.warnings);
+  if (context.draft.data.filingDetails.childSupportDeviationRequested === "yes") {
+    setText(form, "a. Deviation from the guidelines is requested", "X", context.warnings);
+  } else if (context.draft.data.filingDetails.childSupportDeviationRequested === "no") {
+    setText(form, "b. Deviation from the guidelines is NOT requested", "X", context.warnings);
+  }
   setText(form, "Printed Name", context.parties.self.name, context.warnings);
+  setText(form, "name of person filing", context.parties.self.name, context.warnings);
   setText(form, "Address_2", context.parties.self.street, context.warnings);
   setText(form, "City State Zip_2", context.parties.self.cityStateZip, context.warnings);
   setText(form, "Telephone Number_2", context.parties.self.phone, context.warnings);
@@ -2027,10 +2430,25 @@ async function populateFormBytes(options: {
   const form = doc.getForm();
   form.deleteXFA();
   fillForm(options.formNumber, form, options.context);
+  const overlays =
+    options.formNumber === "12.902(e)"
+      ? childSupportRepeatedCellOverlays(doc, form, options.context)
+      : [];
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  fitPopulatedTextFieldFonts(form, font);
+  fitPopulatedTextFieldFonts(form, font, options.context.warnings);
   form.updateFieldAppearances(font);
   if (options.flatten) form.flatten({ updateFieldAppearances: false });
+  for (const overlay of overlays) {
+    const size = PREFERRED_FORM_FONT_SIZE;
+    doc.getPage(overlay.pageIndex).drawText(overlay.text, {
+      x: overlay.x + 3,
+      y: overlay.y + Math.max(2, (overlay.height - size) / 2),
+      size,
+      font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(1, overlay.width - 6),
+    });
+  }
   doc.setTitle(`Florida Form ${asset.formNumber} — populated draft`);
   doc.setSubject("Review-required draft; not filed, signed, notarized, or legal advice");
   doc.setProducer("Florida Support Guide");
