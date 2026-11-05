@@ -113,9 +113,8 @@ export function SavedVersionsPanel() {
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-ink">Saved versions</h2>
         <p className="text-sm text-muted">
-          Every time your answers are saved, a version is kept. Bringing an older one
-          back doesn&apos;t delete anything — your current answers stay in this list, so
-          you can always change your mind again.
+          Each time you choose Save and continue, a version is kept. The 50 most recent
+          versions are shown here. Bringing an older one back doesn&apos;t delete anything.
         </p>
       </div>
 

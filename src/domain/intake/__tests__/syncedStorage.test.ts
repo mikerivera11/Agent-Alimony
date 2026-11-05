@@ -98,6 +98,21 @@ describe("synced draft storage", () => {
     expect(calls[1]).toEqual({ url: "/api/cases/case-1", method: "PUT" });
   });
 
+  it("keeps autosaves local until Save and continue", async () => {
+    installLocalStorage();
+    const local = createInMemoryIntakeDraftStorage();
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await storage.save(draft, { sync: false });
+
+    expect(await local.load()).toEqual(draft);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("reports a conflict instead of overwriting a newer version", async () => {
     const store = installLocalStorage();
     store.set(
@@ -165,6 +180,35 @@ describe("synced draft storage", () => {
 
     expect(await storage.load()).toEqual(serverDraft);
     expect(await local.load()).toEqual(serverDraft);
+  });
+
+  it("keeps a newer local autosave instead of replacing it with an older server revision", async () => {
+    installLocalStorage();
+    const local = createInMemoryIntakeDraftStorage();
+    const localDraft = {
+      ...draftForCounty("Orange"),
+      updatedAt: "2026-11-05T12:00:00.000Z",
+    };
+    const serverDraft = {
+      ...draftForCounty("Broward"),
+      updatedAt: "2026-11-05T11:00:00.000Z",
+    };
+    await local.save(localDraft);
+
+    const storage = createSyncedIntakeDraftStorage({
+      local,
+      fetchImpl: (async (input: RequestInfo | URL) => {
+        if (String(input) === "/api/cases") {
+          return new Response(JSON.stringify({ cases: [{ id: "case-1", revision: 4 }] }), {
+            status: 200,
+          });
+        }
+        return new Response(JSON.stringify({ draft: serverDraft, revision: 4 }), { status: 200 });
+      }) as unknown as typeof fetch,
+    });
+
+    expect(await storage.load()).toEqual(localDraft);
+    expect(await local.load()).toEqual(localDraft);
   });
 
   it("falls back to the local draft when the server cannot be reached", async () => {

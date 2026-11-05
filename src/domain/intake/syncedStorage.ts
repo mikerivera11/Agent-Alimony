@@ -223,6 +223,15 @@ export function createSyncedIntakeDraftStorage(
 
         // Server copies predate steps too, and go straight to the screens.
         const normalized = normalizeDraft(record.draft);
+        const localUpdatedAt = localDraft ? Date.parse(localDraft.updatedAt) : Number.NaN;
+        const serverUpdatedAt = Date.parse(normalized.updatedAt);
+        if (
+          localDraft &&
+          Number.isFinite(localUpdatedAt) &&
+          (!Number.isFinite(serverUpdatedAt) || localUpdatedAt > serverUpdatedAt)
+        ) {
+          return localDraft;
+        }
         await local.save(normalized);
         return normalized;
       } catch {
@@ -230,8 +239,9 @@ export function createSyncedIntakeDraftStorage(
       }
     },
 
-    async save(draft: IntakeDraft) {
+    async save(draft: IntakeDraft, saveOptions) {
       await local.save(draft);
+      if (saveOptions?.sync === false) return;
       queue = queue.then(() => pushToServer(draft)).catch(() => {});
       // Not awaited: typing must never wait on the network.
     },

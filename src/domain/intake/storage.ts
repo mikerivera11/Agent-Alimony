@@ -8,7 +8,7 @@ import { normalizeDraft, type IntakeDraft } from "./draft";
  */
 export interface IntakeDraftStorage {
   load(): Promise<IntakeDraft | null>;
-  save(draft: IntakeDraft): Promise<void>;
+  save(draft: IntakeDraft, options?: { sync?: boolean }): Promise<void>;
   clear(): Promise<void>;
 }
 

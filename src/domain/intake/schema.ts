@@ -1349,13 +1349,6 @@ export const filingDetailsSchema = z
         message: "Choose whether related family cases exist",
       });
     }
-    if (!value.judicialCircuit?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["judicialCircuit"],
-        message: "Enter the judicial circuit shown on the court forms",
-      });
-    }
     if (!value.whichPartyIsFloridaResident) {
       ctx.addIssue({
         code: "custom",
@@ -1475,13 +1468,6 @@ export const filingDetailsSchema = z
         code: "custom",
         path: ["formerNameToRestore"],
         message: "Enter the former name to restore",
-      });
-    }
-    if (!value.formerNameRestorationRequested) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["formerNameRestorationRequested"],
-        message: "Choose whether the petitioner requests restoration of a former name",
       });
     }
     for (const [index, child] of value.children.entries()) {

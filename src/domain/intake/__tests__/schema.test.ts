@@ -82,6 +82,16 @@ describe("filingDetailsSchema", () => {
 
     expect(result.success).toBe(true);
   });
+
+  it("lets an older filing draft continue while newly added court-form answers remain incomplete", () => {
+    const filing = createSampleDraft().data.filingDetails;
+    filing.judicialCircuit = "";
+    filing.formerNameRestorationRequested = undefined;
+
+    const result = filingDetailsSchema.safeParse(filing);
+
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("marriageSchema", () => {

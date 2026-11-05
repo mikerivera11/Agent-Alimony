@@ -136,10 +136,10 @@ export function IntakeWizard({ storage, initialDraft, initialScreenId, onReviewC
   const currentDisplayStepId = screen === "review" || screen === "done" ? "review" : screen;
   const escalation = assessEscalation(draft.data);
 
-  function persist(nextDraft: IntakeDraft) {
+  function persist(nextDraft: IntakeDraft, options?: { sync?: boolean }) {
     draftRef.current = nextDraft;
     setDraft(nextDraft);
-    void storage.save(nextDraft);
+    void storage.save(nextDraft, options);
   }
 
   /**
@@ -151,7 +151,7 @@ export function IntakeWizard({ storage, initialDraft, initialScreenId, onReviewC
   function goToScreen(next: WizardScreen) {
     setScreen(next);
     if (!draft) return;
-    persist({ ...draft, lastScreenId: next });
+    persist({ ...draft, lastScreenId: next }, { sync: false });
   }
 
   function handleStepSubmit(stepId: IntakeStepId, values: Record<string, unknown>) {
@@ -190,7 +190,10 @@ export function IntakeWizard({ storage, initialDraft, initialScreenId, onReviewC
     const nextData = structuredCloneDraftData(current.data);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- scoped to this topic only
     (nextData as any)[stepId] = values;
-    persist({ ...current, data: nextData, updatedAt: new Date().toISOString() });
+    persist(
+      { ...current, data: nextData, updatedAt: new Date().toISOString() },
+      { sync: false },
+    );
   }
 
   function goToStep(stepId: IntakeStepId) {

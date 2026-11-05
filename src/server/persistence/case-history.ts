@@ -26,6 +26,8 @@ import { caseRevisions, cases } from "@/db/schema";
 
 import { ConcurrencyConflictError } from "./errors";
 
+export const SAVED_VERSION_LIST_LIMIT = 50;
+
 export interface CaseOwner {
   sessionId: string;
   /** Null while browsing anonymously. */
@@ -182,6 +184,7 @@ export async function listCaseRevisions(
   return db.query.caseRevisions.findMany({
     where: eq(caseRevisions.caseId, caseId),
     orderBy: [desc(caseRevisions.revision)],
+    limit: SAVED_VERSION_LIST_LIMIT,
     columns: {
       id: true,
       caseId: true,

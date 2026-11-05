@@ -271,7 +271,6 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
               id="judicialCircuit"
               label="Judicial circuit"
               hint="For example, Ninth Judicial Circuit."
-              required
               registration={register("judicialCircuit")}
               error={errors.judicialCircuit?.message}
             />
@@ -772,7 +771,6 @@ export function FilingDetailsFields({ register, errors, control }: StepFieldsPro
             <YesNoField
               id="formerNameRestorationRequested"
               legend="Is the petitioner asking the court to restore a former name?"
-              required
               registration={register("formerNameRestorationRequested")}
               error={errors.formerNameRestorationRequested?.message}
             />

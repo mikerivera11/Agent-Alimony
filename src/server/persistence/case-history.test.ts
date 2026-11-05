@@ -7,6 +7,7 @@ import {
   CaseNotFoundError,
   listCaseRevisions,
   restoreCaseRevision,
+  SAVED_VERSION_LIST_LIMIT,
   saveOwnedCaseDraft,
 } from "./case-history";
 import { ConcurrencyConflictError } from "./errors";
@@ -78,6 +79,7 @@ function fakeDb(options: {
   ownedCase?: unknown;
   revision?: unknown;
   onRevisionInsert?: (values: unknown) => void;
+  onRevisionList?: (config: unknown) => void;
 }): Database {
   const tx = {
     update: () => ({
@@ -99,7 +101,10 @@ function fakeDb(options: {
       cases: { findFirst: () => Promise.resolve(options.ownedCase) },
       caseRevisions: {
         findFirst: () => Promise.resolve(options.revision),
-        findMany: () => Promise.resolve([]),
+        findMany: (config: unknown) => {
+          options.onRevisionList?.(config);
+          return Promise.resolve([]);
+        },
       },
     },
   } as unknown as Database;
@@ -165,5 +170,19 @@ describe("restoring an earlier version", () => {
     await expect(
       listCaseRevisions(db, { sessionId: "s", userId: "u" }, "case-1"),
     ).rejects.toThrow(CaseNotFoundError);
+  });
+
+  it("limits the initial history query so large cases load promptly", async () => {
+    let queryConfig: { limit?: number } | undefined;
+    const db = fakeDb({
+      ownedCase: { id: "case-1", revision: 900 },
+      onRevisionList: (config) => {
+        queryConfig = config as { limit?: number };
+      },
+    });
+
+    await listCaseRevisions(db, { sessionId: "s", userId: "u" }, "case-1");
+
+    expect(queryConfig?.limit).toBe(SAVED_VERSION_LIST_LIMIT);
   });
 });
